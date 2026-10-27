@@ -1,4 +1,3 @@
-import { assimilationLocked } from './assimilation/decorator';
 import { GameCache } from './caching/GameCache';
 import { Colony, getAllColonies } from './Colony';
 import { log } from './console/log';
@@ -19,15 +18,10 @@ import { profile } from './profiler/decorator';
 import { Stats } from './stats/stats';
 import { ExpansionPlanner } from './strategy/ExpansionPlanner';
 import { alignedNewline } from './utilities/stringConstants';
-import { bulleted } from './utilities/utils';
-import { asciiLogoSmall } from './visuals/logos';
 import { Visualizer } from './visuals/Visualizer';
 import { PowerZerg } from './zerg/PowerZerg';
 import { Zerg } from './zerg/Zerg';
 import {
-	DEFAULT_OVERMIND_SIGNATURE,
-	MUON,
-	MY_USERNAME,
 	NEW_OVERMIND_INTERVAL,
 	PROFILER_COLONY_LIMIT,
 	PROFILER_INCLUDE_COLONIES,
@@ -57,7 +51,6 @@ if (USE_SCREEPS_PROFILER) {
  * Overmind class - manages colony-scale operations and contains references to all brain objects
  */
 @profile
-@assimilationLocked
 export default class Overmind implements IOvermind {
 
 	memory: IOvermindMemory;
@@ -282,9 +275,6 @@ export default class Overmind implements IOvermind {
 	}
 
 	run(): void {
-		if (Game.time % 3 == 0) {
-			IntelManagement.run();
-		}
 		for (const name in this.spawnGroups) {
 			this.try(() => this.spawnGroups[name].run(), name);
 		}
@@ -296,11 +286,9 @@ export default class Overmind implements IOvermind {
 		this.try(() => this.tradeNetwork.run());
 		this.try(() => this.expansionPlanner.run());
 		this.try(() => RoomIntel.run());
-		this.try(() => Assimilator.run());
 	}
 
 	postRun(): void {
-		this.try(() => VersionUpdater.run());
 		this.try(() => Segmenter.run());
 		this.handleExceptions();
 	}
@@ -317,12 +305,6 @@ export default class Overmind implements IOvermind {
 	visuals(): void {
 		if (Game.cpu.bucket > 9000) {
 			Visualizer.visuals();
-			if (VersionUpdater.memory.newestVersion) {
-				const newestVersion = VersionUpdater.memory.newestVersion;
-				if (VersionUpdater.isVersionOutdated(newestVersion)) {
-					this.overseer.notifier.alert(`[!] Update available: ${__VERSION__} → ${newestVersion}`, undefined, NotifierPriority.SystemUpdate);
-				}
-			}
 			this.overseer.visuals();
 			for (const name in this.colonies) {
 				this.colonies[name].visuals();
@@ -334,195 +316,3 @@ export default class Overmind implements IOvermind {
 
 }
 
-class IntelManagement {
-
-	static runRoomIntel_1(): void {
-		const invalidSignatures: string[] = [];
-		const colonies = getAllColonies();
-		if (colonies.length == 0) {
-			return;
-		}
-		for (const colony of colonies) {
-			if (colony.defcon > 0 || colony.creeps.length == 0) {
-				continue;
-			}
-			const controller = colony.controller;
-			if (controller.signedByScreeps || controller.level < 4) {
-				continue;
-			}
-			let hasValidSign = false;
-			if (controller.sign) {
-				const text = controller.sign.text;
-				if (text.toLowerCase().includes('overmind') || text.includes('ᴏᴠᴇʀᴍɪɴᴅ')) {
-					hasValidSign = true;
-				}
-			}
-			if (!hasValidSign) {
-				invalidSignatures.push(controller.sign ? controller.sign.text : 'undefined');
-			}
-		}
-		if (invalidSignatures.length >= _.keys((Overmind as any).colonies).length * 0.5) {
-			Memory.settings.signature = DEFAULT_OVERMIND_SIGNATURE;
-			log.warning(`Invalid controller signatures detected:${bulleted(invalidSignatures)}${alignedNewline}Signatures must contain the string "Overmind" or ᴏᴠᴇʀᴍɪɴᴅ.`);
-			throw new Error("Invalid controller signatures detected; won't run this tick!");
-		}
-	}
-
-	static runRoomIntel_2(): void {
-		if (MY_USERNAME == MUON || Assimilator.isAssimilated(MY_USERNAME)) {
-			return;
-		}
-		let hasNoviceRoom = false;
-		for (const name in Game.rooms) {
-			const room = Game.rooms[name];
-			if (room.controller && room.controller.owner && room.controller.my) {
-				const roomStatus = (Game.map as any).getRoomStatus(room.name);
-				if (roomStatus.status == 'novice') {
-					hasNoviceRoom = true;
-					break;
-				}
-			}
-		}
-		if (hasNoviceRoom) {
-			const snarkyMessages = [
-				'You might be missing the point of this game - most of the fun of the game is programming your own bot and watching your little ant farm run!',
-				"Sure, Overmind might win you battles, but only your own code can win the hearts of your creeps. Don't let them down!",
-				"Roses are red, violets are blue, Overmind's cool, but your code is too! Unleash your inner coder and show us what you've got!",
-				"Coding your own Screeps AI is like brewing your own beer. Sure, store-bought is fine, but homemade? That's some good shit.",
-				'WRITE YOUR OWN GODDAMN CODE',
-				'If Overmind is the ready meal of Screeps, coding your own AI is the farm-to-table experience. Fresh, satisfying, rewarding!',
-				'Sure, Overmind can play the game, but can it serenade your creeps under the moonlight? Time to code up some romance!',
-				'Ditch the premade bot. Your creeps deserve an original hit, not a cover band!'
-			];
-			const index = _.random(snarkyMessages.length - 1);
-			log.alert(snarkyMessages[index]);
-			const bannedColors: ColorConstant[] = [COLOR_RED];
-			const bannedColorPairs: ColorConstant[][] = [[COLOR_RED, COLOR_RED]];
-			for (const name in Game.flags) {
-				const flag = Game.flags[name];
-				const colorPair = [flag.color, flag.secondaryColor];
-				if (bannedColors.includes(flag.color) || (bannedColorPairs as any[]).includes(colorPair)) {
-					flag.remove();
-					log.warning(`Illegal directives detected and removed: ${flag.name}.`);
-				}
-			}
-		}
-	}
-
-	static run(): void {
-		this.runRoomIntel_1();
-		if (Game.time % 30 == 0) {
-			this.runRoomIntel_2();
-		}
-	}
-
-}
-
-interface VersionUpdaterMemory {
-	versions: { [version: string]: any };
-	newestVersion?: string;
-}
-
-class VersionUpdater {
-
-	static CheckFrequency = 100;
-	static CheckOnTick = 91;
-	static VersionSegment = 99;
-
-	static get memory(): VersionUpdaterMemory {
-		return Mem.wrap(Memory.Overmind, 'versionUpdater', () => ({
-			versions     : {},
-			newestVersion: undefined,
-		}));
-	}
-
-	static slave_fetchVersion(): string | undefined {
-		if (Game.time % this.CheckFrequency == this.CheckOnTick - 1) {
-			Segmenter.requestForeignSegment(MUON, this.VersionSegment);
-		} else if (Game.time % this.CheckFrequency == this.CheckOnTick) {
-			const foreignSegment = Segmenter.getForeignSegment();
-			if (foreignSegment) {
-				return foreignSegment.version;
-			}
-		}
-	}
-
-	static isVersionOutdated(version: string): boolean {
-		const [major, minor, patch] = _.map(__VERSION__.split('.'), v => parseInt(v, 10));
-		const [newMajor, newMinor, newPatch] = _.map(version.split('.'), v => parseInt(v, 10));
-		return newMajor > major || newMinor > minor || newPatch > patch;
-	}
-
-	static master_pushVersion(): void {
-		if (Game.time % this.CheckFrequency == this.CheckOnTick - 2) {
-			Segmenter.requestSegments(this.VersionSegment);
-		} else if (Game.time % this.CheckFrequency == this.CheckOnTick - 1) {
-			Segmenter.markSegmentAsPublic(this.VersionSegment);
-			Segmenter.setSegmentProperty(this.VersionSegment, 'version', __VERSION__);
-		}
-	}
-
-	static generateUpdateMessage(currentVersion: string, newVersion: string): string {
-		let msg = '\n';
-		for (const line of asciiLogoSmall) {
-			msg += line + '\n';
-		}
-		const downloadLink = '<a href="https://github.com/bencbartlett/Overmind/releases">Download</a>';
-		const patchNotesLink = '<a href="https://github.com/bencbartlett/Overmind/blob/master/CHANGELOG.md">Patch notes</a>';
-		const box = '╔═════════════════════════════════════════════════════════╗\n' +
-					`║            Update available: ${currentVersion} → ${newVersion}              ║\n` +
-					`║            > ${downloadLink} <    > ${patchNotesLink} <              ║\n` +
-					'╚═════════════════════════════════════════════════════════╝';
-		return msg + box;
-	}
-
-	static generateUpdateMessageSmall(currentVersion: string, newVersion: string): string {
-		const downloadLink = '<a href="https://github.com/bencbartlett/Overmind/releases">Download</a>';
-		const patchNotesLink = '<a href="https://github.com/bencbartlett/Overmind/blob/master/CHANGELOG.md">Patch notes</a>';
-		const box = '╔═════════════════════════════════╗\n' +
-					'║       OVERMIND SCREEPS AI       ║\n' +
-					'╠═════════════════════════════════╣\n' +
-					`║ Update available: ${currentVersion} → ${newVersion} ║\n` +
-					`║ > ${downloadLink} <    > ${patchNotesLink} < ║\n` +
-					'╚═════════════════════════════════╝';
-		return '\n' + box;
-	}
-
-	static displayUpdateMessage(newVersion: string): void {
-		const msg = this.generateUpdateMessage(__VERSION__, newVersion);
-		console.log(`<font color='#ff00ff'>${msg}</font>`);
-	}
-
-	static sayUpdateMessage(newVersion?: string): void {
-		for (const name in Game.creeps) {
-			const creep = Game.creeps[name];
-			creep.say('Update me!', true);
-		}
-	}
-
-	static notifyNewVersion(newVersion: string): void {
-		const msg = this.generateUpdateMessageSmall(__VERSION__, newVersion);
-		Game.notify(`<font color='#ff00ff'>${msg}</font>`);
-	}
-
-	static run(): void {
-		if (MY_USERNAME == MUON) {
-			this.master_pushVersion();
-		}
-		const version = this.slave_fetchVersion();
-		if (version) {
-			this.memory.newestVersion = version;
-		}
-		const newestVersion = this.memory.newestVersion;
-		if (newestVersion && this.isVersionOutdated(newestVersion)) {
-			if (Game.time % 10 == 0) {
-				this.displayUpdateMessage(newestVersion);
-				this.sayUpdateMessage(newestVersion);
-			}
-			if (Game.time % 10000 == 0) {
-				this.notifyNewVersion(newestVersion);
-			}
-		}
-	}
-
-}

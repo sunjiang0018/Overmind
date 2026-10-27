@@ -102,10 +102,6 @@ function onGlobalReset(): void {
 	VersionMigration.run();
 	Memory.stats.persistent.lastGlobalReset = Game.time;
 	OvermindConsole.printUpdateMessage();
-	// Update the master ledger of valid checksums
-	if (MY_USERNAME == MUON) {
-		Assimilator.updateValidChecksumLedger();
-	}
 	// Make a new Overmind object
 	global.Overmind = new _Overmind();
 	// Make a remote debugger
@@ -140,9 +136,6 @@ if (RL_TRAINING_MODE) {
 	OvermindConsole.printTrainingMessage();
 	onGlobalReset_RL();
 } else {
-	// Register these functions for checksum computations with the Assimilator
-	Assimilator.validate(main);
-	Assimilator.validate(loop);
 	// Run the global reset code
 	onGlobalReset();
 }

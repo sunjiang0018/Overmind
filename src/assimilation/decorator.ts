@@ -1,5 +1,5 @@
-// Compute a hash of a block of code and register with Overmind
+// Code integrity / assimilation lock disabled
 export function assimilationLocked(code: any): void {
-	Assimilator.validate(code);
+	// No-op
 }
 

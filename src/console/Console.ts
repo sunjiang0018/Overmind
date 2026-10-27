@@ -134,12 +134,8 @@ export class OvermindConsole {
 
 	static info(aligned = false): string {
 		const b = bullet;
-		const checksum = Assimilator.generateChecksum();
-		const clearanceCode = Assimilator.getClearanceCode(MY_USERNAME);
 		const baseInfo = [
 			`${b}Version:        Overmind v${__VERSION__}`,
-			`${b}Checksum:       ${checksum}`,
-			`${b}Assimilated:    ${clearanceCode ? 'Yes' : 'No'} (clearance code: ${clearanceCode}) [WIP]`,
 			`${b}Operating mode: ${Memory.settings.operationMode}`,
 		];
 		const joinChar = aligned ? alignedNewline : '\n';
