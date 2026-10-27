@@ -4,10 +4,13 @@
     "module": "esnext",
     "lib": ["esnext"],
     "target": "es2017",
-    "moduleResolution": "Node",
+    "moduleResolution": "bundler",
+    "rootDir": "src",
     "newLine": "CRLF",
     "outDir": "tsc-out",
-    "baseUrl": "src/",
+    "paths": {
+      "*": ["./src/*"]
+    },
     "sourceMap": false,
     "strict": true,
     "strictPropertyInitialization": false,
@@ -19,8 +22,12 @@
     "allowUnreachableCode": false,
     "removeComments": false,
     "typeRoots": [
-      "./node_modules/@types",
-      "./types/"
+      "./node_modules/@types"
+    ],
+    "types": [
+      "screeps",
+      "lodash",
+      "node"
     ]
   },
   "include": [

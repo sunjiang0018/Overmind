@@ -112,7 +112,7 @@ export abstract class AnyZerg {
 		this.store = creep.store;
 		this.carryCapacity = creep.carryCapacity;
 		// this.fatigue = creep.fatigue;
-		this.effects = creep.effects;
+		this.effects = creep.effects!;
 		this.hits = creep.hits;
 		this.hitsMax = creep.hitsMax;
 		this.id = creep.id;
