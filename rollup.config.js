@@ -28,6 +28,7 @@ export default {
     plugins: [
         progress({clearLine: true}),
         resolve(),
+        typescript({tsconfig: "./tsconfig.json", include: ["src/**/*.ts"]}),
         commonjs({
                      namedExports: {
                          'src/Overmind_obfuscated': ['_Overmind'],
@@ -35,7 +36,6 @@ export default {
                          'columnify': ['columnify']
                      }
                  }),
-        typescript({tsconfig: "./tsconfig.json"}),
         screeps({config: cfg, dryRun: cfg == null})
     ],
 
