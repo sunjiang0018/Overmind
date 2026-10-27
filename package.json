@@ -17,11 +17,11 @@
     "lint": "tslint \"src/**/*.ts\"",
     "clean": "rm -rf tsc-out && rm -rf dist",
     "obfuscate": "tsc && javascript-obfuscator tsc-out/Overmind.js --output src/Overmind_obfuscated.js --compact false --self-defending true --string-array true --string-array-threshold 1 --string-array-encoding rc4 && javascript-obfuscator tsc-out/assimilation/Assimilator.js --output src/assimilation/Assimilator_obfuscated.js --compact false --self-defending true --string-array true --string-array-threshold 1 --string-array-encoding rc4",
-    "compile": "rollup -c",
-    "push-main": "rollup -c --environment DEST:main",
-    "push-seasonal": "rollup -c --environment DEST:seasonal",
-    "push-pserver": "rollup -c --environment DEST:pserver",
-    "push-screepsplus": "rollup -c --environment DEST:screepsplus",
+    "compile": "NODE_OPTIONS=--dns-result-order=ipv4first rollup -c",
+    "push-main": "NODE_OPTIONS=--dns-result-order=ipv4first rollup -c --environment DEST:main",
+    "push-seasonal": "NODE_OPTIONS=--dns-result-order=ipv4first rollup -c --environment DEST:seasonal",
+    "push-pserver": "NODE_OPTIONS=--dns-result-order=ipv4first rollup -c --environment DEST:pserver",
+    "push-screepsplus": "NODE_OPTIONS=--dns-result-order=ipv4first rollup -c --environment DEST:screepsplus",
     "test": "npm run clean && npm run build"
   },
   "engines": {

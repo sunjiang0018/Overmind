@@ -5,7 +5,6 @@
     "lib": ["esnext"],
     "target": "es2017",
     "moduleResolution": "bundler",
-    "rootDir": "src",
     "newLine": "CRLF",
     "outDir": "tsc-out",
     "paths": {
