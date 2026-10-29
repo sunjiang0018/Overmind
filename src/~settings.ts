@@ -1,6 +1,5 @@
 // Global settings file containing player information
 
-import {leftAngleQuote, rightAngleQuote} from './utilities/stringConstants';
 import {
 	getMyUsername,
 	getReinforcementLearningTrainingVerbosity,
@@ -45,14 +44,10 @@ export const USE_TRY_CATCH: boolean = true;
 export const SUPPRESS_INVALID_DIRECTIVE_ALERTS: boolean = false;
 
 /**
- * Default controller signature; don't change this.
- * You can set your controller signature with the console command "setSignature()"
- * Operation will be penalized by skipping every 3rd tick for using a signature that does not contain the substring
- * "overmind" or the small-caps variant.
+ * Default controller signature. Use setSignature() to choose another signature.
  */
-const OVERMIND_PLAIN = 'Overmind';
 export const OVERMIND_SMALL_CAPS = '\u1D0F\u1D20\u1D07\u0280\u1D0D\u026A\u0274\u1D05';
-export const DEFAULT_OVERMIND_SIGNATURE = leftAngleQuote + OVERMIND_SMALL_CAPS + rightAngleQuote;
+export const DEFAULT_OVERMIND_SIGNATURE = '星海为途，长路有光';
 global.__DEFAULT_OVERMIND_SIGNATURE__ = DEFAULT_OVERMIND_SIGNATURE;
 
 /**
@@ -86,6 +81,18 @@ export const NEW_OVERMIND_INTERVAL = onPublicServer() ? 20 : 5;
  * Master scale for the RoomVisuals GUI // TODO: not plugged in yet
  */
 export const GUI_SCALE = 1.0;
+
+/** Show the room logo, resource graphs, notifications, and colony status panels. */
+export const SHOW_ROOM_HUD = false;
+
+/** Master switch, including directive markers and planner/debug rendering. */
+export const ENABLE_VISUALS = false;
+
+/** Random roaming scouts per colony. Zero retires existing scouts and stops replacement spawning. */
+export const RANDOM_SCOUT_COUNT = 0;
+
+/** Temporary novice-period upkeep target. Set undefined to restore the normal RCL-based policy. */
+export const PEACETIME_BARRIER_HITS: number | undefined = 5000;
 
 /**
  * If this is set to true, a stripped-down version of Overmind suitable for training with my python screeps environment

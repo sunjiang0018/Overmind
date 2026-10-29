@@ -13,6 +13,7 @@ import {
 	unpackPos
 } from '../utilities/packrat';
 import {ema, getCacheExpiration} from '../utilities/utils';
+import {isRoomTick} from '../utilities/scheduler';
 import {CombatIntel} from './CombatIntel';
 
 const RECACHE_TIME = 5000;
@@ -910,13 +911,13 @@ export class RoomIntel {
 				room.memory[MEM.EXPIRATION] = getCacheExpiration(recacheTime, 250);
 			}
 
-			if (room.controller && Game.time % 5 == 0) {
+			if (room.controller && isRoomTick(room.name, 25)) {
 				this.recordControllerInfo(room.controller);
 			}
 
 		}
 
-		if (Game.time % 20 == 0) {
+		if (Game.time % 100 == 19) {
 			this.cleanMemory();
 		}
 

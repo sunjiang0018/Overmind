@@ -25,6 +25,7 @@ import {
 	NEW_OVERMIND_INTERVAL,
 	PROFILER_COLONY_LIMIT,
 	PROFILER_INCLUDE_COLONIES,
+	SHOW_ROOM_HUD,
 	SUPPRESS_INVALID_DIRECTIVE_ALERTS,
 	USE_SCREEPS_PROFILER,
 	USE_TRY_CATCH
@@ -303,11 +304,14 @@ export default class Overmind implements IOvermind {
 	}
 
 	visuals(): void {
+		if (!Visualizer.enabled) return;
 		if (Game.cpu.bucket > 9000) {
-			Visualizer.visuals();
 			this.overseer.visuals();
-			for (const name in this.colonies) {
-				this.colonies[name].visuals();
+			if (SHOW_ROOM_HUD) {
+				Visualizer.visuals();
+				for (const name in this.colonies) {
+					this.colonies[name].visuals();
+				}
 			}
 		} else if (Game.time % 10 == 0) {
 			log.info(`CPU bucket is too low (${Game.cpu.bucket}) - skip rendering visuals.`);

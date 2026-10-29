@@ -5,6 +5,7 @@ import {Mem} from '../memory/Memory';
 import {profile} from '../profiler/decorator';
 import {packCoord, packCoordList, unpackCoordListAsPosList} from '../utilities/packrat';
 import {minMax} from '../utilities/utils';
+import {Visualizer} from '../visuals/Visualizer';
 import {BUNKER_RADIUS, bunkerLayout, insideBunkerBounds} from './layouts/bunker';
 import {getAllStructureCoordsFromLayout, RoomPlanner, translatePositions} from './RoomPlanner';
 
@@ -200,6 +201,7 @@ export class BarrierPlanner {
 	}
 
 	visuals(): void {
+		if (!Visualizer.enabled) return;
 		for (const pos of this.barrierPositions) {
 			this.colony.room.visual.structure(pos.x, pos.y, STRUCTURE_RAMPART);
 		}

@@ -1,4 +1,5 @@
 import {profile} from '../../profiler/decorator';
+import {earlyBarrierLimit} from '../../roomPlanner/roomOverrides';
 import {Task} from '../Task';
 
 
@@ -25,11 +26,13 @@ export class TaskFortify extends Task<fortifyTargetType> {
 	}
 
 	isValidTarget() {
-		return !!this.target && this.target.hits < (this.data.hitsMax || this.target.hitsMax);
+		if (!this.target) return false;
+		const limit = earlyBarrierLimit(this.target.pos);
+		return this.target.hits < Math.min(this.data.hitsMax || this.target.hitsMax, limit || Infinity);
 	}
 
 	work() {
-		if (!this.target) return ERR_INVALID_TARGET;
+		if (!this.target || !this.isValidTarget()) return ERR_INVALID_TARGET;
 		return this.creep.repair(this.target);
 	}
 }

@@ -179,7 +179,8 @@ RoomPosition.prototype.getPositionsAtRange = function(range: number,
 
 RoomPosition.prototype.isWalkable = function(ignoreCreeps = false): boolean {
 	// Is terrain passable?
-	if (Game.map.getRoomTerrain(this.roomName).get(this.x, this.y) == TERRAIN_MASK_WALL) return false;
+	if (Game.map.getRoomTerrain(this.roomName).get(this.x, this.y) == TERRAIN_MASK_WALL
+		&& !(this.isVisible && this.lookForStructure(STRUCTURE_ROAD))) return false;
 	if (this.isVisible) {
 		// Are there creeps?
 		if (ignoreCreeps == false && this.lookFor(LOOK_CREEPS).length > 0) return false;

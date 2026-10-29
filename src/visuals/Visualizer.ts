@@ -3,6 +3,7 @@ import {profile} from '../profiler/decorator';
 import {StructureLayout, StructureMap} from '../roomPlanner/RoomPlanner';
 import {rgbToHex} from '../utilities/utils';
 import {asciiLogo, logoComponents, logoText} from './logos';
+import {ENABLE_VISUALS} from '../~settings';
 
 
 const TEXT_COLOR = '#c9c9c9';
@@ -17,7 +18,7 @@ const CHAR_HEIGHT = TEXT_SIZE * 0.9;
 export class Visualizer {
 
 	static get enabled(): boolean {
-		return Memory.settings.enableVisuals;
+		return ENABLE_VISUALS && Memory.settings.enableVisuals;
 	}
 
 	private static textStyle(size = 1, style: TextStyle = {}) {
@@ -29,7 +30,8 @@ export class Visualizer {
 		});
 	}
 
-	static circle(pos: RoomPosition, color = 'red', opts = {}): RoomVisual {
+	static circle(pos: RoomPosition, color = 'red', opts = {}): RoomVisual | undefined {
+		if (!this.enabled) return;
 		_.defaults(opts, {
 			fill   : color,
 			radius : 0.35,
@@ -38,7 +40,8 @@ export class Visualizer {
 		return new RoomVisual(pos.roomName).circle(pos.x, pos.y, opts);
 	}
 
-	static rect(pos: RoomPosition, color = 'red', opts = {}): RoomVisual {
+	static rect(pos: RoomPosition, color = 'red', opts = {}): RoomVisual | undefined {
+		if (!this.enabled) return;
 		_.defaults(opts, {
 			fill   : color,
 			opacity: 0.5,
@@ -46,7 +49,8 @@ export class Visualizer {
 		return new RoomVisual(pos.roomName).rect(pos.x, pos.y, 1, 1, opts);
 	}
 
-	static marker(pos: RoomPosition, opts = {}): RoomVisual {
+	static marker(pos: RoomPosition, opts = {}): RoomVisual | undefined {
+		if (!this.enabled) return;
 		return new RoomVisual(pos.roomName).animatedPosition(pos.x, pos.y, opts);
 	}
 
@@ -81,6 +85,7 @@ export class Visualizer {
 	}
 
 	static drawRoads(positoins: RoomPosition[]): void {
+		if (!this.enabled) return;
 		const pointsByRoom = _.groupBy(positoins, pos => pos.roomName);
 		for (const roomName in pointsByRoom) {
 			const vis = new RoomVisual(roomName);
@@ -92,6 +97,7 @@ export class Visualizer {
 	}
 
 	static drawPath(path: RoomPosition[], style?: PolyStyle): void {
+		if (!this.enabled) return;
 		const pointsByRoom = _.groupBy(path, pos => pos.roomName);
 		for (const roomName in pointsByRoom) {
 			new RoomVisual(roomName).poly(pointsByRoom[roomName], style);
@@ -100,6 +106,7 @@ export class Visualizer {
 
 	static displayCostMatrix(matrix: CostMatrix, roomName?: string,
 							 opts = {dots: true, displayZero: true}): void {
+		if (!this.enabled) return;
 
 		opts = _.defaults(opts, {dots: true, displayZero: true});
 
@@ -135,7 +142,8 @@ export class Visualizer {
 
 	}
 
-	static showInfo(info: string[], calledFrom: { room: Room | undefined, pos: RoomPosition }, opts = {}): RoomVisual {
+	static showInfo(info: string[], calledFrom: { room: Room | undefined, pos: RoomPosition }, opts = {}): RoomVisual | undefined {
+		if (!this.enabled) return;
 		if (calledFrom.room) {
 			return calledFrom.room.visual.infoBox(info, calledFrom.pos.x, calledFrom.pos.y, opts);
 		} else {
@@ -145,6 +153,7 @@ export class Visualizer {
 
 	static section(title: string, pos: { x: number, y: number, roomName?: string }, width: number,
 				   height: number): { x: number, y: number } {
+		if (!this.enabled) return {x: pos.x + 0.25, y: pos.y + 1.1 * CHAR_HEIGHT};
 		const vis = new RoomVisual(pos.roomName);
 		vis.rect(pos.x, pos.y - CHAR_HEIGHT, width, 1.1 * CHAR_HEIGHT, {opacity: 0.15});
 		vis.box(pos.x, pos.y - CHAR_HEIGHT, width, height + (1.1 + .25) * CHAR_HEIGHT, {color: TEXT_COLOR});
@@ -154,6 +163,7 @@ export class Visualizer {
 
 	static infoBox(header: string, content: string[] | string[][], pos: { x: number, y: number, roomName?: string },
 				   width: number): number {
+		if (!this.enabled) return pos.y + (1.1 + (content.length || 1)) * CHAR_HEIGHT + 0.5;
 		// const vis = new RoomVisual(pos.roomName);
 		// vis.rect(pos.x, pos.y - charHeight, width, 1.1 * charHeight, {opacity: 0.15});
 		// vis.box(pos.x, pos.y - charHeight, width, ((content.length || 1) + 1.1 + .25) * charHeight,
@@ -182,11 +192,13 @@ export class Visualizer {
 	}
 
 	static text(text: string, pos: { x: number, y: number, roomName?: string }, size = 1, style: TextStyle = {}): void {
+		if (!this.enabled) return;
 		new RoomVisual(pos.roomName).text(text, pos.x, pos.y, this.textStyle(size, style));
 	}
 
 	static barGraph(progress: number | [number, number], pos: { x: number, y: number, roomName?: string },
 					width = 7, scale = 1): void {
+		if (!this.enabled) return;
 		const vis = new RoomVisual(pos.roomName);
 		let percent: number;
 		let mode: 'percent' | 'fraction';
@@ -217,6 +229,7 @@ export class Visualizer {
 	}
 
 	static table(data: string[][], pos: { x: number, y: number, roomName?: string }): void {
+		if (!this.enabled) return;
 		if (data.length == 0) {
 			return;
 		}
@@ -254,6 +267,7 @@ export class Visualizer {
 	}
 
 	static multitext(lines: string[], pos: { x: number, y: number, roomName?: string }): void {
+		if (!this.enabled) return;
 		if (lines.length == 0) {
 			return;
 		}
@@ -268,6 +282,7 @@ export class Visualizer {
 	}
 
 	static drawHUD(): void {
+		if (!this.enabled) return;
 		// Draw Overmind logo
 		new RoomVisual().multitext(asciiLogo, 0, 0, {textfont: 'monospace'});
 		// // Display CPU Information
@@ -277,6 +292,7 @@ export class Visualizer {
 
 	/* Draws the Overmind logo using component coordinates extracted with Mathematica. This  uses about 0.2 CPU/tick */
 	static drawLogo(): void {
+		if (!this.enabled) return;
 		new RoomVisual().poly(logoComponents.black.points, logoComponents.black.style)
 						.poly(logoComponents.dgray.points, logoComponents.dgray.style)
 						.poly(logoComponents.lgray.points, logoComponents.lgray.style)
@@ -297,6 +313,7 @@ export class Visualizer {
 	}
 
 	static drawNotifications(notificationMessages: string[]): void {
+		if (!this.enabled) return;
 		// const vis = new RoomVisual();
 		const x = 10.5;
 		const y = 7;
@@ -314,6 +331,7 @@ export class Visualizer {
 	// }
 
 	static drawGraphs(): void {
+		if (!this.enabled) return;
 		this.text(`CPU`, {x: 1, y: 7});
 		this.barGraph(Memory.stats.persistent.avgCPU / Game.cpu.limit, {x: 2.75, y: 7});
 		this.text(`BKT`, {x: 1, y: 8});
@@ -325,6 +343,7 @@ export class Visualizer {
 
 	// This typically takes about 0.3-0.6 CPU in total
 	static visuals(): void {
+		if (!this.enabled) return;
 		this.drawLogo();
 		this.drawGraphs();
 		// this.drawNotifications();

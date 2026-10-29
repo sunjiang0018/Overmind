@@ -171,13 +171,9 @@ export class OvermindConsole {
 		const sig = signature ? signature : DEFAULT_OVERMIND_SIGNATURE;
 		if (sig.length > 100) {
 			throw new Error(`Invalid signature: ${signature}; length is over 100 chars.`);
-		} else if (sig.toLowerCase().includes('overmind') || sig.includes(DEFAULT_OVERMIND_SIGNATURE)) {
-			Memory.settings.signature = sig;
-			return `Controller signature set to ${sig}`;
-		} else {
-			throw new Error(`Invalid signature: ${signature}; must contain the string "Overmind" or ` +
-							`${DEFAULT_OVERMIND_SIGNATURE} (accessible on global with __DEFAULT_OVERMIND_SIGNATURE__)`);
 		}
+		Memory.settings.signature = sig;
+		return `Controller signature set to ${sig}`;
 	}
 
 

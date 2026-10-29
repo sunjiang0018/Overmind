@@ -17,6 +17,7 @@ import {bunkerLayout} from './layouts/bunker';
 import {commandCenterLayout} from './layouts/commandCenter';
 import {hatcheryLayout} from './layouts/hatchery';
 import {RoadPlanner} from './RoadPlanner';
+import {buildOverrideTunnel, hasRoomOverride, installRoomOverride} from './roomOverrides';
 
 export interface BuildingPlannerOutput {
 	name?: string;
@@ -49,6 +50,7 @@ export interface RoomPlan {
 }
 
 export interface RoomPlannerMemory {
+	customLayout?: string;
 	active: boolean;
 	misplacedStructures?: boolean;
 	relocating?: boolean;
@@ -118,6 +120,7 @@ export class RoomPlanner {
 	constructor(colony: Colony) {
 		this.colony = colony;
 		this.memory = Mem.wrap(this.colony.memory, 'roomPlanner', getDefaultRoomPlannerMemory);
+		installRoomOverride(colony, this.memory);
 		this.barrierPlanner = new BarrierPlanner(this);
 		this.roadPlanner = new RoadPlanner(this);
 		this.refresh();
@@ -397,10 +400,18 @@ export class RoomPlanner {
 	getObstacles(): RoomPosition[] {
 		let obstacles: RoomPosition[] = [];
 		// Add sources and extractors to impassibles for tunnels
-		obstacles.concat(_.map(this.colony.sources, source => source.pos));
-		obstacles.concat(_.map(this.colony.extractors, extr => extr.pos));
+		obstacles = obstacles.concat(_.map(this.colony.sources, source => source.pos));
+		obstacles = obstacles.concat(_.map(this.colony.extractors, extr => extr.pos));
+		obstacles.push(this.colony.controller.pos);
 		const passableStructureTypes: string[] = [STRUCTURE_ROAD, STRUCTURE_CONTAINER, STRUCTURE_RAMPART];
-		if (_.keys(this.map).length > 0) { // if room planner has made the map, use that
+		if (hasRoomOverride(this.colony.name) && this.memory.mapsByLevel) {
+			// Reserve the complete layout even while only the current RCL map is loaded.
+			for (const structureType in this.memory.mapsByLevel[8]) {
+				if (!passableStructureTypes.includes(structureType)) {
+					obstacles = obstacles.concat(this.memory.mapsByLevel[8][structureType].map(p => derefRoomPosition(p)));
+				}
+			}
+		} else if (_.keys(this.map).length > 0) { // if room planner has made the map, use that
 			for (const structureType in this.map) {
 				if (!passableStructureTypes.includes(structureType)) {
 					obstacles = obstacles.concat(this.map[structureType]);
@@ -722,6 +733,8 @@ export class RoomPlanner {
 		// Build missing structures from room plan
 		for (const structureType of BuildPriorities) {
 			if (!this.map[structureType]) continue;
+			// The road planner budgets infrastructure separately from economic buildings.
+			if (hasRoomOverride(this.colony.name) && structureType == STRUCTURE_ROAD) continue;
 			for (const pos of this.map[structureType]) {
 
 				if (RoomPlanner.canBuild(structureType, pos) && remainingSites > 0) {
@@ -775,6 +788,9 @@ export class RoomPlanner {
 					// TODO
 					return `${structure.structureType} is safe type!`;
 				} else {
+					if (hasRoomOverride(this.colony.name) && structure.structureType == STRUCTURE_ROAD) {
+						return structure.destroy(); // Clear only a road occupying a planned building tile.
+					}
 					return 'destroy() disabled'; // structure.destroy();
 				}
 			}
@@ -910,6 +926,7 @@ export class RoomPlanner {
 	}
 
 	run(): void {
+		buildOverrideTunnel(this.colony);
 		if (this.active) {
 			this.make();
 			this.visuals();

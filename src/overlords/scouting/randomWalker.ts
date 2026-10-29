@@ -6,8 +6,7 @@ import {profile} from '../../profiler/decorator';
 import {Tasks} from '../../tasks/Tasks';
 import {Zerg} from '../../zerg/Zerg';
 import {Overlord} from '../Overlord';
-
-const DEFAULT_NUM_SCOUTS = 3;
+import {RANDOM_SCOUT_COUNT} from '../../~settings';
 
 /**
  * Sends out scouts which randomly traverse rooms to uncover possible expansion locations and gather intel
@@ -23,7 +22,7 @@ export class RandomWalkerScoutOverlord extends Overlord {
 	}
 
 	init() {
-		this.wishlist(DEFAULT_NUM_SCOUTS, Setups.scout);
+		this.wishlist(RANDOM_SCOUT_COUNT, Setups.scout);
 	}
 
 	private handleScout(scout: Zerg) {
@@ -48,6 +47,22 @@ export class RandomWalkerScoutOverlord extends Overlord {
 	}
 
 	run() {
+		if (RANDOM_SCOUT_COUNT == 0) {
+			for (const scout of this.scouts) {
+				if (scout.spawning) continue;
+				// Discard saved goToRoom tasks so retiring scouts cannot keep wandering.
+				scout.task = null;
+				const spawn = scout.pos.findClosestByMultiRoomRange(this.colony.spawns);
+				if (!spawn) {
+					scout.suicide();
+				} else if (scout.pos.isNearTo(spawn)) {
+					spawn.recycleCreep(scout.creep);
+				} else {
+					scout.goTo(spawn, {range: 1});
+				}
+			}
+			return;
+		}
 		this.autoRun(this.scouts, scout => this.handleScout(scout));
 	}
 }

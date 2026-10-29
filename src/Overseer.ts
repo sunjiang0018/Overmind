@@ -30,9 +30,9 @@ import {
 	ROOMTYPE_CROSSROAD,
 	ROOMTYPE_SOURCEKEEPER
 } from './utilities/Cartographer';
-import {p} from './utilities/random';
+import {isRoomTick} from './utilities/scheduler';
 import {canClaimAnotherRoom, getAllRooms, hasJustSpawned, minBy, onPublicServer} from './utilities/utils';
-import {MUON, MY_USERNAME, USE_TRY_CATCH} from './~settings';
+import {MUON, MY_USERNAME, SHOW_ROOM_HUD, USE_TRY_CATCH} from './~settings';
 
 
 // export const DIRECTIVE_CHECK_FREQUENCY = 2;
@@ -67,7 +67,11 @@ export class Overseer implements IOverseer {
 	notifier: Notifier;
 
 	static settings = {
-		outpostCheckFrequency: onPublicServer() ? 250 : 100
+		outpostCheckFrequency: onPublicServer() ? 250 : 100,
+		outpostDefenseFrequency: 5,
+		nukeCheckFrequency: 25,
+		powerCheckFrequency: 25,
+		poisonCheckFrequency: 100,
 	};
 
 	constructor() {
@@ -256,6 +260,7 @@ export class Overseer implements IOverseer {
 	private handleOutpostDefense(colony: Colony) { // TODO: plug in threatLevel infra
 		// Guard directive: defend your outposts and all rooms of colonies that you are incubating
 		for (const room of colony.outposts) {
+			if (!isRoomTick(room.name, Overseer.settings.outpostDefenseFrequency)) continue;
 			if (!colony.isRoomActive(room.name)) {
 				continue;
 			}
@@ -419,12 +424,13 @@ export class Overseer implements IOverseer {
 
 	private handleAutoPoisoning() {
 		// Can only have a max number of concurrent poisons at a time
-		const poisonDirectives = this.directivesByType[DirectivePoisonRoom.directiveName];
+		const poisonDirectives = this.directivesByType[DirectivePoisonRoom.directiveName] || [];
 		if (poisonDirectives.length >= Memory.settings.autoPoison.maxConcurrent) {
 			return;
 		}
 		// Find a room to poison
 		for (const room of getAllRooms()) {
+			if (!isRoomTick(room.name, Overseer.settings.poisonCheckFrequency, 3)) continue;
 			if (DirectivePoisonRoom.canAutoPoison(room)) {
 				const controller = room.controller!;
 				const maxRange = Memory.settings.autoPoison.maxRange;
@@ -451,7 +457,6 @@ export class Overseer implements IOverseer {
 	 */
 	private placeDirectives(): void {
 
-		const allRooms = getAllRooms();
 		const allColonies = getAllColonies();
 
 		if (LATEST_BUILD_TICK == Game.time) {
@@ -466,27 +471,32 @@ export class Overseer implements IOverseer {
 
 		_.forEach(allColonies, colony => this.handleColonyInvasions(colony));
 
-		_.forEach(allColonies, colony => this.handleNukeResponse(colony));
-
-		if (Game.time % 100 == 67) {
-			_.forEach(allColonies, colony => this.handleUnkillableStrongholds(colony));
+		for (const colony of allColonies) {
+			if (isRoomTick(colony.name, Overseer.settings.nukeCheckFrequency, 1)) {
+				this.handleNukeResponse(colony);
+			}
+			if (isRoomTick(colony.name, 100, 2)) {
+				this.handleUnkillableStrongholds(colony);
+			}
 		}
 
 		if (Memory.settings.powerCollection.enabled && Game.cpu.bucket > 8000) {
-			_.forEach(allRooms, room => this.handlePowerMining(room));
+			for (const room of getAllRooms()) {
+				if (isRoomTick(room.name, Overseer.settings.powerCheckFrequency, 4)) this.handlePowerMining(room);
+			}
 		}
 
 		if (Memory.settings.autoPoison.enabled && canClaimAnotherRoom() && Game.cpu.bucket > 9500) {
-			if (p(0.05)) this.handleAutoPoisoning();
+			this.handleAutoPoisoning();
 		}
 
 		if (getAutonomyLevel() > Autonomy.Manual) {
 			_.forEach(allColonies, colony => {
-				if (Game.time % Overseer.settings.outpostCheckFrequency == 2 * colony.id) {
+				if (isRoomTick(colony.name, Overseer.settings.outpostCheckFrequency, 5)) {
 					this.handleNewOutposts(colony);
 				}
 				// Place pioneer directives in case the colony doesn't have a spawn for some reason
-				if (Game.time % 25 == 0 && colony.spawns.length == 0) {
+				if (isRoomTick(colony.name, 25, 6) && colony.spawns.length == 0) {
 					// verify that there are no spawns (not just a caching glitch)
 					if (colony.room.find(FIND_MY_SPAWNS).length == 0) {
 						const pos = Pathing.findPathablePosition(colony.room.name);
@@ -633,7 +643,7 @@ export class Overseer implements IOverseer {
 		for (const overlord of this.overlords) {
 			overlord.visuals();
 		}
-		this.notifier.visuals();
+		if (SHOW_ROOM_HUD) this.notifier.visuals();
 		// for (let colony of this.colonies) {
 		// 	this.drawCreepReport(colony);
 		// }

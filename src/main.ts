@@ -44,6 +44,7 @@ import _Overmind from './Overmind';
 import {VersionMigration} from './versionMigration/migrator';
 import {RemoteDebugger} from './debug/remoteDebugger';
 import {ActionParser} from './reinforcementLearning/actionParser';
+import {generatePixelIfFull} from './utilities/pixels';
 // =====================================================================================================================
 
 // Main loop
@@ -80,6 +81,7 @@ function main(): void {
 	sandbox();									// Sandbox: run any testing code
 	global.remoteDebugger.run();				// Run remote debugger code if enabled
 	Overmind.postRun();							// Throw errors at end of tick; anything after here might not get run
+	generatePixelIfFull();						// Spend a full bucket after successful colony operation
 }
 
 // Main loop if RL mode is enabled (~settings.ts)

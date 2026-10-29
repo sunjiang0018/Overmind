@@ -10,6 +10,7 @@ import {buildTaskName} from '../../tasks/instances/build';
 import {fortifyTaskName} from '../../tasks/instances/fortify';
 import {repairTaskName} from '../../tasks/instances/repair';
 import {upgradeTaskName} from '../../tasks/instances/upgrade';
+import {earlyBarrierLimit, hasRoomOverride, isDeferredTunnel, prioritizesRCL6, RCL6_RUSH} from '../../roomPlanner/roomOverrides';
 import {Tasks} from '../../tasks/Tasks';
 import {Cartographer, ROOMTYPE_CONTROLLER} from '../../utilities/Cartographer';
 import {minBy} from '../../utilities/utils';
@@ -53,15 +54,19 @@ export class WorkerOverlord extends Overlord {
 
 	constructor(colony: Colony, priority = OverlordPriority.ownedRoom.work) {
 		super(colony, 'worker', priority);
+		const rush = prioritizesRCL6(colony.name, colony.level) && colony.defcon == DEFCON.safe;
+		const barrierTarget = this.barrierTarget;
+		const criticalTarget = Math.min(barrierTarget, rush ? RCL6_RUSH.criticalBarrierHits :
+			(hasRoomOverride(colony.name) ? 50000 : WorkerOverlord.settings.barrierHits.critical));
 		// Compute barriers needing fortification or critical attention
 		this.fortifyBarriers = $.structures(this, 'fortifyBarriers', () =>
 			_.sortBy(_.filter(this.room.barriers, s =>
-				s.hits < WorkerOverlord.settings.barrierHits[this.colony.level]
+				s.hits < barrierTarget
 				&& this.colony.roomPlanner.barrierPlanner.barrierShouldBeHere(s.pos)
 			), s => s.hits), 25);
 		this.criticalBarriers = $.structures(this, 'criticalBarriers', () =>
 			_.filter(this.fortifyBarriers,
-					 barrier => barrier.hits < WorkerOverlord.settings.barrierHits.critical), 10);
+					 barrier => barrier.hits < criticalTarget), 10);
 		// Generate a list of structures needing repairing (different from fortifying except in critical case)
 		this.repairStructures = $.structures(this, 'repairStructures', () =>
 			_.filter(this.colony.repairables, structure => {
@@ -84,6 +89,7 @@ export class WorkerOverlord extends Overlord {
 		const room = this.colony.room as any;
 		const level = this.colony.controller.level;
 		this.constructionSites = _.filter(this.colony.constructionSites, function(site) {
+			if (site.structureType == STRUCTURE_ROAD && isDeferredTunnel(site.pos)) return false;
 			// If site will be more than max amount of a structure at current level, ignore (happens after downgrade)
 			const structureAmount = room[site.structureType + 's'] ? room[site.structureType + 's'].length :
 									(room[site.structureType] ? 1 : 0);
@@ -126,7 +132,7 @@ export class WorkerOverlord extends Overlord {
 		// Spawn boosted workers if there is significant fortifying which needs to be done
 		const totalNukeDefenseHitsRemaining = _.sum(_.values(this.nukeDefenseHitsRemaining));
 		const totalFortifyHitsRemaining = _.sum(this.fortifyBarriers, barrier =>
-			Math.min(WorkerOverlord.settings.barrierHits[this.colony.level] - barrier.hits, 0));
+			Math.max(barrierTarget - barrier.hits, 0));
 		const approxRepairAmountPerLifetime = REPAIR_POWER * 50 / 3 * CREEP_LIFE_TIME;
 		if (totalNukeDefenseHitsRemaining > 3 * approxRepairAmountPerLifetime ||
 			totalFortifyHitsRemaining > 5 * approxRepairAmountPerLifetime) {
@@ -148,6 +154,13 @@ export class WorkerOverlord extends Overlord {
 			}
 		}
 		return neededHits;
+	}
+
+	private get barrierTarget(): number {
+		const limit = earlyBarrierLimit(this.colony.controller.pos);
+		return limit != undefined ? limit :
+			Math.max(WorkerOverlord.settings.barrierHits[this.colony.level],
+					 hasRoomOverride(this.colony.name) ? 100000 : 0);
 	}
 
 	refresh() {
@@ -205,7 +218,7 @@ export class WorkerOverlord extends Overlord {
 					const shouldFortify = this.colony.assets.energy > WorkerOverlord.settings.fortifyDutyThreshold;
 					if (shouldFortify) {
 						fortifyTicks = 0.25 * _.sum(this.fortifyBarriers, barrier =>
-							Math.max(0, WorkerOverlord.settings.barrierHits[this.colony.level]
+							Math.max(0, this.barrierTarget
 										- barrier.hits)) / REPAIR_POWER;
 					}
 					// max constructionTicks for private server manually setting progress
@@ -222,6 +235,10 @@ export class WorkerOverlord extends Overlord {
 
 		if (this.useBoostedRepair) {
 			setup = CreepSetup.boosted(setup, ['construct']);
+		}
+		if (prioritizesRCL6(this.colony.name, this.colony.level) && this.colony.defcon == DEFCON.safe
+			&& this.nukeDefenseRamparts.length == 0) {
+			numWorkers = Math.max(1, Math.min(numWorkers, RCL6_RUSH.maxWorkers));
 		}
 		this.wishlist(numWorkers, setup);
 	}
@@ -306,6 +323,9 @@ export class WorkerOverlord extends Overlord {
 	}
 
 	private fortifyActions(worker: Zerg, fortifyStructures = this.fortifyBarriers): boolean {
+		const hitsMax = this.barrierTarget;
+		// Cached candidates may already have reached the new upkeep target.
+		fortifyStructures = _.filter(fortifyStructures, structure => structure.hits < hitsMax);
 		let lowBarriers: (StructureWall | StructureRampart)[];
 		const highestBarrierHits = _.max(_.map(fortifyStructures, structure => structure.hits));
 		if (highestBarrierHits > WorkerOverlord.settings.hitTolerance) {
@@ -320,7 +340,7 @@ export class WorkerOverlord extends Overlord {
 		}
 		const target = worker.pos.findClosestByMultiRoomRange(lowBarriers);
 		if (target) {
-			worker.task = Tasks.fortify(target);
+			worker.task = Tasks.fortify(target, hitsMax);
 			return true;
 		} else {
 			return false;
@@ -377,6 +397,11 @@ export class WorkerOverlord extends Overlord {
 			if (this.criticalBarriers.length > 0) {
 				if (this.fortifyActions(worker, this.criticalBarriers)) return;
 			}
+			// Keep one maintenance worker; everyone else puts available energy into RCL6.
+			if (prioritizesRCL6(this.colony.name, this.colony.level) && this.colony.defcon == DEFCON.safe
+				&& this.nukeDefenseRamparts.length == 0 && worker != this.workers[0]) {
+				if (this.upgradeActions(worker)) return;
+			}
 			// Build new structures
 			if (this.constructionSites.length > 0) {
 				if (this.buildActions(worker)) return;
@@ -394,6 +419,9 @@ export class WorkerOverlord extends Overlord {
 				if (this.dismantleActions(worker)) return;
 			}
 			// Fortify walls and ramparts
+			if (prioritizesRCL6(this.colony.name, this.colony.level) && this.colony.defcon == DEFCON.safe) {
+				if (this.upgradeActions(worker)) return;
+			}
 			if (this.fortifyBarriers.length > 0) {
 				if (this.fortifyActions(worker, this.fortifyBarriers)) return;
 			}

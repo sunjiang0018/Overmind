@@ -1,4 +1,5 @@
 import {profile} from '../../profiler/decorator';
+import {isDeferredTunnel} from '../../roomPlanner/roomOverrides';
 import {Task} from '../Task';
 
 export type buildTargetType = ConstructionSite;
@@ -19,11 +20,12 @@ export class TaskBuild extends Task<buildTargetType> {
 	}
 
 	isValidTarget() {
-		return !!this.target && this.target.my && this.target.progress < this.target.progressTotal;
+		return !!this.target && this.target.my && this.target.progress < this.target.progressTotal
+			&& !(this.target.structureType == STRUCTURE_ROAD && isDeferredTunnel(this.target.pos));
 	}
 
 	work() {
-		if (!this.target) {
+		if (!this.target || !this.isValidTarget()) {
 			return ERR_INVALID_TARGET;
 		}
 		// Fixes issue #9 - workers freeze if creep sitting on square

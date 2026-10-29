@@ -8,6 +8,7 @@ import {packCoord, packCoordList, unpackCoordListAsPosList} from '../utilities/p
 import {getCacheExpiration, onPublicServer, posFromReadableName} from '../utilities/utils';
 import {Visualizer} from '../visuals/Visualizer';
 import {RoomPlanner} from './RoomPlanner';
+import {hasRoomOverride, isDeferredTunnel, isOverrideTunnel} from './roomOverrides';
 
 export interface RoadPlannerMemory {
 	roadCoordsPacked: { [roomName: string]: string };
@@ -198,7 +199,8 @@ export class RoadPlanner {
 					case TERRAIN_MASK_WALL:
 						if (x != 0 && y != 0 && x != 49 && y != 49) {
 							// Can't tunnel through walls on edge tiles
-							matrix.set(x, y, ROAD_PLANNER_TUNNEL_COST);
+							matrix.set(x, y, hasRoomOverride(roomName) && !isOverrideTunnel(roomName, x, y)
+								? 0xff : ROAD_PLANNER_TUNNEL_COST);
 						}
 						break;
 					default: // plain
@@ -340,6 +342,7 @@ export class RoadPlanner {
 		roadPositions = _.sortBy(roadPositions, pos => pos.getMultiRoomRangeTo(origin));
 		let needsRoad = false;
 		for (const pos of roadPositions) {
+			if (isDeferredTunnel(pos)) continue;
 			if (!pos.room) {
 				continue; // can't check if there is a road here if you can't see the room
 			}
