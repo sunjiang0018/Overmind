@@ -1,4 +1,5 @@
 import {log} from '../console/log';
+import {unique} from '../utilities/native';
 
 export const PowerCreepNames: string[] = [
 	'Zagara',
@@ -21,7 +22,7 @@ export const PowerCreepNames: string[] = [
 	'Morik',
 ];
 
-if (PowerCreepNames.length != _.unique(PowerCreepNames).length) {
+if (PowerCreepNames.length != unique(PowerCreepNames).length) {
 	log.error(`PowerCreepNames not unique!`);
 }
 
@@ -70,7 +71,7 @@ function verifyPowerCreepSetup(role: string, setup: PowerCreepSetup, verbose = f
 	const powerLevels: { [power: string]: number } = {};
 	let level = 0;
 	while (true) {
-		const upgradePower = _.find(priorities, powerPriority => {
+		const upgradePower = priorities.find(powerPriority => {
 			const {power, maxLevel} = powerPriority;
 			powerLevels[power] = powerLevels[power] || 0;
 			const powerLevel = powerLevels[power];

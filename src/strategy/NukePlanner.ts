@@ -1,5 +1,7 @@
+import {getRoomStructures} from '../game/Room';
 import {Colony} from '../Colony';
 import {getCacheExpiration, maxBy, minBy} from '../utilities/utils';
+import {defaults, sum} from '../utilities/native';
 
 const structureScores: { [structureType: string]: number } = {
 	[STRUCTURE_TERMINAL]: 30,
@@ -54,7 +56,7 @@ const EVALUATE_ROOM_EXPIRATION = NUKER_COOLDOWN / 4;
 export class NukePlanner {
 
 	constructor() {
-		_.defaults(this.memory, defaultNukePlannerMemory);
+		defaults(this.memory, defaultNukePlannerMemory);
 	}
 
 	get memory(): NukePlannerMemory {
@@ -82,9 +84,9 @@ export class NukePlanner {
 			return;
 		}
 
-		const scanStructures = _.filter(room.structures, s => structureScores[s.structureType]);
+		const scanStructures = getRoomStructures(room).filter(s => structureScores[s.structureType]);
 
-		const structureScore = (structure: Structure) => _.sum(structure.pos.findInRange(scanStructures, 2),
+		const structureScore = (structure: Structure) => sum(structure.pos.findInRange(scanStructures, 2),
 															   s => (structureScores[s.structureType] || 0));
 
 		const bestStructure = maxBy(scanStructures, structure => !structure.pos.lookFor(LOOK_NUKES)
@@ -111,7 +113,7 @@ export class NukePlanner {
 			return;
 		}
 
-		const targetRoomName = minBy(_.keys(this.memory.targetRooms), roomName => {
+		const targetRoomName = minBy(Object.keys(this.memory.targetRooms ?? {}), roomName => {
 			if (Game.map.getRoomLinearDistance(colony.name, roomName) <= NUKE_RANGE
 				&& this.memory.targetRooms[roomName].operation) {
 				return this.memory.targetRooms[roomName].operation!.priority;
@@ -123,9 +125,9 @@ export class NukePlanner {
 			return;
 		}
 
-		const nukesInRoom = _.filter(this.memory.nukes, nukeMem => nukeMem.pos.roomName == targetRoomName);
+		const nukesInRoom = (this.memory.nukes || []).filter(nukeMem => nukeMem.pos.roomName == targetRoomName);
 
-		if (_.any(nukesInRoom, nuke => NUKE_LAND_TIME - nuke.ticksToLand < CONTROLLER_NUKE_BLOCKED_UPGRADE)) {
+		if (nukesInRoom.some(nuke => NUKE_LAND_TIME - nuke.ticksToLand < CONTROLLER_NUKE_BLOCKED_UPGRADE)) {
 			// Try to keep a 200-tick separation between nuke strikes
 			return;
 		}

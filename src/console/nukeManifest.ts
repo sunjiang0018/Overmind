@@ -1,3 +1,4 @@
+import {getRoomPositionPrint} from '../game/RoomPosition';
 import {log} from './log';
 
 const launchFrom = [
@@ -80,7 +81,7 @@ export function doomsdayLaunch() {
 		if (nuker.cooldown == 0) {
 			const pos = new RoomPosition(x, y, to);
 			const ret = nuker.launchNuke(pos);
-			log.alert(`[NUCLEAR LAUNCH] Launching nuke from ${from} to ${pos.print}! Result: ${ret}`);
+			log.alert(`[NUCLEAR LAUNCH] Launching nuke from ${from} to ${getRoomPositionPrint(pos)}! Result: ${ret}`);
 		}
 	}
 }

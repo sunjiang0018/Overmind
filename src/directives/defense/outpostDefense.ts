@@ -1,3 +1,4 @@
+import {getRoomCreeps, getRoomHostiles} from '../../game/Room';
 import {OutpostDefenseOverlord} from '../../overlords/defense/outpostDefense';
 import {profile} from '../../profiler/decorator';
 import {Directive} from '../Directive';
@@ -31,18 +32,18 @@ export class DirectiveOutpostDefense extends Directive {
 	}
 
 	init(): void {
-		const numHostiles: string = this.room ? this.room.hostiles.length.toString() : '???';
+		const numHostiles: string = this.room ? getRoomHostiles(this.room).length.toString() : '???';
 		this.alert(`Outpost defense (hostiles: ${numHostiles})`, NotifierPriority.High);
 	}
 
 	run(): void {
-		if (!this.room || this.room.hostiles.length > 0) {
+		if (!this.room || getRoomHostiles(this.room).length > 0) {
 			this.memory.safeSince = Game.time;
 		}
 		// If there are no hostiles left in the room and everyone's healed, then remove the flag
-		if (this.room && this.room.hostiles.length == 0 &&
+		if (this.room && getRoomHostiles(this.room).length == 0 &&
 			Game.time - this.memory.safeSince > 100) {
-			if (_.filter(this.room.creeps, creep => creep.hits < creep.hitsMax).length == 0) {
+			if (getRoomCreeps(this.room).filter(creep => creep.hits < creep.hitsMax).length == 0) {
 				this.remove();
 			}
 		}

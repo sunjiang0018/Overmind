@@ -1,3 +1,4 @@
+import {getRoomHostiles} from '../../game/Room';
 import {$} from '../../caching/GlobalCache';
 import {log} from '../../console/log';
 import {TemplateOverlord} from '../../overlords/~template/templateOverlord';
@@ -5,6 +6,7 @@ import {profile} from '../../profiler/decorator';
 import {Visualizer} from '../../visuals/Visualizer';
 import {Directive} from '../Directive';
 import {NotifierPriority} from '../Notifier';
+import {defaultsDeep} from '../../utilities/native';
 
 
 // Memory should have an interface extending flag memory and should not be exported
@@ -70,7 +72,7 @@ export class DirectiveTemplate extends Directive {
 	 */
 	constructor(flag: Flag) {
 		super(flag, colony => colony.level >= DirectiveTemplate.requriedRCL);
-		_.defaultsDeep(this.memory, getDefaultDirectiveTemplateMemory());
+		defaultsDeep(this.memory, getDefaultDirectiveTemplateMemory());
 		this.refresh();
 	}
 
@@ -123,7 +125,7 @@ export class DirectiveTemplate extends Directive {
 	 * - Directive removal logic should go on run() (and only on run) if necessary
 	 */
 	run(): void {
-		if (this.room && this.room.hostiles.length == 0 && Game.time > this.memory[MEM.TICK]! + 5000) {
+		if (this.room && getRoomHostiles(this.room).length == 0 && Game.time > this.memory[MEM.TICK]! + 5000) {
 			this.remove();
 		}
 	}

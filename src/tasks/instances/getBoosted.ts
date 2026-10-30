@@ -1,3 +1,4 @@
+import {getRoomPositionPrint} from '../../game/RoomPosition';
 import {log} from '../../console/log';
 import {profile} from '../../profiler/decorator';
 import {BOOST_PARTS} from '../../resources/map_resources';
@@ -27,7 +28,7 @@ export class TaskGetBoosted extends Task<getBoostedTargetType> {
 	}
 
 	isValidTask() {
-		const lifetime = _.any(this.creep.body, part => part.type == CLAIM) ? CREEP_CLAIM_LIFE_TIME : CREEP_LIFE_TIME;
+		const lifetime = this.creep.body.some(part => part.type == CLAIM) ? CREEP_CLAIM_LIFE_TIME : CREEP_LIFE_TIME;
 		if (this.creep.ticksToLive && this.creep.ticksToLive < MIN_LIFETIME_FOR_BOOST * lifetime) {
 			return false; // timeout after this amount of lifespan has passed
 		}
@@ -66,7 +67,7 @@ export class TaskGetBoosted extends Task<getBoostedTargetType> {
 			lab.store[lab.mineralType] >= LAB_BOOST_MINERAL * partCount &&
 			lab.store.energy >= LAB_BOOST_ENERGY * partCount) {
 			const result = this.target.boostCreep(deref(this._creep.name) as Creep, this.data.amount);
-			log.info(`Lab@${this.target.pos.print}: boosting creep ${this.creep.print} with ${this.target.mineralType}!`
+			log.info(`Lab@${getRoomPositionPrint(this.target.pos)}: boosting creep ${this.creep.print} with ${this.target.mineralType}!`
 					 + ` Response: ${result}`);
 			return result;
 		} else {

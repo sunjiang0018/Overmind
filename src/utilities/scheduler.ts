@@ -1,3 +1,4 @@
+/* tslint:disable:no-bitwise */
 /** Stable room-specific phases distribute periodic work across ticks and survive global resets. */
 export function isRoomTick(roomName: string, interval: number, phase = 0): boolean {
 	let hash = 0;

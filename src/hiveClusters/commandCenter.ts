@@ -1,3 +1,6 @@
+import {getRoomPrint} from '../game/Room';
+import {getStoredEnergy} from '../game/Structures';
+import {getRoomPositionNeighbors, roomPositionFindClosestByLimitedRange} from '../game/RoomPosition';
 import {$} from '../caching/GlobalCache';
 import {Colony} from '../Colony';
 import {log} from '../console/log';
@@ -10,6 +13,7 @@ import {profile} from '../profiler/decorator';
 import {Cartographer} from '../utilities/Cartographer';
 import {Visualizer} from '../visuals/Visualizer';
 import {HiveCluster} from './_HiveCluster';
+import {compact, sortBy, last, sum} from '../utilities/native';
 
 export const MAX_OBSERVE_DISTANCE = 4;
 
@@ -53,11 +57,11 @@ export class CommandCenter extends HiveCluster {
 		this.nuker = colony.nuker;
 		this.observer = colony.observer;
 		if (this.colony.bunker) {
-			this.link = this.colony.bunker.anchor.findClosestByLimitedRange(colony.availableLinks, 1);
+			this.link = roomPositionFindClosestByLimitedRange(this.colony.bunker.anchor, colony.availableLinks, 1);
 			this.colony.linkNetwork.claimLink(this.link);
 			this.towers = this.colony.bunker.anchor.findInRange(colony.towers, 1);
 		} else {
-			this.link = this.pos.findClosestByLimitedRange(colony.availableLinks, 2);
+			this.link = roomPositionFindClosestByLimitedRange(this.pos, colony.availableLinks, 2);
 			this.colony.linkNetwork.claimLink(this.link);
 			this.towers = this.pos.findInRange(colony.towers, 3);
 		}
@@ -93,14 +97,14 @@ export class CommandCenter extends HiveCluster {
 	/* Find the best idle position */
 	private findIdlePos(): RoomPosition {
 		// Try to match as many other structures as possible
-		const proximateStructures: Structure[] = _.compact([this.link!,
+		const proximateStructures: Structure[] = compact([this.link!,
 															this.terminal!,
 															this.powerSpawn!,
 															this.nuker!,
 															...this.towers]);
 		const numNearbyStructures = (pos: RoomPosition) =>
-			_.filter(proximateStructures, s => s.pos.isNearTo(pos) && !s.pos.isEqualTo(pos)).length;
-		return _.last(_.sortBy(this.storage.pos.neighbors, pos => numNearbyStructures(pos)));
+			proximateStructures.filter(s => s.pos.isNearTo(pos) && !s.pos.isEqualTo(pos)).length;
+		return last(sortBy(getRoomPositionNeighbors(this.storage.pos), pos => numNearbyStructures(pos)));
 	}
 
 	/* Register a link transfer store if the link is sufficiently full */
@@ -142,8 +146,8 @@ export class CommandCenter extends HiveCluster {
 			}
 		}
 		// Refill towers as needed with variable priority
-		const refillTowers = _.filter(this.towers, tower => tower.energy < CommandCenter.settings.refillTowersBelow);
-		_.forEach(refillTowers, tower => this.transportRequests.requestInput(tower, Priority.High));
+		const refillTowers = this.towers.filter(tower => tower.energy < CommandCenter.settings.refillTowersBelow);
+		refillTowers.forEach(tower => this.transportRequests.requestInput(tower, Priority.High));
 
 		// Refill power spawn
 		if (this.powerSpawn) {
@@ -156,8 +160,8 @@ export class CommandCenter extends HiveCluster {
 		}
 		// Refill nuker with low priority
 		if (this.nuker) {
-			if (this.nuker.energy < this.nuker.energyCapacity && (this.storage.energy > 200000 && this.nuker.cooldown
-																  <= 1000 || this.storage.energy > 800000)) {
+			if (this.nuker.energy < this.nuker.energyCapacity && (getStoredEnergy(this.storage) > 200000 && this.nuker.cooldown
+																  <= 1000 || getStoredEnergy(this.storage) > 800000)) {
 				this.transportRequests.requestInput(this.nuker, Priority.Low);
 			}
 			if (this.nuker.ghodium < this.nuker.ghodiumCapacity
@@ -211,7 +215,7 @@ export class CommandCenter extends HiveCluster {
 				return;
 			}
 			if (Game.time % 20 == 0) {
-				log.info(`Processing power in ${this.room.print}`);
+				log.info(`Processing power in ${getRoomPrint(this.room)}`);
 			}
 			this.powerSpawn.processPower();
 		}
@@ -238,13 +242,13 @@ export class CommandCenter extends HiveCluster {
 		y = titleCoords.y + 0.25;
 		if (this.storage) {
 			Visualizer.text('Storage', {x: boxX, y: y, roomName: this.room.name});
-			Visualizer.barGraph(_.sum(this.storage.store) / this.storage.storeCapacity,
+			Visualizer.barGraph(sum(this.storage.store) / this.storage.storeCapacity,
 								{x: boxX + 4, y: y, roomName: this.room.name}, 5);
 			y += 1;
 		}
 		if (this.terminal) {
 			Visualizer.text('Terminal', {x: boxX, y: y, roomName: this.room.name});
-			Visualizer.barGraph(_.sum(this.terminal.store) / this.terminal.storeCapacity,
+			Visualizer.barGraph(sum(this.terminal.store) / this.terminal.storeCapacity,
 								{x: boxX + 4, y: y, roomName: this.room.name}, 5);
 			y += 1;
 		}

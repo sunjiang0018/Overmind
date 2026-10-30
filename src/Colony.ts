@@ -1,3 +1,30 @@
+import {getStoredEnergy} from './game/Structures';
+import {roomPositionGetMultiRoomRangeTo, roomPositionLookForStructure} from './game/RoomPosition';
+import {getRoomObjectRef} from './game/RoomObject';
+import {
+	getRoomBarriers,
+	getRoomExtensions,
+	getRoomExtractor,
+	getRoomFactory,
+	getRoomLabs,
+	getRoomLinks,
+	getRoomNuker,
+	getRoomObserver,
+	getRoomPowerSpawn,
+	getRoomRechargeables,
+	getRoomRepairables,
+	getRoomSources,
+	getRoomSpawns,
+	getRoomTowers,
+} from './game/RoomStructures';
+import {
+	getRoomConstructionSites,
+	getRoomDangerousHostiles,
+	getRoomDrops,
+	getRoomPrint,
+	getRoomTombstones,
+	isRoomMine,
+} from './game/Room';
 import {assimilationLocked} from './assimilation/decorator';
 import {$} from './caching/GlobalCache';
 import {log} from './console/log';
@@ -34,6 +61,7 @@ import {Cartographer, ROOMTYPE_CONTROLLER} from './utilities/Cartographer';
 import {maxBy, mergeSum, minBy} from './utilities/utils';
 import {Visualizer} from './visuals/Visualizer';
 import {Zerg} from './zerg/Zerg';
+import {groupBy, clone, compact, sortBy, sum, flatten, compactMap} from './utilities/native';
 
 export enum ColonyStage {
 	Larva = 0,		// No storage and no incubator
@@ -50,7 +78,7 @@ export enum DEFCON {
 }
 
 export function getAllColonies(): Colony[] {
-	return _.values(Overmind.colonies);
+	return Object.values(Overmind.colonies ?? {});
 }
 
 export interface BunkerData {
@@ -221,12 +249,12 @@ export class Colony {
 		this.ref = roomName;
 		this.memory = Mem.wrap(Memory.colonies, roomName, getDefaultColonyMemory);
 		// Format outpost state memory
-		_.forEach(outposts, outpost => {
+		outposts.forEach(outpost => {
 			if (!this.memory.outposts[outpost]) {
 				this.memory.outposts[outpost] = {active: true};
 			}
 		});
-		_.forEach(_.keys(_.clone(this.memory.outposts)), roomName => {
+		Object.keys(clone(this.memory.outposts) ?? {}).forEach(roomName => {
 			if (!outposts.includes(roomName)) {
 				delete this.memory.outposts[roomName];
 			}
@@ -272,14 +300,14 @@ export class Colony {
 		this.room = Game.rooms[roomName];
 		this.roomNames = [roomName].concat(outposts);
 		// Register outposts
-		this.outposts = _.compact(_.map(outposts, outpost => Game.rooms[outpost]));
+		this.outposts = compactMap(outposts, outpost => Game.rooms[outpost]);
 		this.rooms = [this.room].concat(this.outposts);
 		this.miningSites = {}; 				// filled in by harvest directives
 		this.extractionSites = {};			// filled in by extract directives
 		// this.praiseSite = undefined;
 		// Register creeps
 		this.creeps = Overmind.cache.creepsByColony[this.name] || [];
-		this.creepsByRole = _.groupBy(this.creeps, creep => creep.memory.role);
+		this.creepsByRole = groupBy(this.creeps, creep => creep.memory.role);
 		// Register the rest of the colony components; the order in which these are called is important!
 		this.registerRoomObjects_cached();	// Register real colony components
 		this.registerOperationalState();	// Set the colony operational state
@@ -295,12 +323,12 @@ export class Colony {
 		this.memory = Memory.colonies[this.room.name];
 		// Refresh rooms
 		this.room = Game.rooms[this.room.name];
-		const outpostRoomNames = _.filter(this.roomNames, roomName => this.room.name != roomName);
-		this.outposts = _.compact(_.map(outpostRoomNames, outpost => Game.rooms[outpost]));
+		const outpostRoomNames = this.roomNames.filter(roomName => this.room.name != roomName);
+		this.outposts = compactMap(outpostRoomNames, outpost => Game.rooms[outpost]);
 		this.rooms = [this.room].concat(this.outposts);
 		// refresh creeps
 		this.creeps = Overmind.cache.creepsByColony[this.name] || [];
-		this.creepsByRole = _.groupBy(this.creeps, creep => creep.memory.role);
+		this.creepsByRole = groupBy(this.creeps, creep => creep.memory.role);
 		// Register the rest of the colony components; the order in which these are called is important!
 		this.refreshRoomObjects();
 		this.registerOperationalState();
@@ -338,6 +366,27 @@ export class Colony {
 	// }
 
 	/**
+	 * Merges per-room drop dictionaries into a single resourceType -> drops dictionary
+	 */
+	private computeDrops(): { [resourceType: string]: Resource[] } {
+		const drops: { [resourceType: string]: Resource[] } = {};
+		for (const room of this.rooms) {
+			for (const resourceType of Object.keys(getRoomDrops(room))) {
+				const roomDrops = getRoomDrops(room)[resourceType];
+				if (roomDrops && roomDrops.length > 0) {
+					const existing = drops[resourceType];
+					if (existing) {
+						existing.push(...roomDrops);
+					} else {
+						drops[resourceType] = roomDrops.slice();
+					}
+				}
+			}
+		}
+		return drops;
+	}
+
+	/**
 	 * Registers physical game objects to the colony
 	 */
 	private registerRoomObjects(): void {
@@ -346,34 +395,34 @@ export class Colony {
 		this.destinations = []; // filled in by various hive clusters and directives
 		// Register room objects across colony rooms
 		this.controller = this.room.controller!; // must be controller since colonies are based in owned rooms
-		this.spawns = _.sortBy(_.filter(this.room.spawns, spawn => spawn.my && spawn.isActive()), spawn => spawn.ref);
-		this.extensions = this.room.extensions;
+		this.spawns = sortBy(getRoomSpawns(this.room).filter(spawn => spawn.my && spawn.isActive()), spawn => getRoomObjectRef(spawn));
+		this.extensions = getRoomExtensions(this.room);
 		this.storage = this.room.storage && this.room.storage.isActive() ? this.room.storage : undefined;
-		this.links = this.room.links;
-		this.availableLinks = _.clone(this.room.links);
+		this.links = getRoomLinks(this.room);
+		this.availableLinks = clone(getRoomLinks(this.room));
 		this.terminal = this.room.terminal && this.room.terminal.isActive() ? this.room.terminal : undefined;
-		this.factory = this.room.factory && this.room.factory.isActive() ? this.room.factory : undefined;
-		this.towers = this.room.towers;
-		this.labs = _.sortBy(_.filter(this.room.labs, lab => lab.my && lab.isActive()),
+		const factory = getRoomFactory(this.room);
+		this.factory = factory?.isActive() ? factory : undefined;
+		this.towers = getRoomTowers(this.room);
+		this.labs = sortBy(getRoomLabs(this.room).filter(lab => lab.my && lab.isActive()),
 							 lab => 50 * lab.pos.y + lab.pos.x); // Labs are sorted in reading order of positions
-		this.powerSpawn = this.room.powerSpawn;
-		this.nuker = this.room.nuker;
-		this.observer = this.room.observer;
+		this.powerSpawn = getRoomPowerSpawn(this.room);
+		this.nuker = getRoomNuker(this.room);
+		this.observer = getRoomObserver(this.room);
 		this.pos = (this.storage || this.terminal || this.spawns[0] || this.controller).pos;
 		// Register physical objects across all rooms in the colony
-		this.sources = _.sortBy(_.flatten(_.map(this.rooms, room => room.sources)),
-								source => source.pos.getMultiRoomRangeTo(this.pos));
-		this.extractors = _(this.rooms)
-			.map(room => room.extractor)
-			.compact()
-			.filter(extractor => (extractor!.my && extractor!.room.my)
-								 || Cartographer.roomType(extractor!.room.name) != ROOMTYPE_CONTROLLER)
-			.sortBy(extractor => extractor!.pos.getMultiRoomRangeTo(this.pos)).value() as StructureExtractor[];
-		this.constructionSites = _.flatten(_.map(this.rooms, room => room.constructionSites));
-		this.tombstones = _.flatten(_.map(this.rooms, room => room.tombstones));
-		this.drops = _.merge(_.map(this.rooms, room => room.drops));
-		this.repairables = _.flatten(_.map(this.rooms, room => room.repairables));
-		this.rechargeables = _.flatten(_.map(this.rooms, room => room.rechargeables));
+		this.sources = sortBy(flatten(this.rooms.map(room => getRoomSources(room))),
+								source => roomPositionGetMultiRoomRangeTo(source.pos, this.pos));
+		this.extractors = sortBy(
+			compactMap(this.rooms, room => getRoomExtractor(room))
+				.filter(extractor => (extractor.my && isRoomMine(extractor.room))
+									 || Cartographer.roomType(extractor.room.name) != ROOMTYPE_CONTROLLER),
+			extractor => roomPositionGetMultiRoomRangeTo(extractor.pos, this.pos));
+		this.constructionSites = flatten(this.rooms.map(room => getRoomConstructionSites(room)));
+		this.tombstones = flatten(this.rooms.map(room => getRoomTombstones(room)));
+		this.drops = this.computeDrops();
+		this.repairables = flatten(this.rooms.map(room => getRoomRepairables(room)));
+		this.rechargeables = flatten(this.rooms.map(room => getRoomRechargeables(room)));
 		// Register assets
 		this.assets = this.computeAssets();
 	}
@@ -387,36 +436,37 @@ export class Colony {
 		this.destinations = []; // filled in by various hive clusters and directives
 		// Register room objects across colony rooms
 		this.controller = this.room.controller!; // must be controller since colonies are based in owned rooms
-		this.extensions = this.room.extensions;
-		this.links = this.room.links;
-		this.availableLinks = _.clone(this.room.links);
-		this.towers = this.room.towers;
-		this.powerSpawn = this.room.powerSpawn;
-		this.nuker = this.room.nuker;
-		this.observer = this.room.observer;
-		$.set(this, 'spawns', () => _.sortBy(_.filter(this.room.spawns,
-													  spawn => spawn.my && spawn.isActive()), spawn => spawn.ref));
+		this.extensions = getRoomExtensions(this.room);
+		this.links = getRoomLinks(this.room);
+		this.availableLinks = clone(getRoomLinks(this.room));
+		this.towers = getRoomTowers(this.room);
+		this.powerSpawn = getRoomPowerSpawn(this.room);
+		this.nuker = getRoomNuker(this.room);
+		this.observer = getRoomObserver(this.room);
+		$.set(this, 'spawns', () => sortBy(getRoomSpawns(this.room).filter(
+													  spawn => spawn.my && spawn.isActive()), spawn => getRoomObjectRef(spawn)));
 		$.set(this, 'storage', () => this.room.storage && this.room.storage.isActive() ? this.room.storage : undefined);
 		$.set(this, 'terminal', () => this.room.terminal && this.room.terminal.isActive() ? this.room.terminal : undefined);
-		$.set(this, 'factory', () => this.room.factory && this.room.factory.isActive() ? this.room.factory : undefined);
-		$.set(this, 'labs', () => _.sortBy(_.filter(this.room.labs, lab => lab.my && lab.isActive()),
+		$.set(this, 'factory', () => {
+			const factory = getRoomFactory(this.room);
+			return factory?.isActive() ? factory : undefined;
+		});
+		$.set(this, 'labs', () => sortBy(getRoomLabs(this.room).filter(lab => lab.my && lab.isActive()),
 										   lab => 50 * lab.pos.y + lab.pos.x));
 		this.pos = (this.storage || this.terminal || this.spawns[0] || this.controller).pos;
 		// Register physical objects across all rooms in the colony
-		$.set(this, 'sources', () => _.sortBy(_.flatten(_.map(this.rooms, room => room.sources)),
-											  source => source.pos.getMultiRoomRangeTo(this.pos)));
-		$.set(this, 'extractors', () =>
-			_(this.rooms)
-				.map(room => room.extractor)
-				.compact()
-				.filter(e => (e!.my && e!.room.my)
-							 || Cartographer.roomType(e!.room.name) != ROOMTYPE_CONTROLLER)
-				.sortBy(e => e!.pos.getMultiRoomRangeTo(this.pos)).value() as StructureExtractor[]);
-		$.set(this, 'repairables', () => _.flatten(_.map(this.rooms, room => room.repairables)));
-		$.set(this, 'rechargeables', () => _.flatten(_.map(this.rooms, room => room.rechargeables)));
-		$.set(this, 'constructionSites', () => _.flatten(_.map(this.rooms, room => room.constructionSites)), 10);
-		$.set(this, 'tombstones', () => _.flatten(_.map(this.rooms, room => room.tombstones)), 5);
-		this.drops = _.merge(_.map(this.rooms, room => room.drops));
+		$.set(this, 'sources', () => sortBy(flatten(this.rooms.map(room => getRoomSources(room))),
+											  source => roomPositionGetMultiRoomRangeTo(source.pos, this.pos)));
+		$.set(this, 'extractors', () => sortBy(
+			compactMap(this.rooms, room => getRoomExtractor(room))
+				.filter(e => (e.my && isRoomMine(e.room))
+							 || Cartographer.roomType(e.room.name) != ROOMTYPE_CONTROLLER),
+			e => roomPositionGetMultiRoomRangeTo(e.pos, this.pos)));
+		$.set(this, 'repairables', () => flatten(this.rooms.map(room => getRoomRepairables(room))));
+		$.set(this, 'rechargeables', () => flatten(this.rooms.map(room => getRoomRechargeables(room))));
+		$.set(this, 'constructionSites', () => flatten(this.rooms.map(room => getRoomConstructionSites(room))), 10);
+		$.set(this, 'tombstones', () => flatten(this.rooms.map(room => getRoomTombstones(room))), 5);
+		this.drops = this.computeDrops();
 		// Register assets
 		this.assets = this.computeAssets();
 	}
@@ -428,9 +478,9 @@ export class Colony {
 		$.refresh(this, 'controller', 'extensions', 'links', 'towers', 'powerSpawn', 'nuker', 'observer', 'spawns',
 				  'storage', 'terminal', 'factory', 'labs', 'sources', 'extractors', 'constructionSites', 'repairables',
 				  'rechargeables');
-		$.set(this, 'constructionSites', () => _.flatten(_.map(this.rooms, room => room.constructionSites)), 10);
-		$.set(this, 'tombstones', () => _.flatten(_.map(this.rooms, room => room.tombstones)), 5);
-		this.drops = _.merge(_.map(this.rooms, room => room.drops));
+		$.set(this, 'constructionSites', () => flatten(this.rooms.map(room => getRoomConstructionSites(room))), 10);
+		$.set(this, 'tombstones', () => flatten(this.rooms.map(room => getRoomTombstones(room))), 5);
+		this.drops = this.computeDrops();
 		// Re-compute assets
 		this.assets = this.computeAssets();
 	}
@@ -453,8 +503,8 @@ export class Colony {
 		// Set DEFCON level TODO: finish this
 		let defcon = DEFCON.safe;
 		const defconDecayTime = 200;
-		if (this.room.dangerousHostiles.length > 0 && !this.controller.safeMode) {
-			const effectiveHostileCount = _.sum(this.room.dangerousHostiles,
+		if (getRoomDangerousHostiles(this.room).length > 0 && !this.controller.safeMode) {
+			const effectiveHostileCount = sum(getRoomDangerousHostiles(this.room),
 												hostile => CombatIntel.uniqueBoosts(hostile).length > 0 ? 2 : 1);
 			if (effectiveHostileCount >= 3) {
 				defcon = DEFCON.boostedInvasionNPC;
@@ -501,7 +551,7 @@ export class Colony {
 			this.layout = 'bunker';
 			const anchor = derefRoomPosition(this.roomPlanner.memory.bunkerData.anchor);
 			// log.debug(JSON.stringify(`anchor for ${this.name}: ${anchor}`));
-			const spawnPositions = _.map(bunkerLayout[8]!.buildings.spawn.pos, c => getPosFromBunkerCoord(c, this));
+			const spawnPositions = (bunkerLayout[8]!.buildings.spawn.pos || []).map(c => getPosFromBunkerCoord(c, this));
 			// log.debug(JSON.stringify(`spawnPositions for ${this.name}: ${spawnPositions}`));
 			const rightSpawnPos = maxBy(spawnPositions, pos => pos.x) as RoomPosition;
 			const topSpawnPos = minBy(spawnPositions, pos => pos.y) as RoomPosition;
@@ -509,9 +559,9 @@ export class Colony {
 			// log.debug(JSON.stringify(`spawnPoses: ${rightSpawnPos}, ${topSpawnPos}, ${coreSpawnPos}`));
 			this.bunker = {
 				anchor    : anchor,
-				topSpawn  : topSpawnPos.lookForStructure(STRUCTURE_SPAWN) as StructureSpawn | undefined,
-				coreSpawn : coreSpawnPos.lookForStructure(STRUCTURE_SPAWN) as StructureSpawn | undefined,
-				rightSpawn: rightSpawnPos.lookForStructure(STRUCTURE_SPAWN) as StructureSpawn | undefined,
+				topSpawn  : roomPositionLookForStructure(topSpawnPos, STRUCTURE_SPAWN) as StructureSpawn | undefined,
+				coreSpawn : roomPositionLookForStructure(coreSpawnPos, STRUCTURE_SPAWN) as StructureSpawn | undefined,
+				rightSpawn: roomPositionLookForStructure(rightSpawnPos, STRUCTURE_SPAWN) as StructureSpawn | undefined,
 			};
 		} else {
 			this.layout = 'twoPart';
@@ -563,8 +613,8 @@ export class Colony {
 			this.hatchery = new Hatchery(this, this.spawns[0]);
 		}
 		// Instantiate evolution chamber once there are three labs all in range 2 of each other
-		if (this.terminal && _.filter(this.labs, lab =>
-			_.all(this.labs, otherLab => lab.pos.inRangeTo(otherLab, 2))).length >= 3) {
+		if (this.terminal && this.labs.filter(lab =>
+			this.labs.every(otherLab => lab.pos.inRangeTo(otherLab, 2))).length >= 3) {
 			this.evolutionChamber = new EvolutionChamber(this, this.terminal);
 		}
 		// Instantiate the upgradeSite
@@ -647,7 +697,7 @@ export class Colony {
 	 * Get a list of zerg in the colony which have a specified role name
 	 */
 	getZergByRole(roleName: string): (Zerg | undefined)[] {
-		return _.map(this.getCreepsByRole(roleName), creep => Overmind.zerg[creep.name]);
+		return this.getCreepsByRole(roleName).map(creep => Overmind.zerg[creep.name]);
 	}
 
 	/**
@@ -656,13 +706,13 @@ export class Colony {
 	 */
 	private computeAssets(verbose = false): Assets {
 		// Include storage structures, lab contents, and manager carry
-		const assetStructures = _.compact([this.storage, this.terminal, this.factory, ...this.labs]);
+		const assetStructures = compact([this.storage, this.terminal, this.factory, ...this.labs]);
 		const assetCreeps = [...this.getCreepsByRole(Roles.queen), ...this.getCreepsByRole(Roles.manager)];
-		const assetStores = _.map([...assetStructures, ...assetCreeps], thing => thing!.store);
+		const assetStores = [...assetStructures, ...assetCreeps].map(thing => thing!.store);
 
 		const allAssets = mergeSum([...assetStores, ALL_ZERO_ASSETS]) as Assets;
 
-		if (verbose) log.debug(`${this.room.print} assets: ` + JSON.stringify(allAssets));
+		if (verbose) log.debug(`${getRoomPrint(this.room)} assets: ` + JSON.stringify(allAssets));
 		return allAssets;
 	}
 
@@ -670,7 +720,7 @@ export class Colony {
 	 * Initializes the state of the colony each tick
 	 */
 	init(): void {
-		_.forEach(this.hiveClusters, hiveCluster => hiveCluster.init());	// Initialize each hive cluster
+		this.hiveClusters.forEach(hiveCluster => hiveCluster.init());	// Initialize each hive cluster
 		this.roadLogistics.init();											// Initialize the road network
 		this.linkNetwork.init();											// Initialize link network
 		this.roomPlanner.init();											// Initialize the room planner
@@ -683,7 +733,7 @@ export class Colony {
 	 * Runs the colony, performing state-changing actions each tick
 	 */
 	run(): void {
-		_.forEach(this.hiveClusters, hiveCluster => hiveCluster.run());		// Run each hive cluster
+		this.hiveClusters.forEach(hiveCluster => hiveCluster.run());		// Run each hive cluster
 		this.linkNetwork.run();												// Run the link network
 		this.roadLogistics.run();											// Run the road network
 		this.roomPlanner.run();												// Run the room planner
@@ -696,15 +746,15 @@ export class Colony {
 	stats(): void {
 		if (Game.time % LOG_STATS_INTERVAL == 0) {
 			// Log energy and rcl
-			Stats.log(`colonies.${this.name}.storage.energy`, this.storage ? this.storage.energy : undefined);
+			Stats.log(`colonies.${this.name}.storage.energy`, this.storage ? getStoredEnergy(this.storage) : undefined);
 			Stats.log(`colonies.${this.name}.rcl.level`, this.controller.level);
 			Stats.log(`colonies.${this.name}.rcl.progress`, this.controller.progress);
 			Stats.log(`colonies.${this.name}.rcl.progressTotal`, this.controller.progressTotal);
 			// Log average miningSite usage and uptime and estimated colony energy income
-			const numSites = _.keys(this.miningSites).length;
-			const avgDowntime = _.sum(this.miningSites, site => site.memory[HARVEST_MEM.DOWNTIME]) / numSites;
-			const avgUsage = _.sum(this.miningSites, site => site.memory[HARVEST_MEM.USAGE]) / numSites;
-			const energyInPerTick = _.sum(this.miningSites,
+			const numSites = Object.keys(this.miningSites ?? {}).length;
+			const avgDowntime = sum(this.miningSites, site => site.memory[HARVEST_MEM.DOWNTIME]) / numSites;
+			const avgUsage = sum(this.miningSites, site => site.memory[HARVEST_MEM.USAGE]) / numSites;
+			const energyInPerTick = sum(this.miningSites,
 										  site => site.overlords.mine.energyPerTick * site.memory[HARVEST_MEM.USAGE]);
 			Stats.log(`colonies.${this.name}.miningSites.avgDowntime`, avgDowntime);
 			Stats.log(`colonies.${this.name}.miningSites.avgUsage`, avgUsage);
@@ -713,7 +763,7 @@ export class Colony {
 			// Log defensive properties
 			Stats.log(`colonies.${this.name}.defcon`, this.defcon);
 			Stats.log(`colonies.${this.name}.threatLevel`, this.room.threatLevel);
-			const avgBarrierHits = _.sum(this.room.barriers, barrier => barrier.hits) / this.room.barriers.length;
+			const avgBarrierHits = sum(getRoomBarriers(this.room), barrier => barrier.hits) / getRoomBarriers(this.room).length;
 			Stats.log(`colonies.${this.name}.avgBarrierHits`, avgBarrierHits);
 		}
 	}
@@ -734,7 +784,7 @@ export class Colony {
 		x = coord.x;
 		y = coord.y;
 
-		for (const hiveCluster of _.compact([this.hatchery, this.commandCenter, this.evolutionChamber])) {
+		for (const hiveCluster of compact([this.hatchery, this.commandCenter, this.evolutionChamber])) {
 			coord = hiveCluster!.visuals({x, y});
 			x = coord.x;
 			y = coord.y;

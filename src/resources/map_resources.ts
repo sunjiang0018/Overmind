@@ -1,4 +1,6 @@
-export const RESOURCES_ALL_EXCEPT_ENERGY = _.without(RESOURCES_ALL, RESOURCE_ENERGY) as _ResourceConstantSansEnergy[];
+import {mapValues, without, zipObject, invert} from '../utilities/native';
+
+export const RESOURCES_ALL_EXCEPT_ENERGY = without(RESOURCES_ALL, RESOURCE_ENERGY) as _ResourceConstantSansEnergy[];
 
 export const BOOSTS_T3 = [
 	RESOURCE_CATALYZED_GHODIUM_ALKALIDE,
@@ -55,7 +57,7 @@ export const BASE_RESOURCES: ResourceConstant[] = [
 	RESOURCE_HYDROGEN,
 ];
 export const _baseResourcesLookup: { [resource: string]: boolean | undefined } =
-				 _.zipObject(BASE_RESOURCES, _.map(BASE_RESOURCES, i => true));
+				 zipObject(BASE_RESOURCES, BASE_RESOURCES.map(i => true));
 
 export const RESOURCE_IMPORTANCE = [
 	RESOURCE_CATALYZED_GHODIUM_ALKALIDE,
@@ -154,9 +156,9 @@ export const REAGENTS: { [product: string]: [ResourceConstant, ResourceConstant]
 	[RESOURCE_UTRIUM_LEMERGITE]            : [RESOURCE_UTRIUM, RESOURCE_LEMERGIUM]
 };
 
-export const MINERAL_COMPOUNDS_ALL = _.keys(REAGENTS).concat(BASE_RESOURCES);
+export const MINERAL_COMPOUNDS_ALL = Object.keys(REAGENTS ?? {}).concat(BASE_RESOURCES);
 export const _mineralCompoundsAllLookup: { [resource: string]: boolean | undefined } =
-				 _.zipObject(MINERAL_COMPOUNDS_ALL, _.map(MINERAL_COMPOUNDS_ALL, i => true));
+				 zipObject(MINERAL_COMPOUNDS_ALL, MINERAL_COMPOUNDS_ALL.map(i => true));
 
 export const BOOST_PARTS: { [boost: string]: BodyPartConstant } = {
 
@@ -290,14 +292,14 @@ export const BOOST_TIERS: { [boostType in BoostType]: { [boostTier in BoostTier]
 };
 // This inverts the second-level values from above, so you get an object that looks like:
 // { attack: { UH: T1, UH2O: T2, XUH2O: T3 }, carry: { ... } ... }
-export const _boostTypesTierLookup = _.mapValues(
-	BOOST_TIERS, boostType => _.invert(boostType)
+export const _boostTypesTierLookup = mapValues(
+	BOOST_TIERS, boostType => invert(boostType)
 ) as { [boostType in BoostType]: { [resource in ResourceConstant]: BoostTier } };
 
 // This inverts the second-level values from above, so you get an object that looks like:
 // { attack: { UH: T1, UH2O: T2, XUH2O: T3 }, carry: { ... } ... }
 export const _boostTierLookupAllTypes: { [resource in ResourceConstant]: BoostTier } =
-				 _.extend({}, ..._.values(_boostTypesTierLookup));
+				 Object.assign({}, ...Object.values(_boostTypesTierLookup ?? {}));
 
 export const COMMODITIES_ALL: ResourceConstant[] = [
 	// Compressed mineral compounds
@@ -345,7 +347,7 @@ export const COMMODITIES_ALL: ResourceConstant[] = [
 	RESOURCE_ESSENCE
 ];
 export const _commoditiesLookup: { [resource: string]: boolean | undefined } =
-				 _.zipObject(COMMODITIES_ALL, _.map(COMMODITIES_ALL, i => true));
+				 zipObject(COMMODITIES_ALL, COMMODITIES_ALL.map(i => true));
 
 export const DEPOSITS_ALL: ResourceConstant[] = [
 	RESOURCE_SILICON,
@@ -354,4 +356,4 @@ export const DEPOSITS_ALL: ResourceConstant[] = [
 	RESOURCE_MIST,
 ];
 
-export const ALL_ZERO_ASSETS: { [resource: string]: number } = _.zipObject(RESOURCES_ALL, _.map(RESOURCES_ALL, i => 0));
+export const ALL_ZERO_ASSETS: { [resource: string]: number } = zipObject(RESOURCES_ALL, RESOURCES_ALL.map(i => 0));

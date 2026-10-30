@@ -1,3 +1,7 @@
+import {getRoomObjectRef, getTargetedBy} from '../game/RoomObject';
+import {getCreepBodypartCounts} from '../game/Creep';
+import {getRoomHostiles} from '../game/Room';
+import {getRoomPositionPrint, roomPositionLookForStructure} from '../game/RoomPosition';
 import {log} from '../console/log';
 import {isCreep, isPowerCreep, isStandardZerg} from '../declarations/typeGuards';
 import {CombatIntel} from '../intel/CombatIntel';
@@ -11,6 +15,7 @@ import {Task} from '../tasks/Task';
 import {stringToColorHash} from '../utilities/utils';
 import {Visualizer} from '../visuals/Visualizer';
 import {AnyZerg} from './AnyZerg';
+import {countBy, isEmpty, cloneDeep, pull, remove} from '../utilities/native';
 
 
 export function normalizeStandardZerg(creep: Zerg | Creep): Zerg | Creep {
@@ -156,12 +161,12 @@ export class Zerg extends AnyZerg {
 
 	get ticksUntilSpawned(): number | undefined {
 		if (this.spawning) {
-			const spawner = this.pos.lookForStructure(STRUCTURE_SPAWN) as StructureSpawn;
+			const spawner = roomPositionLookForStructure(this.pos, STRUCTURE_SPAWN) as StructureSpawn;
 			if (spawner && spawner.spawning) {
 				return spawner.spawning.remainingTime;
 			} else {
 				// Shouldn't ever get here
-				console.log(`Error determining ticks to spawn for ${this.name} @ ${this.pos.print}!`);
+				console.log(`Error determining ticks to spawn for ${this.name} @ ${getRoomPositionPrint(this.pos)}!`);
 			}
 		}
 	}
@@ -301,7 +306,7 @@ export class Zerg extends AnyZerg {
 		const result = this.creep.rangedMassAttack();
 		if (result == OK) {
 			this.actionLog.rangedMassAttack = true;
-			for (const target of this.pos.findInRange(this.room.hostiles, 3)) {
+			for (const target of this.pos.findInRange(getRoomHostiles(this.room), 3)) {
 				if (target.hitsPredicted == undefined) target.hitsPredicted = target.hits;
 				target.hitsPredicted -= CombatIntel.getMassAttackDamageTo(this, target);
 			}
@@ -445,7 +450,7 @@ export class Zerg extends AnyZerg {
 	 * The same as creep.getActiveBodyparts, but just counts bodyparts regardless of condition.
 	 */
 	getBodyparts(partType: BodyPartConstant): number {
-		return _.filter(this.body, (part: BodyPartDefinition) => part.type == partType).length;
+		return this.body.filter((part: BodyPartDefinition) => part.type == partType).length;
 	}
 
 	// Custom creep methods ============================================================================================
@@ -464,11 +469,11 @@ export class Zerg extends AnyZerg {
 	// Boosting logic --------------------------------------------------------------------------------------------------
 
 	get boostCounts(): { [boostType: string]: number } {
-		return _.countBy(this.body, bodyPart => bodyPart.boost);
+		return countBy(this.body, bodyPart => bodyPart.boost);
 	}
 
 	get bodypartCounts(): { [bodypart in BodyPartConstant]: number } {
-		return this.creep.bodypartCounts;
+		return getCreepBodypartCounts(this.creep);
 	}
 
 	get needsBoosts(): boolean {
@@ -478,7 +483,7 @@ export class Zerg extends AnyZerg {
 		if ((this.ticksToLive || this.lifetime) < MIN_LIFETIME_FOR_BOOST * this.lifetime) {
 			return false;
 		}
-		return !_.isEmpty(this.getNeededBoosts());
+		return !isEmpty(this.getNeededBoosts());
 	}
 
 	/**
@@ -494,7 +499,7 @@ export class Zerg extends AnyZerg {
 				const boostCounts = this.boostCounts;
 				const bodyCounts = this.bodypartCounts;
 
-				for (const boost of _.cloneDeep(this.memory.needBoosts)) {
+				for (const boost of cloneDeep(this.memory.needBoosts)) {
 					const bodypartType = BOOST_PARTS[boost];
 					if (!bodypartType) {
 						log.error(`${boost} is not a valid boost!`);
@@ -504,7 +509,7 @@ export class Zerg extends AnyZerg {
 					if (numBoostedParts < numParts) {
 						neededBoosts[boost] = LAB_BOOST_MINERAL * (numParts - numBoostedParts);
 					} else {
-						_.pull(this.memory.needBoosts, boost);
+						pull(this.memory.needBoosts, boost);
 					}
 				}
 
@@ -558,7 +563,7 @@ export class Zerg extends AnyZerg {
 	// Task logic ------------------------------------------------------------------------------------------------------
 
 	get targetedBy(): string[] {
-		return this.creep.targetedBy;
+		return getTargetedBy(this.creep);
 	}
 
 	/**
@@ -580,7 +585,7 @@ export class Zerg extends AnyZerg {
 		if (oldProtoTask) {
 			const oldRef = oldProtoTask._target.ref;
 			if (Overmind.cache.targets[oldRef]) {
-				_.remove(Overmind.cache.targets[oldRef], name => name == this.name);
+				remove(Overmind.cache.targets[oldRef], name => name == this.name);
 			}
 		}
 		// Set the new task
@@ -588,10 +593,11 @@ export class Zerg extends AnyZerg {
 		if (task) {
 			if (task.target) {
 				// Register task target in cache if it is actively targeting something (excludes goTo and similar)
-				if (!Overmind.cache.targets[task.target.ref]) {
-					Overmind.cache.targets[task.target.ref] = [];
+				const targetRef = getRoomObjectRef(task.target);
+				if (!Overmind.cache.targets[targetRef]) {
+					Overmind.cache.targets[targetRef] = [];
 				}
-				Overmind.cache.targets[task.target.ref].push(this.name);
+				Overmind.cache.targets[targetRef].push(this.name);
 			}
 			// Register references to creep
 			task.creep = this;

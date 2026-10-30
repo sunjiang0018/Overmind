@@ -1,3 +1,5 @@
+import {getRoomHostileStructures, getRoomHostiles} from '../../game/Room';
+import {getRoomPositionPrint} from '../../game/RoomPosition';
 import {$} from '../../caching/GlobalCache';
 import {log} from '../../console/log';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
@@ -11,6 +13,7 @@ import {Visualizer} from '../../visuals/Visualizer';
 import {CombatZerg} from '../../zerg/CombatZerg';
 import {Swarm} from '../../zerg/Swarm';
 import {SwarmOverlord} from '../SwarmOverlord';
+import {groupBy, sum, min} from '../../utilities/native';
 
 const DEBUG = false;
 
@@ -52,7 +55,7 @@ export class SwarmDestroyerOverlord extends SwarmOverlord {
 		this.fallback = $.pos(this, 'fallback', () =>
 			this.intel.findSwarmAssemblyPointInColony({width: 2, height: 2}), 200)!;
 		this.assemblyPoints = [];
-		for (let i = 0; i < _.keys(this.swarms).length + 1; i++) {
+		for (let i = 0; i < Object.keys(this.swarms ?? {}).length + 1; i++) {
 			this.assemblyPoints.push($.pos(this, `assemble_${i}`, () =>
 				this.intel.findSwarmAssemblyPointInColony({width: 2, height: 2}, i + 1), 200)!);
 		}
@@ -69,12 +72,12 @@ export class SwarmDestroyerOverlord extends SwarmOverlord {
 		const meleeZerg: CombatZerg[] = [...this.zerglings, ...this.healers];
 		// let rangedZerg: CombatZerg[] = this.hydralisks;
 		const maxPerSwarm = {[Roles.melee]: 2, [Roles.healer]: 2, [Roles.ranged]: 4};
-		const meleeZergBySwarm = _.groupBy(meleeZerg, zerg => zerg.findSwarm(meleeZerg, maxPerSwarm));
+		const meleeZergBySwarm = groupBy(meleeZerg, zerg => zerg.findSwarm(meleeZerg, maxPerSwarm));
 		// let rangedZergBySwarm = _.groupBy(rangedZerg, zerg => zerg.findSwarm(rangedZerg, maxPerSwarm));
 		// let zergBySwarm = _.merge(meleeZergBySwarm, rangedZergBySwarm);
 		for (const ref in meleeZergBySwarm) {
 			if (ref != undefined) {
-				if (DEBUG) log.debug(`Making swarm for ${_.map(meleeZergBySwarm[ref], z => z.name)}`);
+				if (DEBUG) log.debug(`Making swarm for ${(meleeZergBySwarm[ref] || []).map(z => z.name)}`);
 				this.swarms[ref] = new Swarm(this, ref, meleeZergBySwarm[ref]);
 			}
 		}
@@ -90,7 +93,7 @@ export class SwarmDestroyerOverlord extends SwarmOverlord {
 		// Swarm initially groups up at fallback location
 		if (!swarm.memory.initialAssembly) {
 			const assemblyPoint = this.assemblyPoints[index] || this.fallback;
-			log.debug(`Assmbling at ${assemblyPoint.print}`);
+			log.debug(`Assmbling at ${getRoomPositionPrint(assemblyPoint)}`);
 			swarm.memory.initialAssembly = swarm.assemble(assemblyPoint);
 			return;
 		}
@@ -103,15 +106,15 @@ export class SwarmDestroyerOverlord extends SwarmOverlord {
 			log.warning(`${this.print} No room! (Why?)`);
 		}
 		// Siege the room
-		const nearbyHostiles = _.filter(room.hostiles, creep => swarm.minRangeTo(creep) <= 3 + 1);
-		const attack = _.sum(nearbyHostiles, creep => CombatIntel.getAttackDamage(creep));
-		const rangedAttack = _.sum(nearbyHostiles, creep => CombatIntel.getRangedAttackDamage(creep));
-		const myDamageMultiplier = CombatIntel.minimumDamageMultiplierForGroup(_.map(swarm.creeps, c => c.creep));
+		const nearbyHostiles = getRoomHostiles(room).filter(creep => swarm.minRangeTo(creep) <= 3 + 1);
+		const attack = sum(nearbyHostiles, creep => CombatIntel.getAttackDamage(creep));
+		const rangedAttack = sum(nearbyHostiles, creep => CombatIntel.getRangedAttackDamage(creep));
+		const myDamageMultiplier = CombatIntel.minimumDamageMultiplierForGroup(swarm.creeps.map(c => c.creep));
 
 		const canPopShield = (attack + rangedAttack + CombatIntel.towerDamageAtPos(swarm.anchor)) * myDamageMultiplier
-							 > _.min(_.map(swarm.creeps, creep => 100 * creep.getActiveBodyparts(TOUGH)));
+							 > min(swarm.creeps, creep => 100 * creep.getActiveBodyparts(TOUGH));
 
-		if (canPopShield || room.hostileStructures.length == 0 || _.values(this.swarms).length > 1) {
+		if (canPopShield || getRoomHostileStructures(room).length == 0 || Object.values(this.swarms ?? {}).length > 1) {
 			swarm.autoCombat(this.pos.roomName, waypoint);
 		} else {
 			swarm.autoSiege(this.pos.roomName, waypoint);
@@ -147,7 +150,7 @@ export class SwarmDestroyerOverlord extends SwarmOverlord {
 		this.autoRun(this.healers, healer => undefined);
 		// this.autoRun(this.hydralisks, hydralisk => undefined);
 		// Run swarms in order
-		const refs = _.keys(this.swarms).sort();
+		const refs = Object.keys(this.swarms ?? {}).sort();
 		let i = 0;
 		for (const ref of refs) {
 			this.handleSwarm(this.swarms[ref], i);

@@ -1,6 +1,7 @@
 import {isSource} from '../../declarations/typeGuards';
 import {profile} from '../../profiler/decorator';
 import {Task} from '../Task';
+import {sum} from '../../utilities/native';
 
 export type harvestTargetType = Source | Mineral;
 export const harvestTaskName = 'harvest';
@@ -13,7 +14,7 @@ export class TaskHarvest extends Task<harvestTargetType> {
 	}
 
 	isValidTask() {
-		return _.sum(this.creep.carry) < this.creep.carryCapacity;
+		return sum(this.creep.carry) < this.creep.carryCapacity;
 	}
 
 	isValidTarget() {

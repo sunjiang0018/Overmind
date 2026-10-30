@@ -1,10 +1,12 @@
+import {roomPositionLookForStructure} from '../game/RoomPosition';
+import {getRoomDangerousHostiles} from '../game/Room';
 import type {Colony} from '../Colony';
 import {packCoordList} from '../utilities/packrat';
+import {PEACETIME_BARRIER_HITS} from '../~settings';
 import {E58S42_PLAN} from './layouts/E58S42';
 import type {RoomPlannerMemory} from './RoomPlanner';
-import {PEACETIME_BARRIER_HITS} from '../~settings';
 
-const VERSION = 'E58S42-terrain-v2';
+const VERSION = 'E58S42-terrain-v4';
 export const OVERRIDE_TUNNEL_RCL = 6;
 export const RCL6_RUSH = {
 	barrierHits: 10000,
@@ -26,11 +28,11 @@ export function prioritizesRCL6(roomName: string, level: number): boolean {
 export function earlyBarrierLimit(pos: ProtoPos): number | undefined {
 	const room = Game.rooms[pos.roomName];
 	if (PEACETIME_BARRIER_HITS != undefined && room && room.controller && room.controller.my
-		&& room.dangerousHostiles.length == 0 && room.find(FIND_NUKES).length == 0) {
+		&& getRoomDangerousHostiles(room).length == 0 && room.find(FIND_NUKES).length == 0) {
 		return PEACETIME_BARRIER_HITS;
 	}
 	if (room && room.controller && prioritizesRCL6(pos.roomName, room.controller.level)
-		&& room.dangerousHostiles.length == 0 && room.find(FIND_NUKES).length == 0) {
+		&& getRoomDangerousHostiles(room).length == 0 && room.find(FIND_NUKES).length == 0) {
 		return RCL6_RUSH.barrierHits;
 	}
 }
@@ -81,7 +83,7 @@ export function installRoomOverride(colony: Colony, memory: RoomPlannerMemory): 
 			roadCoverages: {},
 		},
 	});
-	console.log(`Installed ${VERSION}: preserved existing core; two-tile tunnel; permanent east gates.`);
+	console.log(`Installed ${VERSION}: compact roads and perimeter; critical shields follow completed buildings.`);
 }
 
 /** Reserve tunnel sites once the colony can afford them at RCL6. */
@@ -91,7 +93,7 @@ export function buildOverrideTunnel(colony: Colony): void {
 	for (const coord of E58S42_PLAN.tunnel) {
 		if (slots == 0) break;
 		const pos = new RoomPosition(coord.x, coord.y, colony.name);
-		if (!pos.lookForStructure(STRUCTURE_ROAD) && pos.lookFor(LOOK_CONSTRUCTION_SITES).length == 0) {
+		if (!roomPositionLookForStructure(pos, STRUCTURE_ROAD) && pos.lookFor(LOOK_CONSTRUCTION_SITES).length == 0) {
 			if (pos.createConstructionSite(STRUCTURE_ROAD) == OK) slots--;
 		}
 	}

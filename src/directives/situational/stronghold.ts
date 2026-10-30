@@ -1,3 +1,6 @@
+import {isPositionVisible, roomPositionGetPositionAtDirection} from '../../game/RoomPosition';
+import {getRoomRuins} from '../../game/Room';
+import {getRoomContainers, getRoomRamparts} from '../../game/RoomStructures';
 import {log} from '../../console/log';
 import {StrongholdOverlord} from '../../overlords/situational/stronghold';
 import {profile} from '../../profiler/decorator';
@@ -7,6 +10,7 @@ import {Directive} from '../Directive';
 import {DirectiveHaul} from '../resource/haul';
 import {DirectiveModularDismantle} from '../targeting/modularDismantle';
 import {DirectiveNukeTarget} from './nukeTarget';
+import {sum} from '../../utilities/native';
 
 
 export const STRONGHOLD_SETUPS = {
@@ -84,14 +88,14 @@ export class DirectiveStronghold extends Directive {
 	getResourcePickupLocations() {
 		if (this.room) {
 			let returns: (StructureContainer | Ruin)[] = [];
-			const containers = this.room.containers;
-			const ruins = this.room.ruins;
+			const containers = getRoomContainers(this.room);
+			const ruins = getRoomRuins(this.room);
 			if (containers) {
 				returns = returns.concat(containers.filter(container =>
-															   container.pos.getRangeTo(this.pos) < 5 && _.sum(container.store) > 0));
+															   container.pos.getRangeTo(this.pos) < 5 && sum(container.store) > 0));
 			}
 			if (ruins) {
-				returns = returns.concat(ruins.filter(ruin => ruin.pos.getRangeTo(this.pos) <= 3 && _.sum(ruin.store) > 0));
+				returns = returns.concat(ruins.filter(ruin => ruin.pos.getRangeTo(this.pos) <= 3 && sum(ruin.store) > 0));
 			}
 			return returns;
 		}
@@ -113,13 +117,13 @@ export class DirectiveStronghold extends Directive {
 		} else if (this.room && this.memory.state == 0) {
 
 
-		} else if (this.pos.isVisible && !this.core && this.pos.lookFor(LOOK_RUINS).length > 0) {
+		} else if (isPositionVisible(this.pos) && !this.core && this.pos.lookFor(LOOK_RUINS).length > 0) {
 			this.memory.state = 4;
 			if (Game.time % 50 == 0) {
 				// log.notify(`Now looting stronghold ${this.print} in ${this.pos.roomName}`);
 				this.handleLooting();
 			}
-		} else if (this.pos.isVisible && !this.core && this.pos.lookFor(LOOK_RUINS).length == 0) {
+		} else if (isPositionVisible(this.pos) && !this.core && this.pos.lookFor(LOOK_RUINS).length == 0) {
 			// Stronghold is dead
 			this.remove();
 		}
@@ -139,7 +143,7 @@ export class DirectiveStronghold extends Directive {
 				}
 			});
 
-			const openingToCore = this.pos.getPositionAtDirection(TOP);
+			const openingToCore = roomPositionGetPositionAtDirection(this.pos, TOP);
 			const isRamparted = openingToCore.lookFor(LOOK_STRUCTURES)
 											 .filter(struct => struct.structureType == STRUCTURE_RAMPART).length > 0;
 			if (isRamparted) {
@@ -155,7 +159,7 @@ export class DirectiveStronghold extends Directive {
 	handleL5() {
 		// Well this, this is an L5. Can't deal with it now so just nuke it's ugly mug
 		// Wait for deploy
-		if (!this.pos.isVisible || !this.core || Game.time % 5 != 0) {
+		if (!isPositionVisible(this.pos) || !this.core || Game.time % 5 != 0) {
 			return;
 		}
 		if (this.core.ticksToDeploy) {
@@ -163,7 +167,7 @@ export class DirectiveStronghold extends Directive {
 			return;
 		}
 		// const remainingDuration = this.core.effects.find(effect => effect.effect == EFFECT_COLLAPSE_TIMER);
-		const ramparts = this.core.room.ramparts;
+		const ramparts = getRoomRamparts(this.core.room);
 		if (ramparts.length == 0 || ramparts[0].ticksToDecay < NUKE_LAND_TIME + 10000) {
 			log.info(`Stronghold decaying too soon! ${this.print}`);
 			return;
@@ -174,7 +178,7 @@ export class DirectiveStronghold extends Directive {
 		// 	return;
 		// }
 
-		const bestTarget = this.pos.getPositionAtDirection(TOP_RIGHT);
+		const bestTarget = roomPositionGetPositionAtDirection(this.pos, TOP_RIGHT);
 		const nukes = this.core.room.find(FIND_NUKES);
 		const nukesPrepped = DirectiveNukeTarget.isPresent(this.core.room.name);
 		if (nukes.length < 2 && !nukesPrepped) {

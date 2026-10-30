@@ -1,3 +1,6 @@
+import {getStoredEnergy} from '../../game/Structures';
+import {getRoomPositionRoom} from '../../game/RoomPosition';
+import {getRoomBarriers, getRoomSpawns} from '../../game/RoomStructures';
 import {$} from '../../caching/GlobalCache';
 import {log} from '../../console/log';
 import {Roles, Setups} from '../../creepSetups/setups';
@@ -13,6 +16,7 @@ import {minBy} from '../../utilities/utils';
 import {Zerg} from '../../zerg/Zerg';
 import {Overlord} from '../Overlord';
 import {WorkerOverlord} from './worker';
+import {zipObject} from '../../utilities/native';
 
 
 const TERMINAL_THRESHOLDS = {
@@ -62,7 +66,7 @@ function getTerminalThresholds(resource: ResourceConstant): { target: number, to
 
 // Needs to be after class declaration because fuck lack of class hoisting
 const TERMINAL_THRESHOLDS_ALL: { [resource: string]: { target: number, tolerance: number } | undefined } =
-		  _.zipObject(RESOURCES_ALL, _.map(RESOURCES_ALL, resource => getTerminalThresholds(resource)));
+		  zipObject(RESOURCES_ALL, RESOURCES_ALL.map(resource => getTerminalThresholds(resource)));
 
 /**
  * Command center overlord: spawn and run a dediated commandCenter attendant
@@ -92,7 +96,7 @@ export class CommandCenterOverlord extends Overlord {
 		if (this.colony.bunker) {
 			const anchor = this.colony.bunker.anchor;
 			$.set(this, 'managerRepairTarget',
-				  () => minBy(_.filter(anchor.findInRange(anchor.room!.barriers, 3),
+				  () => minBy(anchor.findInRange(getRoomBarriers(getRoomPositionRoom(anchor)!), 3).filter(
 									   b => b.hits < WorkerOverlord.settings.barrierHits[this.colony.level]),
 							  b => b.hits));
 		}
@@ -240,7 +244,7 @@ export class CommandCenterOverlord extends Overlord {
 
 			// If you're selling this resource from this room, keep a bunch of it in the terminal
 			if (roomSellOrders.length > 0) {
-				const sellOrderForResource = _.find(roomSellOrders, order => order.resourceType == resourceType);
+				const sellOrderForResource = roomSellOrders.find(order => order.resourceType == resourceType);
 				if (sellOrderForResource) {
 					target = Math.max(target, sellOrderForResource.remainingAmount);
 				}
@@ -332,7 +336,7 @@ export class CommandCenterOverlord extends Overlord {
 		if (!storage || !terminal) {
 			return false;
 		}
-		if (storage.energy < Energetics.settings.storage.energy.destroyTerminalThreshold) {
+		if (getStoredEnergy(storage) < Energetics.settings.storage.energy.destroyTerminalThreshold) {
 			if (this.unloadCarry(manager)) {
 				return true;
 			}
@@ -373,7 +377,7 @@ export class CommandCenterOverlord extends Overlord {
 		manager.debug('pickupActions');
 		// Look for tombstones at position
 		const tombstones = manager.pos.lookFor(LOOK_TOMBSTONES);
-		const tombstone = _.first(tombstones);
+		const tombstone = tombstones[0];
 		if (tombstone) {
 			manager.task = Tasks.chain([Tasks.withdrawAll(tombstone), Tasks.transferAll(this.commandCenter.storage)]);
 			return true;
@@ -383,7 +387,7 @@ export class CommandCenterOverlord extends Overlord {
 		}
 		// Pickup any resources that happen to be dropped where you are
 		const resources = manager.pos.lookFor(LOOK_RESOURCES);
-		const resource = _.first(resources);
+		const resource = resources[0];
 		if (resource) {
 			manager.task = Tasks.chain([Tasks.pickup(resource), Tasks.transferAll(this.commandCenter.storage)]);
 			return true;
@@ -453,14 +457,14 @@ export class CommandCenterOverlord extends Overlord {
 	 */
 	private deathActions(manager: Zerg): boolean {
 		manager.debug('deathActions');
-		const nearbyManagers = _.filter(this.managers,
+		const nearbyManagers = this.managers.filter(
 										manager => manager.pos.inRangeTo(this.commandCenter.pos, 3)
 												   && (manager.ticksUntilSpawned || 0) <= 10);
 		if (nearbyManagers.length > 1) { // > 1 including self
 			if (manager.store.getUsedCapacity() > 0) {
 				this.unloadCarry(manager);
 			} else {
-				const nearbySpawn = _.first(manager.pos.findInRange(manager.room.spawns, 1));
+				const nearbySpawn = manager.pos.findInRange(getRoomSpawns(manager.room), 1)[0];
 				if (nearbySpawn) {
 					nearbySpawn.recycleCreep(manager.creep);
 				} else {

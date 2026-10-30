@@ -1,3 +1,6 @@
+import {getStoreContents} from '../game/Structures';
+import {getRoomObjectRef, getTargetedBy} from '../game/RoomObject';
+import {getRoomPositionPrint, getRoomPositionPrintPlain, roomPositionGetMultiRoomRangeTo} from '../game/RoomPosition';
 /* tslint:disable:variable-name */
 
 import columnify from 'columnify';
@@ -12,6 +15,7 @@ import {Pathing} from '../movement/Pathing';
 import {profile} from '../profiler/decorator';
 import {minMax} from '../utilities/utils';
 import {Zerg} from '../zerg/Zerg';
+import {mapValues, compact, defaults, sum, remove, max, sortBy} from '../utilities/native';
 
 export type LogisticsTarget =
 	StructureContainer
@@ -56,7 +60,7 @@ interface LogisticsNetworkMemory {
 	transporterCache: {
 		[transporterName: string]: {
 			nextAvailability: [number, RoomPosition],
-			predictedTransporterCarry: StoreDefinition,
+			predictedTransporterCarry: ResourceAmounts,
 			tick: number,
 		}
 	};
@@ -84,7 +88,7 @@ export class LogisticsNetwork {
 	// private logisticPositions: { [roomName: string]: RoomPosition[] };
 	private cache: {
 		nextAvailability: { [transporterName: string]: [number, RoomPosition] },
-		predictedTransporterCarry: { [transporterName: string]: { [resourceType: string]: number } },
+		predictedTransporterCarry: { [transporterName: string]: ResourceAmounts },
 		resourceChangeRate: { [requestID: string]: { [transporterName: string]: number } },
 	};
 	static settings = {
@@ -102,7 +106,7 @@ export class LogisticsNetwork {
 		// this.transporters = _.filter(colony.getCreepsByRole(TransporterSetup.role),
 		// 							 creep => !creep.spawning &&
 		// 									  creep.carryCapacity >= LogisticsNetwork.settings.carryThreshold);
-		this.buffers = _.compact([colony.storage!, colony.terminal!]);
+		this.buffers = compact([colony.storage!, colony.terminal!]);
 		this.cache = {
 			nextAvailability         : {},
 			predictedTransporterCarry: {},
@@ -132,13 +136,13 @@ export class LogisticsNetwork {
 	 * Request for resources to be deposited into this target
 	 */
 	requestInput(target: LogisticsTarget, opts = {} as RequestOptions): void {
-		_.defaults(opts, {
+		defaults(opts, {
 			resourceType: RESOURCE_ENERGY,
 			multiplier  : 1,
 			dAmountdt   : 0,
 		});
 		if (target.room != this.colony.room) {
-			log.warning(`${target.ref} at ${target.pos.print} is outside colony room; shouldn't request!`);
+			log.warning(`${getRoomObjectRef(target)} at ${getRoomPositionPrint(target.pos)} is outside colony room; shouldn't request!`);
 			return;
 		}
 		if (opts.resourceType == 'all') {
@@ -159,20 +163,20 @@ export class LogisticsNetwork {
 			multiplier  : opts.multiplier!,
 		};
 		this.requests.push(req);
-		this.targetToRequest[req.target.ref] = requestID;
+		this.targetToRequest[getRoomObjectRef(req.target)] = requestID;
 	}
 
 	/**
 	 * Request for resources to be withdrawn from this target
 	 */
 	requestOutput(target: LogisticsTarget, opts = {} as RequestOptions): void {
-		_.defaults(opts, {
+		defaults(opts, {
 			resourceType: RESOURCE_ENERGY,
 			multiplier  : 1,
 			dAmountdt   : 0,
 		});
 		if (opts.resourceType == 'all' && !isResource(target)) {
-			if (_.sum(target.store) == target.store.energy) {
+			if (sum(target.store) == target.store.energy) {
 				opts.resourceType = RESOURCE_ENERGY; // convert "all" requests to energy if that's all they have
 			}
 		}
@@ -192,14 +196,14 @@ export class LogisticsNetwork {
 			multiplier  : opts.multiplier!,
 		};
 		this.requests.push(req);
-		this.targetToRequest[req.target.ref] = requestID;
+		this.targetToRequest[getRoomObjectRef(req.target)] = requestID;
 	}
 
 	/**
 	 * Requests output for every mineral in a requestor object
 	 */
 	requestOutputMinerals(target: Exclude<LogisticsTarget, Resource>, opts = {} as RequestOptions): void {
-		for (const [resourceType, amount] of target.store.contents) {
+		for (const [resourceType, amount] of getStoreContents(target.store)) {
 			if (resourceType == RESOURCE_ENERGY) continue;
 			if (amount > 0) {
 				opts.resourceType = <ResourceConstant>resourceType;
@@ -216,7 +220,7 @@ export class LogisticsNetwork {
 			log.error(`Improper logistics request: should not request input for resource or tombstone!`);
 			return 0;
 		} else if (isDirective(target)) {
-			return target.memory.amount - target.store[resourceType];
+			return target.memory.amount - (target.store[resourceType] || 0);
 		} else {
 			return target.store.getFreeCapacity(resourceType) || 0;
 		}
@@ -320,7 +324,7 @@ export class LogisticsNetwork {
 			if (approximateDistance) {
 				for (const targetPos of targetPositions.slice(1)) {
 					// The path lengths between any two logistics targets should be well-memorized
-					approximateDistance += Math.ceil(pos.getMultiRoomRangeTo(targetPos)
+					approximateDistance += Math.ceil(roomPositionGetMultiRoomRangeTo(pos, targetPos)
 													 * LogisticsNetwork.settings.rangeToPathHeuristic);
 					// approximateDistance += Pathing.distance(pos, targetPos);
 					pos = targetPos;
@@ -329,7 +333,7 @@ export class LogisticsNetwork {
 				// This probably shouldn't happen...
 				approximateDistance = 0;
 				for (const targetPos of targetPositions) {
-					approximateDistance += Math.ceil(pos.getMultiRoomRangeTo(targetPos)
+					approximateDistance += Math.ceil(roomPositionGetMultiRoomRangeTo(pos, targetPos)
 													 * LogisticsNetwork.settings.rangeToPathHeuristic);
 					// approximateDistance += Pathing.distance(pos, targetPos);
 					pos = targetPos;
@@ -354,10 +358,10 @@ export class LogisticsNetwork {
 	}
 
 	static targetingTransporters(target: LogisticsTarget, excludedTransporter?: Zerg): Zerg[] {
-		const targetingZerg = _.map(target.targetedBy, name => Overmind.zerg[name]);
-		const targetingTransporters = _.filter(targetingZerg, zerg => zerg.roleName == Roles.transport);
+		const targetingZerg = (getTargetedBy(target) || []).map(name => Overmind.zerg[name]);
+		const targetingTransporters = targetingZerg.filter(zerg => zerg.roleName == Roles.transport);
 		if (excludedTransporter) {
-			_.remove(targetingTransporters, transporter => transporter.name == excludedTransporter.name);
+			remove(targetingTransporters, transporter => transporter.name == excludedTransporter.name);
 		}
 		return targetingTransporters;
 	}
@@ -367,24 +371,24 @@ export class LogisticsNetwork {
 	 */
 	private computePredictedTransporterCarry(transporter: Zerg,
 											 nextAvailability?: [number, RoomPosition]): {
-		[resourceType: string]: number
+		[resourceType in ResourceConstant]?: number
 	} {
 		if (transporter.task && transporter.task.target) {
-			const requestID = this.targetToRequest[transporter.task.target.ref];
+			const requestID = this.targetToRequest[getRoomObjectRef(transporter.task.target)];
 			if (requestID) {
 				const request = this.requests[requestID];
 				if (request) {
-					const carry = transporter.carry as { [resourceType: string]: number };
-					const remainingCapacity = transporter.carryCapacity - _.sum(carry);
+					const carry = transporter.carry as ResourceAmounts;
+					const remainingCapacity = transporter.carryCapacity - sum(carry);
 					const resourceAmount = -1 * this.predictedRequestAmount(transporter, request, nextAvailability);
 					// ^ need to multiply amount by -1 since transporter is doing complement of what request needs
 					if (request.resourceType == 'all') {
 						if (isResource(request.target)) {
 							log.error(ALL_RESOURCE_TYPE_ERROR);
-							return {energy: 0} as StoreDefinition;
+							return {energy: 0};
 						}
-						for (const [resourceType, storeAmt] of request.target.store.contents) {
-							const resourceFraction = storeAmt / _.sum(request.target.store);
+						for (const [resourceType, storeAmt] of getStoreContents(request.target.store)) {
+							const resourceFraction = storeAmt / sum(request.target.store);
 							if (carry[resourceType]) {
 								carry[resourceType]! += resourceAmount * resourceFraction;
 								carry[resourceType] = minMax(carry[resourceType]!, 0, remainingCapacity);
@@ -400,7 +404,7 @@ export class LogisticsNetwork {
 							carry[request.resourceType] = minMax(resourceAmount, 0, remainingCapacity);
 						}
 					}
-					return carry as StoreDefinition;
+					return carry;
 				}
 			}
 		}
@@ -410,7 +414,7 @@ export class LogisticsNetwork {
 	/**
 	 * Returns the predicted state of the transporter's carry after completing its task
 	 */
-	private predictedTransporterCarry(transporter: Zerg): { [resourceType: string]: number } {
+	private predictedTransporterCarry(transporter: Zerg): ResourceAmounts {
 		if (!this.cache.predictedTransporterCarry[transporter.name]) {
 			this.cache.predictedTransporterCarry[transporter.name] = this.computePredictedTransporterCarry(transporter);
 		}
@@ -432,7 +436,7 @@ export class LogisticsNetwork {
 		}
 		// let eta = busyUntil + Pathing.distance(newPos, request.target.pos);
 		const eta = busyUntil + LogisticsNetwork.settings.rangeToPathHeuristic *
-					newPos.getMultiRoomRangeTo(request.target.pos);
+					roomPositionGetMultiRoomRangeTo(newPos, request.target.pos);
 		const predictedDifference = request.dAmountdt * eta; // dAmountdt has same sign as amount
 		// Account for other transporters targeting the target
 		const otherTargetingTransporters = LogisticsNetwork.targetingTransporters(request.target, transporter);
@@ -451,8 +455,8 @@ export class LogisticsNetwork {
 				predictedAmount = minMax(predictedAmount, 0, request.target.store.getCapacity(request.resourceType));
 			}
 			// TODO: this is incorrect; should incorporate request amount
-			const resourceInflux = _.sum(_.map(otherTargetingTransporters,
-											   other => (other.carry[<ResourceConstant>request.resourceType] || 0)));
+			const resourceInflux = sum(otherTargetingTransporters,
+				other => (other.carry[<ResourceConstant>request.resourceType] || 0));
 			predictedAmount = Math.max(predictedAmount - resourceInflux, 0);
 			return predictedAmount;
 		} else { // output state, resources withdrawn from target
@@ -466,8 +470,7 @@ export class LogisticsNetwork {
 				// @ts-ignore
 				predictedAmount = minMax(predictedAmount, -1 * request.target.store.getCapacity(request.resourceType), 0);
 			}
-			const resourceOutflux = _.sum(_.map(otherTargetingTransporters,
-												other => other.carryCapacity - _.sum(other.carry)));
+			const resourceOutflux = sum(otherTargetingTransporters, other => other.carryCapacity - sum(other.carry));
 			predictedAmount = Math.min(predictedAmount + resourceOutflux, 0);
 			return predictedAmount;
 		}
@@ -486,7 +489,7 @@ export class LogisticsNetwork {
 		const [ticksUntilFree, newPos] = this.nextAvailability(transporter);
 		const choices: { dQ: number, dt: number, targetRef: string }[] = [];
 		const amount = this.predictedRequestAmount(transporter, request, [ticksUntilFree, newPos]);
-		let carry: { [resourceType: string]: number };
+		let carry: ResourceAmounts;
 		if (!transporter.task || transporter.task.target != request.target) {
 			// If you are not targeting the requestor, use predicted carry after completing current task
 			carry = this.predictedTransporterCarry(transporter);
@@ -504,25 +507,25 @@ export class LogisticsNetwork {
 			// Change in resources if transporter goes straight to the input
 			const dQ_direct = Math.min(amount, carry[request.resourceType] || 0);
 			// let dt_direct = Pathing.distance(newPos, request.target.pos) + ticksUntilFree;
-			const dt_direct = ticksUntilFree + newPos.getMultiRoomRangeTo(request.target.pos)
+			const dt_direct = ticksUntilFree + roomPositionGetMultiRoomRangeTo(newPos, request.target.pos)
 							  * LogisticsNetwork.settings.rangeToPathHeuristic;
 			choices.push({
 							 dQ       : dQ_direct,
 							 dt       : dt_direct,
-							 targetRef: request.target.ref
+							 targetRef: getRoomObjectRef(request.target)
 						 });
-			if ((carry[request.resourceType] || 0) > amount || _.sum(carry) == transporter.carryCapacity) {
+			if ((carry[request.resourceType] || 0) > amount || sum(carry) == transporter.carryCapacity) {
 				return choices; // Return early if you already have enough resources to go direct or are already full
 			}
 			// Change in resources if transporter picks up resources from a buffer first
 			for (const buffer of this.buffers) {
 				const dQ_buffer = Math.min(amount, transporter.carryCapacity, buffer.store[request.resourceType] || 0);
-				const dt_buffer = newPos.getMultiRoomRangeTo(buffer.pos) * LogisticsNetwork.settings.rangeToPathHeuristic
+				const dt_buffer = roomPositionGetMultiRoomRangeTo(newPos, buffer.pos) * LogisticsNetwork.settings.rangeToPathHeuristic
 								  + (Pathing.distance(buffer.pos, request.target.pos) || Infinity) + ticksUntilFree;
 				choices.push({
 								 dQ       : dQ_buffer,
 								 dt       : dt_buffer,
-								 targetRef: buffer.ref
+								 targetRef: getRoomObjectRef(buffer)
 							 });
 			}
 		}
@@ -530,14 +533,14 @@ export class LogisticsNetwork {
 		// requestOutput instance, needs pickup
 		else if (amount < 0) {
 			// Change in resources if transporter goes straight to the output
-			const remainingCarryCapacity = transporter.carryCapacity - _.sum(carry);
+			const remainingCarryCapacity = transporter.carryCapacity - sum(carry);
 			const dQ_direct = Math.min(Math.abs(amount), remainingCarryCapacity);
-			const dt_direct = newPos.getMultiRoomRangeTo(request.target.pos)
+			const dt_direct = roomPositionGetMultiRoomRangeTo(newPos, request.target.pos)
 							  * LogisticsNetwork.settings.rangeToPathHeuristic + ticksUntilFree;
 			choices.push({
 							 dQ       : dQ_direct,
 							 dt       : dt_direct,
-							 targetRef: request.target.ref
+							 targetRef: getRoomObjectRef(request.target)
 						 });
 			if (remainingCarryCapacity >= Math.abs(amount) || remainingCarryCapacity == transporter.carryCapacity) {
 				return choices; // Return early you have sufficient free space or are empty
@@ -545,13 +548,13 @@ export class LogisticsNetwork {
 			// Change in resources if transporter drops off resources at a buffer first
 			for (const buffer of this.buffers) {
 				const dQ_buffer = Math.min(Math.abs(amount), transporter.carryCapacity,
-										   buffer.storeCapacity - _.sum(buffer.store));
-				const dt_buffer = newPos.getMultiRoomRangeTo(buffer.pos) * LogisticsNetwork.settings.rangeToPathHeuristic
+										   buffer.storeCapacity - sum(buffer.store));
+				const dt_buffer = roomPositionGetMultiRoomRangeTo(newPos, buffer.pos) * LogisticsNetwork.settings.rangeToPathHeuristic
 								  + (Pathing.distance(buffer.pos, request.target.pos) || Infinity) + ticksUntilFree;
 				choices.push({
 								 dQ       : dQ_buffer,
 								 dt       : dt_buffer,
-								 targetRef: buffer.ref
+								 targetRef: getRoomObjectRef(buffer)
 							 });
 			}
 			// if (store.resourceType == RESOURCE_ENERGY) {
@@ -583,8 +586,8 @@ export class LogisticsNetwork {
 		}
 		if (!this.cache.resourceChangeRate[request.id][transporter.name]) {
 			const choices = this.bufferChoices(transporter, request);
-			const dQ_dt = _.map(choices, choice => request.multiplier * choice.dQ / Math.max(choice.dt, 0.1));
-			this.cache.resourceChangeRate[request.id][transporter.name] = _.max(dQ_dt);
+			const dQ_dt = choices.map(choice => request.multiplier * choice.dQ / Math.max(choice.dt, 0.1));
+			this.cache.resourceChangeRate[request.id][transporter.name] = max(dQ_dt);
 		}
 		return this.cache.resourceChangeRate[request.id][transporter.name];
 	}
@@ -594,7 +597,7 @@ export class LogisticsNetwork {
 	 */
 	requestPreferences(request: LogisticsRequest, transporters: Zerg[]): Zerg[] {
 		// Requestors priortize transporters by change in resources per tick until pickup/delivery
-		return _.sortBy(transporters, transporter => -1 * this.resourceChangeRate(transporter, request)); // -1 -> desc
+		return sortBy(transporters, transporter => -1 * this.resourceChangeRate(transporter, request)); // -1 -> desc
 	}
 
 	/**
@@ -602,7 +605,7 @@ export class LogisticsNetwork {
 	 */
 	transporterPreferences(transporter: Zerg): LogisticsRequest[] {
 		// Transporters prioritize requestors by change in resources per tick until pickup/delivery
-		return _.sortBy(this.requests, request => -1 * this.resourceChangeRate(transporter, request)); // -1 -> desc
+		return sortBy(this.requests, request => -1 * this.resourceChangeRate(transporter, request)); // -1 -> desc
 	}
 
 	/**
@@ -619,24 +622,26 @@ export class LogisticsNetwork {
 	 */
 	summarizeMatching(): void {
 		const requests = this.requests.slice();
-		const transporters = _.filter(this.colony.getCreepsByRole(Roles.transport), creep => !creep.spawning);
-		const unmatchedTransporters = _.remove(transporters,
-											   transporter => !_.keys(this._matching).includes(transporter.name));
-		const unmatchedRequests = _.remove(requests, request => !_.values(this._matching).includes(request));
+		const transporters = this.colony.getCreepsByRole(Roles.transport).filter(creep => !creep.spawning);
+		const matchedTransporters = new Set(Object.keys(this._matching ?? {}));
+		const matchedRequests = new Set(Object.values(this._matching ?? {}));
+		const unmatchedTransporters = remove(transporters,
+										   transporter => !matchedTransporters.has(transporter.name));
+		const unmatchedRequests = remove(requests, request => !matchedRequests.has(request));
 		console.log(`Stable matching for ${this.colony.name} at ${Game.time}`);
 		for (const transporter of transporters) {
 			const transporterStr = transporter.name + ' ' + transporter.pos;
 			const request = this._matching![transporter.name]!;
-			const requestStr = request.target.ref + ' ' + request.target.pos.print;
-			console.log(`${transporterStr.padRight(30)} : ${requestStr}`);
+			const requestStr = getRoomObjectRef(request.target) + ' ' + getRoomPositionPrint(request.target.pos);
+			console.log(`${transporterStr.padEnd(30)} : ${requestStr}`);
 		}
 		for (const transporter of unmatchedTransporters) {
 			const transporterStr = transporter.name + ' ' + transporter.pos;
-			console.log(`${transporterStr.padRight(30)} : ${''}`);
+			console.log(`${transporterStr.padEnd(30)} : ${''}`);
 		}
 		for (const request of unmatchedRequests) {
-			const requestStr = request.target.ref + ' ' + request.target.pos;
-			console.log(`${''.padRight(30)} : ${requestStr}`);
+			const requestStr = getRoomObjectRef(request.target) + ' ' + request.target.pos;
+			console.log(`${''.padEnd(30)} : ${requestStr}`);
 		}
 		console.log();
 	}
@@ -668,7 +673,7 @@ export class LogisticsNetwork {
 			} else {
 				if (request.resourceType == 'all') {
 					if (!isResource(request.target)) {
-						amount = _.sum(request.target.store);
+						amount = sum(request.target.store);
 					} else {
 						amount = -0.001;
 					}
@@ -676,18 +681,18 @@ export class LogisticsNetwork {
 					if (isResource(request.target)) {
 						amount = request.target.amount;
 					} else {
-						amount = request.target.store[request.resourceType];
+						amount = request.target.store[request.resourceType] || 0;
 					}
 				}
 			}
-			const targetingTprtrNames = _.map(LogisticsNetwork.targetingTransporters(request.target), c => c.name);
+			const targetingTprtrNames = LogisticsNetwork.targetingTransporters(request.target).map(c => c.name);
 			info.push({
 						  target       : targetType,
 						  resourceType : request.resourceType,
 						  requestAmount: request.amount,
 						  currentAmount: amount,
 						  targetedBy   : targetingTprtrNames,
-						  pos          : request.target.pos.print,
+						  pos          : getRoomPositionPrint(request.target.pos),
 					  });
 		}
 		console.log('Requests: \n' + columnify(info) + '\n');
@@ -695,14 +700,14 @@ export class LogisticsNetwork {
 		for (const transporter of this.colony.overlords.logistics.transporters) {
 			const task = transporter.task ? transporter.task.name : 'none';
 			const target = transporter.task ?
-						   transporter.task.proto._target.ref + ' ' + transporter.task.targetPos.printPlain : 'none';
+						   transporter.task.proto._target.ref + ' ' + getRoomPositionPrintPlain(transporter.task.targetPos) : 'none';
 			const nextAvailability = this.nextAvailability(transporter);
 			info.push({
 						  creep       : transporter.name,
-						  pos         : transporter.pos.printPlain,
+						  pos         : getRoomPositionPrintPlain(transporter.pos),
 						  task        : task,
 						  target      : target,
-						  availability: `available in ${nextAvailability[0]} ticks at ${nextAvailability[1].print}`,
+						  availability: `available in ${nextAvailability[0]} ticks at ${getRoomPositionPrint(nextAvailability[1])}`,
 					  });
 		}
 		console.log('Transporters: \n' + columnify(info) + '\n');
@@ -721,14 +726,14 @@ export class LogisticsNetwork {
 	private stableMatching(transporters: Zerg[]): { [creepName: string]: LogisticsRequest | undefined } {
 		const tPrefs: { [transporterName: string]: string[] } = {};
 		for (const transporter of transporters) {
-			tPrefs[transporter.name] = _.map(this.transporterPreferences(transporter), request => request.id);
+			tPrefs[transporter.name] = this.transporterPreferences(transporter).map(request => request.id);
 		}
 		const rPrefs: { [requestID: string]: string[] } = {};
 		for (const request of this.requests) {
-			rPrefs[request.id] = _.map(this.requestPreferences(request, transporters), transporter => transporter.name);
+			rPrefs[request.id] = this.requestPreferences(request, transporters).map(transporter => transporter.name);
 		}
 		const stableMatching = new Matcher(tPrefs, rPrefs).match();
-		const requestMatch = _.mapValues(stableMatching, reqID => _.find(this.requests, request => request.id == reqID));
+		const requestMatch = mapValues(stableMatching, reqID => this.requests.find(request => request.id == reqID));
 		return requestMatch;
 	}
 

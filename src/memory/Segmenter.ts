@@ -1,4 +1,5 @@
 import {profile} from '../profiler/decorator';
+import {defaultsDeep} from '../utilities/native';
 
 const MAX_ACTIVE_SEGMENTS = 10;
 
@@ -32,7 +33,7 @@ export const SEGMENTS = {
 if (!Memory.segmenter) {
 	Memory.segmenter = {};
 }
-_.defaultsDeep(Memory.segmenter, DefaultSegmenterMemory);
+defaultsDeep(Memory.segmenter, DefaultSegmenterMemory);
 
 /**
  * The segmenter module controls public and private segment memory access

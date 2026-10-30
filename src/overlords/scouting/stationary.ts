@@ -1,3 +1,4 @@
+import {isPositionOnEdge} from '../../game/RoomPosition';
 import {Roles, Setups} from '../../creepSetups/setups';
 import {Directive} from '../../directives/Directive';
 import {OverlordPriority} from '../../priorities/priorities_overlords';
@@ -33,7 +34,7 @@ export class StationaryScoutOverlord extends Overlord {
 			// 	}
 			// }
 
-			if (!(scout.pos.inRangeTo(this.pos, 3) && !scout.pos.isEdge)) {
+			if (!(scout.pos.inRangeTo(this.pos, 3) && !isPositionOnEdge(scout.pos))) {
 				scout.goTo(this.pos, {range: 3});
 			}
 		}

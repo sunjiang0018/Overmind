@@ -1,5 +1,6 @@
 import {profile} from '../../profiler/decorator';
 import {Directive} from '../Directive';
+import {defaultsDeep} from '../../utilities/native';
 
 
 interface DirectiveEmptyMemory extends FlagMemory {
@@ -27,7 +28,7 @@ export class DirectiveEmpty extends Directive {
 
 	constructor(flag: Flag) {
 		super(flag);
-		_.defaultsDeep(this.memory, getDefaultDirectiveEmptyMemory());
+		defaultsDeep(this.memory, getDefaultDirectiveEmptyMemory());
 		this.refresh();
 		// TODO
 	}

@@ -1,3 +1,21 @@
+import {getRoomBarriers, getRoomRepairables, getRoomSpawns, getRoomTowers} from '../game/RoomStructures';
+import {isCreepInRampart} from '../game/Creep';
+import {
+	getRoomPositionPrint,
+	getRoomPositionRangeToEdge,
+	roomPositionGetMultiRoomRangeTo,
+	roomPositionInRangeToXY,
+	roomPositionLookForStructure,
+} from '../game/RoomPosition';
+import {
+	getRoomCreeps,
+	getRoomHostileStructures,
+	getRoomHostiles,
+	getRoomPlayerHostiles,
+	getRoomReservedByMe,
+	getRoomStructures,
+	isRoomMine,
+} from '../game/Room';
 import {log} from '../console/log';
 import {CombatIntel} from '../intel/CombatIntel';
 import {MatrixLib} from '../matrix/MatrixLib';
@@ -9,6 +27,7 @@ import {Visualizer} from '../visuals/Visualizer';
 import {Swarm} from '../zerg/Swarm';
 import {Zerg} from '../zerg/Zerg';
 import {MY_USERNAME} from '../~settings';
+import {defaults, sortBy, last, max} from '../utilities/native';
 
 @profile
 export class CombatTargeting {
@@ -16,11 +35,11 @@ export class CombatTargeting {
 	/**
 	 * Finds the best target within a given range that a zerg can currently attack
 	 */
-	static findBestCreepTargetInRange(zerg: Zerg, range: number, targets = zerg.room.hostiles): Creep | undefined {
-		const nearbyHostiles = _.filter(targets, c => zerg.pos.inRangeToXY(c.pos.x, c.pos.y, range));
+	static findBestCreepTargetInRange(zerg: Zerg, range: number, targets = getRoomHostiles(zerg.room)): Creep | undefined {
+		const nearbyHostiles = targets.filter(c => roomPositionInRangeToXY(zerg.pos, c.pos.x, c.pos.y, range));
 		return maxBy(nearbyHostiles, function(hostile) {
 			if (hostile.hitsPredicted == undefined) hostile.hitsPredicted = hostile.hits;
-			if (hostile.pos.lookForStructure(STRUCTURE_RAMPART)) return false;
+			if (roomPositionLookForStructure(hostile.pos, STRUCTURE_RAMPART)) return false;
 			return hostile.hitsMax - hostile.hitsPredicted + CombatIntel.getHealPotential(hostile); // compute score
 		});
 	}
@@ -29,16 +48,16 @@ export class CombatTargeting {
 	 * Finds the best target within a given range that a zerg can currently attack
 	 */
 	static findBestStructureTargetInRange(zerg: Zerg, range: number, allowUnowned = true): Structure | undefined {
-		let nearbyStructures = _.filter(zerg.room.hostileStructures,
-										s => zerg.pos.inRangeToXY(s.pos.x, s.pos.y, range));
+		let nearbyStructures = getRoomHostileStructures(zerg.room).filter(
+										s => roomPositionInRangeToXY(zerg.pos, s.pos.x, s.pos.y, range));
 		// If no owned structures to attack and not in colony room or outpost, target unowned structures
 		if (allowUnowned && nearbyStructures.length == 0 && !Overmind.colonyMap[zerg.room.name]) {
-			nearbyStructures = _.filter(zerg.room.structures,
-										s => zerg.pos.inRangeToXY(s.pos.x, s.pos.y, range));
+			nearbyStructures = getRoomStructures(zerg.room).filter(
+										s => roomPositionInRangeToXY(zerg.pos, s.pos.x, s.pos.y, range));
 		}
 		return maxBy(nearbyStructures, function(structure) {
 			let score = 10 * AttackStructureScores[structure.structureType];
-			if (structure.pos.lookForStructure(STRUCTURE_RAMPART)) score *= .1;
+			if (roomPositionLookForStructure(structure.pos, STRUCTURE_RAMPART)) score *= .1;
 			return score;
 		});
 	}
@@ -46,22 +65,22 @@ export class CombatTargeting {
 	/**
 	 * Standard target-finding logic
 	 */
-	static findTarget(zerg: Zerg, targets = zerg.room.hostiles): Creep | undefined {
+	static findTarget(zerg: Zerg, targets = getRoomHostiles(zerg.room)): Creep | undefined {
 		return maxBy(targets, function(hostile) {
 			if (hostile.hitsPredicted == undefined) hostile.hitsPredicted = hostile.hits;
-			if (hostile.pos.lookForStructure(STRUCTURE_RAMPART)) return false;
+			if (roomPositionLookForStructure(hostile.pos, STRUCTURE_RAMPART)) return false;
 			return hostile.hitsMax - hostile.hitsPredicted + CombatIntel.getHealPotential(hostile)
-				   - 10 * zerg.pos.getMultiRoomRangeTo(hostile.pos); // compute score
+				   - 10 * roomPositionGetMultiRoomRangeTo(zerg.pos, hostile.pos); // compute score
 		});
 	}
 
 	/**
 	 * Finds the best target within a given range that a zerg can currently attack
 	 */
-	static findBestCreepTargetForTowers(room: Room, targets = room.hostiles): Creep | undefined {
+	static findBestCreepTargetForTowers(room: Room, targets = getRoomHostiles(room)): Creep | undefined {
 		return maxBy(targets, function(hostile) {
 			if (hostile.hitsPredicted == undefined) hostile.hitsPredicted = hostile.hits;
-			if (hostile.pos.lookForStructure(STRUCTURE_RAMPART)) return false;
+			if (roomPositionLookForStructure(hostile.pos, STRUCTURE_RAMPART)) return false;
 			return hostile.hitsMax - hostile.hitsPredicted
 				   + CombatIntel.getHealPotential(hostile) + (CombatIntel.towerDamageAtPos(hostile.pos) || 0);
 		});
@@ -75,27 +94,27 @@ export class CombatTargeting {
 		onlyUnramparted: boolean
 	}): Creep | undefined {
 
-		_.defaults(opts, {
+		defaults(opts, {
 			checkReachable    : false,
 			ignoreCreepsAtEdge: true,
 			playerOnly        : false,
 			onlyUnramparted   : false
 		});
-		if (zerg.room.hostiles.length > 0) {
+		if (getRoomHostiles(zerg.room).length > 0) {
 			let targets: Creep[];
-			const potentialTargets = opts.playerOnly ? zerg.room.playerHostiles : zerg.room.hostiles;
+			const potentialTargets = opts.playerOnly ? getRoomPlayerHostiles(zerg.room) : getRoomHostiles(zerg.room);
 			if (opts.ignoreCreepsAtEdge) {
-				targets = _.filter(potentialTargets, hostile => hostile.pos.rangeToEdge > 0);
+				targets = potentialTargets.filter(hostile => getRoomPositionRangeToEdge(hostile.pos) > 0);
 			} else {
 				targets = potentialTargets;
 			}
 			if (opts.onlyUnramparted) {
-				targets = _.filter(targets, hostile => !hostile.inRampart);
+				targets = targets.filter(hostile => !isCreepInRampart(hostile));
 			}
 			if (opts.checkReachable) {
-				const targetsByRange = _.sortBy(targets, target => zerg.pos.getRangeTo(target));
-				return _.find(targetsByRange, target =>
-					Pathing.isReachable(zerg.pos, target.pos, zerg.room.barriers.filter(
+				const targetsByRange = sortBy(targets, target => zerg.pos.getRangeTo(target));
+				return targetsByRange.find(target =>
+					Pathing.isReachable(zerg.pos, target.pos, getRoomBarriers(zerg.room).filter(
 						barrier => barrier.structureType == STRUCTURE_WALL
 								   || (barrier.structureType == STRUCTURE_RAMPART
 									   && (barrier.owner.username == MY_USERNAME || !barrier.isPublic)))));
@@ -107,25 +126,25 @@ export class CombatTargeting {
 
 	// This method is expensive
 	static findClosestReachable(pos: RoomPosition, targets: (Creep | Structure)[]): Creep | Structure | undefined {
-		const targetsByRange = _.sortBy(targets, target => pos.getRangeTo(target));
-		return _.find(targetsByRange, target => Pathing.isReachable(pos, target.pos, target.room.barriers));
+		const targetsByRange = sortBy(targets, target => pos.getRangeTo(target));
+		return targetsByRange.find(target => Pathing.isReachable(pos, target.pos, getRoomBarriers(target.room)));
 	}
 
 	static findClosestHurtFriendly(healer: Zerg): Creep | null {
-		return healer.pos.findClosestByRange(_.filter(healer.room.creeps, creep => creep.hits < creep.hitsMax));
+		return healer.pos.findClosestByRange(getRoomCreeps(healer.room).filter(creep => creep.hits < creep.hitsMax));
 	}
 
 	/**
 	 * Finds the best (friendly) target in range that a zerg can currently heal
 	 */
-	static findBestHealingTargetInRange(healer: Zerg, range = 3, friendlies = healer.room.creeps): Creep | undefined {
+	static findBestHealingTargetInRange(healer: Zerg, range = 3, friendlies = getRoomCreeps(healer.room)): Creep | undefined {
 		const tempHitsPredicted: { [id: string]: number } = {};
-		return maxBy(_.filter(friendlies, f => healer.pos.getRangeTo(f) <= range), friend => {
+		return maxBy(friendlies.filter(f => healer.pos.getRangeTo(f) <= range), friend => {
 			if (friend.hitsPredicted == undefined) friend.hitsPredicted = friend.hits;
 			const attackProbability = 0.5;
 			tempHitsPredicted[friend.id] = friend.hitsPredicted;
-			for (const hostile of friend.pos.findInRange(friend.room.hostiles, 3)) {
-				if (!friend.inRampart) {
+			for (const hostile of friend.pos.findInRange(getRoomHostiles(friend.room), 3)) {
+				if (!isCreepInRampart(friend)) {
 					if (hostile.pos.isNearTo(friend)) {
 						tempHitsPredicted[friend.id] -= attackProbability * CombatIntel.getAttackDamage(hostile);
 					} else {
@@ -144,7 +163,7 @@ export class CombatTargeting {
 
 	static findClosestPrioritizedStructure(zerg: Zerg, checkReachable = false): Structure | undefined {
 		for (const structureType of AttackStructurePriorities) {
-			const structures = _.filter(zerg.room.hostileStructures, s => s.structureType == structureType);
+			const structures = getRoomHostileStructures(zerg.room).filter(s => s.structureType == structureType);
 			if (structures.length == 0) continue;
 			if (checkReachable) {
 				const closestReachable = this.findClosestReachable(zerg.pos, structures) as Structure | undefined;
@@ -153,7 +172,7 @@ export class CombatTargeting {
 				return zerg.pos.findClosestByRange(structures) as Structure | undefined;
 			}
 		}
-		const core = _.filter(zerg.room.hostileStructures, s => s.structureType.toString() == 'invaderCore');
+		const core = getRoomHostileStructures(zerg.room).filter(s => s.structureType.toString() == 'invaderCore');
 		if (core.length != 0) {
 			return core[0];
 		}
@@ -162,18 +181,18 @@ export class CombatTargeting {
 	static findBestStructureTarget(pos: RoomPosition): Structure | undefined {
 		const room = Game.rooms[pos.roomName];
 		// Don't accidentally destroy your own shit
-		if (!room || room.my || room.reservedByMe) {
+		if (!room || isRoomMine(room) || getRoomReservedByMe(room)) {
 			return;
 		}
 		// Look for any unprotected structures
-		const unprotectedRepairables = _.filter(room.repairables, s => {
-			const rampart = s.pos.lookForStructure(STRUCTURE_RAMPART);
+		const unprotectedRepairables = getRoomRepairables(room).filter(s => {
+			const rampart = roomPositionLookForStructure(s.pos, STRUCTURE_RAMPART);
 			return !rampart || rampart.hits < 10000;
 		});
-		let approach = _.map(unprotectedRepairables, structure => {
+		let approach = unprotectedRepairables.map(structure => {
 			return {pos: structure.pos, range: 0};
 		}) as PathFinderGoal[];
-		if (room.barriers.length == 0 && unprotectedRepairables.length == 0) return; // if there's nothing in the room
+		if (getRoomBarriers(room).length == 0 && unprotectedRepairables.length == 0) return; // if there's nothing in the room
 
 		// Try to find a reachable unprotected structure
 		if (approach.length > 0) {
@@ -183,37 +202,37 @@ export class CombatTargeting {
 				roomCallback: roomName => {
 					if (roomName != room.name) return false;
 					const matrix = new PathFinder.CostMatrix();
-					for (const barrier of room.barriers) {
+					for (const barrier of getRoomBarriers(room)) {
 						matrix.set(barrier.pos.x, barrier.pos.y, 0xff);
 					}
 					return matrix;
 				},
 			});
-			const targetPos = _.last(ret.path);
+			const targetPos = last(ret.path);
 			if (!ret.incomplete && targetPos) {
-				const targetStructure = _.first(_.filter(targetPos.lookFor(LOOK_STRUCTURES), s => {
+				const targetStructure = targetPos.lookFor(LOOK_STRUCTURES).filter(s => {
 					return s.structureType != STRUCTURE_ROAD && s.structureType != STRUCTURE_CONTAINER;
-				}));
+				})[0];
 				if (targetStructure) {
-					log.debug(`Found unprotected structure target @ ${targetPos.print}`);
+					log.debug(`Found unprotected structure target @ ${getRoomPositionPrint(targetPos)}`);
 					return targetStructure;
 				}
 			}
 		}
 
 		// Determine a "siege anchor" for what you eventually want to destroy
-		let targets: Structure[] = room.spawns;
-		if (targets.length == 0) targets = room.repairables;
-		if (targets.length == 0) targets = room.barriers;
-		if (targets.length == 0) targets = room.structures;
+		let targets: Structure[] = getRoomSpawns(room);
+		if (targets.length == 0) targets = getRoomRepairables(room);
+		if (targets.length == 0) targets = getRoomBarriers(room);
+		if (targets.length == 0) targets = getRoomStructures(room);
 		if (targets.length == 0) return;
 
 		// Recalculate approach targets
-		approach = _.map(targets, s => {
+		approach = targets.map(s => {
 			return {pos: s.pos, range: 0};
 		});
 
-		const maxWallHits = _.max(_.map(room.barriers, b => b.hits)) || 0;
+		const maxWallHits = max(getRoomBarriers(room), b => b.hits) || 0;
 		// Compute path with wall position costs weighted by fraction of highest wall
 		const ret = PathFinder.search(pos, approach, {
 			maxRooms    : 1,
@@ -222,7 +241,7 @@ export class CombatTargeting {
 			roomCallback: roomName => {
 				if (roomName != pos.roomName) return false;
 				const matrix = new PathFinder.CostMatrix();
-				for (const barrier of room.barriers) {
+				for (const barrier of getRoomBarriers(room)) {
 					const cost = 100 + Math.round((barrier.hits / maxWallHits) * 100);
 					matrix.set(barrier.pos.x, barrier.pos.y, cost);
 				}
@@ -232,11 +251,11 @@ export class CombatTargeting {
 
 		// Target the first non-road, non-container structure you find along the path
 		for (const pos of ret.path) {
-			const targetStructure = _.first(_.filter(pos.lookFor(LOOK_STRUCTURES), s => {
+			const targetStructure = pos.lookFor(LOOK_STRUCTURES).filter(s => {
 				return s.structureType != STRUCTURE_ROAD && s.structureType != STRUCTURE_CONTAINER;
-			}));
+			})[0];
 			if (targetStructure) {
-				log.debug(`Targeting structure @ ${targetStructure.pos.print}`);
+				log.debug(`Targeting structure @ ${getRoomPositionPrint(targetStructure.pos)}`);
 				return targetStructure;
 			}
 		}
@@ -246,7 +265,7 @@ export class CombatTargeting {
 										randomness = 0, displayCostMatrix = false): Structure | undefined {
 		const room = Game.rooms[roomName];
 		// Don't accidentally destroy your own shit
-		if (!room || room.my || room.reservedByMe) {
+		if (!room || isRoomMine(room) || getRoomReservedByMe(room)) {
 			return;
 		}
 		if (swarm.anchor.roomName != roomName) {
@@ -294,19 +313,19 @@ export class CombatTargeting {
 		// }
 
 		// Determine a "siege anchor" for what you eventually want to destroy
-		let targets: Structure[] = room.spawns;
-		if (targets.length == 0) targets = room.towers;
-		if (targets.length == 0) targets = room.repairables;
-		if (targets.length == 0) targets = room.barriers;
-		if (targets.length == 0) targets = room.structures;
+		let targets: Structure[] = getRoomSpawns(room);
+		if (targets.length == 0) targets = getRoomTowers(room);
+		if (targets.length == 0) targets = getRoomRepairables(room);
+		if (targets.length == 0) targets = getRoomBarriers(room);
+		if (targets.length == 0) targets = getRoomStructures(room);
 		if (targets.length == 0) return;
 
 		// Recalculate approach targets
-		const approach = _.map(targets, s => { // TODO: might need to Pathing.getPosWindow() this
+		const approach = targets.map(s => { // TODO: might need to Pathing.getPosWindow() this
 			return {pos: s.pos, range: 0};
 		});
 
-		const maxWallHits = _.max(_.map(room.barriers, b => b.hits)) || 0;
+		const maxWallHits = max(getRoomBarriers(room), b => b.hits) || 0;
 		// Compute path with wall position costs weighted by fraction of highest wall
 		const ret = PathFinder.search(swarm.anchor, approach, {
 			maxRooms    : 1,
@@ -317,7 +336,7 @@ export class CombatTargeting {
 
 				const matrix = MatrixLib.getSwarmTerrainMatrix(roomName, {plainCost: 1, swampCost: 5},
 															   swarm.width, swarm.height);
-				for (const barrier of room.barriers) {
+				for (const barrier of getRoomBarriers(room)) {
 					const randomFactor = Math.min(Math.round(randomness * Math.random()), 100);
 					const cost = 100 + Math.round((barrier.hits / maxWallHits) * 100) + randomFactor;
 					MatrixLib.setToMaxCostAfterMaxPooling(matrix, [barrier], swarm.width, swarm.height, cost);
@@ -331,14 +350,14 @@ export class CombatTargeting {
 
 		// Target the first non-road, non-container structure you find along the path or neighboring positions
 		for (const pos of ret.path) {
-			log.debug(`Searching path ${pos.print}...`);
+			log.debug(`Searching path ${getRoomPositionPrint(pos)}...`);
 			const searchPositions = Pathing.getPosWindow(pos, swarm.width, swarm.height); // not -1*width
 			for (const searchPos of searchPositions) {
-				const targetStructure = _.first(_.filter(searchPos.lookFor(LOOK_STRUCTURES), s => {
+				const targetStructure = searchPos.lookFor(LOOK_STRUCTURES).filter(s => {
 					return s.structureType != STRUCTURE_ROAD && s.structureType != STRUCTURE_CONTAINER;
-				}));
+				})[0];
 				if (targetStructure) {
-					log.debug(`Targeting structure @ ${targetStructure.pos.print}`);
+					log.debug(`Targeting structure @ ${getRoomPositionPrint(targetStructure.pos)}`);
 					return targetStructure;
 				}
 			}

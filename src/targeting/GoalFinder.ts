@@ -1,3 +1,6 @@
+import {getRoomTowers, getRoomWalls} from '../game/RoomStructures';
+import {roomPositionLookForStructure} from '../game/RoomPosition';
+import {getRoomCreeps, getRoomHostileStructures, getRoomHostiles, getRoomOwner, isRoomMine} from '../game/Room';
 import {log} from '../console/log';
 import {isCombatZerg} from '../declarations/typeGuards';
 import {CombatIntel} from '../intel/CombatIntel';
@@ -6,6 +9,7 @@ import {profile} from '../profiler/decorator';
 import {maxBy, minBy} from '../utilities/utils';
 import {CombatZerg} from '../zerg/CombatZerg';
 import {Swarm} from '../zerg/Swarm';
+import {sum, min} from '../utilities/native';
 
 
 interface SkirmishAnalysis {
@@ -43,13 +47,13 @@ export class GoalFinder {
 
 		const preferCloseCombat = myAttack > 0;
 		const myRating = CombatIntel.rating(zerg);
-		const nearbyRating = _.sum(zerg.pos.findInRange(room.creeps, 6), c => CombatIntel.rating(c));
+		const nearbyRating = sum(zerg.pos.findInRange(getRoomCreeps(room), 6), c => CombatIntel.rating(c));
 		const braveMode = zerg.hits * (nearbyRating / myRating) * .5 > zerg.hitsMax;
 
 		const hostileHealers: Creep[] = [];
 
 		// Analyze capabilities of hostile creeps in the room
-		for (const hostile of room.hostiles) {
+		for (const hostile of getRoomHostiles(room)) {
 			if (hostile.owner.username == 'Source Keeper') continue;
 
 			const attack = CombatIntel.getAttackDamage(hostile);
@@ -71,7 +75,7 @@ export class GoalFinder {
 		}
 
 		// Generate list of targets to approach and respective ranges to keep them at
-		const approachTargets = hostileHealers.length > 0 ? hostileHealers : room.hostiles;
+		const approachTargets = hostileHealers.length > 0 ? hostileHealers : getRoomHostiles(room);
 		for (const target of approachTargets) {
 			const data = analysis[target.id];
 			if (data && (data.advantage || braveMode)) {
@@ -86,13 +90,13 @@ export class GoalFinder {
 
 		// If there's nothing left to approach, group up with other creeps
 		if (approach.length == 0) {
-			for (const friendly of room.creeps) {
+			for (const friendly of getRoomCreeps(room)) {
 				approach.push({pos: friendly.pos, range: 0});
 			}
 		}
 
 		// Avoid hostiles that are significantly better than you
-		for (const target of room.hostiles) {
+		for (const target of getRoomHostiles(room)) {
 			const data = analysis[target.id];
 			if (data && (!data.advantage && !braveMode)) {
 				let range = data.isApproaching ? 3 : 2;
@@ -123,16 +127,16 @@ export class GoalFinder {
 			log.warning(`Swarm in more than 1 room!`);
 		}
 		// If in more than 1 room, pick the room with more hostile stuff in it
-		const room = maxBy(swarm.rooms, room => room.hostiles.length + room.hostileStructures.length) as Room;
+		const room = maxBy(swarm.rooms, room => getRoomHostiles(room).length + getRoomHostileStructures(room).length) as Room;
 
-		const myAttack = _.sum(swarm.creeps, creep => CombatIntel.getAttackDamage(creep));
-		const myRangedAttack = _.sum(swarm.creeps, creep => CombatIntel.getRangedAttackDamage(creep));
-		const myHealing = _.sum(swarm.creeps, creep => CombatIntel.getHealAmount(creep));
-		const myDamageMultiplier = CombatIntel.minimumDamageMultiplierForGroup(_.map(swarm.creeps, c => c.creep));
+		const myAttack = sum(swarm.creeps, creep => CombatIntel.getAttackDamage(creep));
+		const myRangedAttack = sum(swarm.creeps, creep => CombatIntel.getRangedAttackDamage(creep));
+		const myHealing = sum(swarm.creeps, creep => CombatIntel.getHealAmount(creep));
+		const myDamageMultiplier = CombatIntel.minimumDamageMultiplierForGroup(swarm.creeps.map(c => c.creep));
 
 		const preferCloseCombat = myAttack > myRangedAttack;
 
-		const myRating = _.sum(swarm.creeps, creep => CombatIntel.rating(creep));
+		const myRating = sum(swarm.creeps, creep => CombatIntel.rating(creep));
 
 		const hostileSwarms = Swarm.findEnemySwarms(room, {pos: swarm.anchor});
 
@@ -141,18 +145,18 @@ export class GoalFinder {
 
 			const hostiles = hostileSwarms[i].creeps as Creep[];
 
-			const attack = _.sum(hostiles, creep => CombatIntel.getAttackDamage(creep));
-			const rangedAttack = _.sum(hostiles, creep => CombatIntel.getRangedAttackDamage(creep));
-			const healing = _.sum(hostiles, creep => CombatIntel.getHealAmount(creep));
+			const attack = sum(hostiles, creep => CombatIntel.getAttackDamage(creep));
+			const rangedAttack = sum(hostiles, creep => CombatIntel.getRangedAttackDamage(creep));
+			const healing = sum(hostiles, creep => CombatIntel.getHealAmount(creep));
 			const damageMultiplier = CombatIntel.minimumDamageMultiplierForGroup(hostiles);
 
 			const canPopShield = (attack + rangedAttack + CombatIntel.towerDamageAtPos(swarm.anchor)) * myDamageMultiplier
-								 > _.min(_.map(swarm.creeps, creep => 100 * creep.getActiveBodyparts(TOUGH)));
+								 > min(swarm.creeps, creep => 100 * creep.getActiveBodyparts(TOUGH));
 
-			const isRetreating = _.sum(hostiles, creep => +CombatIntel.isRetreating(creep, swarm.anchor))
+			const isRetreating = sum(hostiles, creep => +CombatIntel.isRetreating(creep, swarm.anchor))
 								 / hostiles.length >= 0.5;
 
-			const isApproaching = _.sum(hostiles, creep => +CombatIntel.isApproaching(creep, swarm.anchor))
+			const isApproaching = sum(hostiles, creep => +CombatIntel.isApproaching(creep, swarm.anchor))
 								  / hostiles.length >= 0.5;
 
 			const advantage = healing == 0 || attack + rangedAttack == 0 ||
@@ -161,7 +165,7 @@ export class GoalFinder {
 
 
 			for (const hostile of hostiles) {
-				if (canPopShield && hostile.pos.lookForStructure(STRUCTURE_RAMPART)) {
+				if (canPopShield && roomPositionLookForStructure(hostile.pos, STRUCTURE_RAMPART)) {
 					let range = (rangedAttack > attack || !preferCloseCombat ? 3 : 1) + 1;
 					if (CombatIntel.isApproaching(hostile, swarm.anchor)) {
 						range += 1;
@@ -189,10 +193,10 @@ export class GoalFinder {
 
 		if (includeStructures) {
 			const approachStructures: Structure[] = [];
-			for (const structure of room.hostileStructures) {
+			for (const structure of getRoomHostileStructures(room)) {
 				approachStructures.push(structure);
 			}
-			for (const wall of room.walls) {
+			for (const wall of getRoomWalls(room)) {
 				approachStructures.push(wall);
 			}
 			for (const approachStructure of approachStructures) {
@@ -213,18 +217,18 @@ export class GoalFinder {
 		const avoid: PathFinderGoal[] = [];
 
 		const isHealer = CombatIntel.isHealer(creep);
-		for (const friendly of creep.room.creeps) {
+		for (const friendly of getRoomCreeps(creep.room)) {
 			if (CombatIntel.getHealPotential(friendly) > 0 || (isHealer && isCombatZerg(creep))) {
 				approach.push({pos: friendly.pos, range: 1});
 			}
 		}
-		for (const hostile of creep.room.hostiles) {
+		for (const hostile of getRoomHostiles(creep.room)) {
 			if (CombatIntel.getAttackPotential(hostile) > 0 || CombatIntel.getRangedAttackPotential(hostile) > 0) {
 				avoid.push({pos: hostile.pos, range: 8});
 			}
 		}
-		if (creep.room.owner && !creep.room.my) {
-			for (const tower of creep.room.towers) {
+		if (getRoomOwner(creep.room) && !isRoomMine(creep.room)) {
+			for (const tower of getRoomTowers(creep.room)) {
 				avoid.push({pos: tower.pos, range: 50});
 			}
 		}
@@ -234,13 +238,13 @@ export class GoalFinder {
 	static retreatGoalsForRoom(room: Room): { approach: PathFinderGoal[], avoid: PathFinderGoal[] } {
 		const avoid: PathFinderGoal[] = [];
 
-		for (const hostile of room.hostiles) {
+		for (const hostile of getRoomHostiles(room)) {
 			if (CombatIntel.getAttackPotential(hostile) > 0 || CombatIntel.getRangedAttackPotential(hostile) > 0) {
 				avoid.push({pos: hostile.pos, range: 8});
 			}
 		}
-		if (room.owner && !room.my) {
-			for (const tower of room.towers) {
+		if (getRoomOwner(room) && !isRoomMine(room)) {
+			for (const tower of getRoomTowers(room)) {
 				avoid.push({pos: tower.pos, range: 50});
 			}
 		}
@@ -251,10 +255,10 @@ export class GoalFinder {
 		const approach: PathFinderGoal[] = [];
 		const avoid: PathFinderGoal[] = [];
 		const healAmount = CombatIntel.getHealAmount(healer);
-		let target = minBy(_.filter(healer.room.creeps, c => c.hits < c.hitsMax),
+		let target = minBy(getRoomCreeps(healer.room).filter(c => c.hits < c.hitsMax),
 						   c => c.hits + healer.pos.getRangeTo(c));
 		if (!target) {
-			target = minBy(healer.room.creeps, creep => {
+			target = minBy(getRoomCreeps(healer.room), creep => {
 				const range = healer.pos.getRangeTo(creep);
 				return range > 0 ? CombatIntel.maxFriendlyHealingTo(creep) / healAmount + range : false;
 			});
@@ -262,7 +266,7 @@ export class GoalFinder {
 		if (target) {
 			approach.push({pos: target.pos, range: 0});
 		}
-		for (const hostile of healer.room.hostiles) {
+		for (const hostile of getRoomHostiles(healer.room)) {
 			const meleeDamage = CombatIntel.getAttackDamage(hostile);
 			const rangedDamage = CombatIntel.getRangedAttackDamage(hostile);
 			if (meleeDamage + rangedDamage > 0) {

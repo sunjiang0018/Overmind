@@ -1,3 +1,14 @@
+import {getRoomPrint} from '../game/Room';
+import {isConstructionSiteWalkable} from '../game/Miscellaneous';
+import {isStructureWalkable} from '../game/Structures';
+import {
+	getRoomPositionPrint,
+	getRoomPositionReadableName,
+	getRoomPositionRoom,
+	isPositionOnEdge,
+	roomPositionGetMultiRoomRangeTo,
+	roomPositionLookForStructure,
+} from '../game/RoomPosition';
 import {$} from '../caching/GlobalCache';
 import {Colony, getAllColonies} from '../Colony';
 import {log} from '../console/log';
@@ -7,8 +18,9 @@ import {profile} from '../profiler/decorator';
 import {packCoord, packCoordList, unpackCoordListAsPosList} from '../utilities/packrat';
 import {getCacheExpiration, onPublicServer, posFromReadableName} from '../utilities/utils';
 import {Visualizer} from '../visuals/Visualizer';
-import {RoomPlanner} from './RoomPlanner';
 import {hasRoomOverride, isDeferredTunnel, isOverrideTunnel} from './roomOverrides';
+import {RoomPlanner} from './RoomPlanner';
+import {groupBy, unique, sortBy, range, remove, compact, memoize} from '../utilities/native';
 
 export interface RoadPlannerMemory {
 	roadCoordsPacked: { [roomName: string]: string };
@@ -73,7 +85,7 @@ export class RoadPlanner {
 		// Compute coverage for each path
 		for (const destination of this.colony.destinations) {
 
-			const destName = destination.pos.readableName;
+			const destName = getRoomPositionReadableName(destination.pos);
 
 			if (!!this.memory.roadCoordsPacked[destination.pos.roomName]) {
 
@@ -110,7 +122,7 @@ export class RoadPlanner {
 
 					}
 
-					log.debug(`Recomputing road coverage from ${storagePos.print} to ${destination.pos.print}... ` +
+					log.debug(`Recomputing road coverage from ${getRoomPositionPrint(storagePos)} to ${getRoomPositionPrint(destination.pos)}... ` +
 							  `Coverage: ${JSON.stringify(roadCoverage)}`);
 				}
 
@@ -135,13 +147,13 @@ export class RoadPlanner {
 								destination: RoomPosition): { roadCount: number, length: number } | undefined {
 		const ret = Pathing.findPath(storagePos, destination, {terrainCosts: {plainCost: 2, swampCost: 10}});
 		const path = ret.path;
-		const roomNames = _.unique(_.map(path, pos => pos.roomName));
+		const roomNames = unique(path.map(pos => pos.roomName));
 		// If you have vision or cached vision of the room
-		if (_.all(roomNames, roomName => Game.rooms[roomName] || $.costMatrixRecall(roomName, MatrixTypes.default))) {
+		if (roomNames.every(roomName => Game.rooms[roomName] || $.costMatrixRecall(roomName, MatrixTypes.default))) {
 			let roadCount = 0;
 			for (const pos of path) {
 				if (Game.rooms[pos.roomName]) {
-					if (pos.lookForStructure(STRUCTURE_ROAD)) {
+					if (roomPositionLookForStructure(pos, STRUCTURE_ROAD)) {
 						roadCount++;
 					}
 				} else {
@@ -168,7 +180,7 @@ export class RoadPlanner {
 	private buildRoadNetwork(storagePos: RoomPosition, obstacles: RoomPosition[]): void {
 		this.costMatrices = {};
 		this.roadPositions = [];
-		const destinations = _.sortBy(this.colony.destinations, destination => destination.order);
+		const destinations = sortBy(this.colony.destinations, destination => destination.order);
 		// Connect commandCenter to each destination in colony
 		for (const destination of destinations) {
 			this.planRoad(storagePos, destination.pos, obstacles);
@@ -178,6 +190,9 @@ export class RoadPlanner {
 
 	// Plan a road between two locations avoiding a list of planned obstacles; pos1 should be storage for best results
 	private planRoad(pos1: RoomPosition, pos2: RoomPosition, obstacles: RoomPosition[]): void {
+		// The fixed home network already serves local destinations. Replanning them
+		// adds parallel routes back after cleanup; remote destinations still need routing.
+		if (hasRoomOverride(pos1.roomName) && pos1.roomName == pos2.roomName) return;
 		// Find the shortest path, preferentially stepping on tiles with road routing flags on them
 		const roadPath = this.generateRoadPath(pos1, pos2, obstacles);
 		if (roadPath) {
@@ -219,15 +234,15 @@ export class RoadPlanner {
 		const room = Game.rooms[roomName];
 		if (room) {
 			const impassibleStructures: Structure[] = [];
-			_.forEach(room.find(FIND_STRUCTURES), (s: Structure) => {
-				if (!s.isWalkable) {
+			room.find(FIND_STRUCTURES).forEach((s: Structure) => {
+				if (!isStructureWalkable(s)) {
 					impassibleStructures.push(s);
 				}
 			});
-			_.forEach(impassibleStructures, s => matrix.set(s.pos.x, s.pos.y, 0xff));
+			impassibleStructures.forEach(s => matrix.set(s.pos.x, s.pos.y, 0xff));
 			// Set passability of construction sites
-			_.forEach(room.find(FIND_MY_CONSTRUCTION_SITES), (site: ConstructionSite) => {
-				if (!site.isWalkable) {
+			room.find(FIND_MY_CONSTRUCTION_SITES).forEach((site: ConstructionSite) => {
+				if (!isConstructionSiteWalkable(site)) {
 					matrix.set(site.pos.x, site.pos.y, 0xff);
 				}
 			});
@@ -262,9 +277,9 @@ export class RoadPlanner {
 
 		// Reduce the cost of planned paths to encourage road overlap for future pathing
 		if (RoadPlanner.settings.encourageRoadMerging) {
-			for (const i of _.range(ret.path.length)) {
+			for (const i of range(ret.path.length)) {
 				const pos = ret.path[i];
-				if (i % 2 == 0 && this.costMatrices[pos.roomName] && !pos.isEdge) {
+				if (i % 2 == 0 && this.costMatrices[pos.roomName] && !isPositionOnEdge(pos)) {
 					this.costMatrices[pos.roomName].set(pos.x, pos.y, EXISTING_PATH_COST);
 				}
 			}
@@ -276,13 +291,13 @@ export class RoadPlanner {
 	/* Ensure that the roads doesn't overlap with roads from this.map and that the positions are unique */
 	private formatRoadPositions(): void {
 		// Make road position list unique
-		this.roadPositions = _.unique(this.roadPositions);
+		this.roadPositions = unique(this.roadPositions);
 		// Remove roads located on exit tiles
-		_.remove(this.roadPositions, pos => pos.isEdge);
+		remove(this.roadPositions, pos => isPositionOnEdge(pos));
 		// Remove any roads duplicated in this.map
 		const roomPlannerRoads = this.roomPlanner.plannedStructurePositions(STRUCTURE_ROAD);
 		if (roomPlannerRoads != undefined) {
-			_.remove(this.roadPositions, pos => roomPlannerRoads!.includes(pos));
+			remove(this.roadPositions, pos => roomPlannerRoads!.includes(pos));
 		}
 	}
 
@@ -290,22 +305,22 @@ export class RoadPlanner {
 	finalize(): void {
 		// Collect all roads from this and from room planner
 		let roomPlannerRoads: RoomPosition[];
-		if (_.keys(this.roomPlanner.map).length > 0) { // use active map
+		if (Object.keys(this.roomPlanner.map ?? {}).length > 0) { // use active map
 			roomPlannerRoads = this.roomPlanner.map[STRUCTURE_ROAD];
 		} else { // retrieve from memory
 			if (this.roomPlanner.memory.bunkerData && this.roomPlanner.memory.bunkerData.anchor) {
 				const layout = this.roomPlanner.getStructureMapForBunkerAt(this.roomPlanner.memory.bunkerData.anchor);
 				roomPlannerRoads = layout[STRUCTURE_ROAD];
 			} else if (this.roomPlanner.memory.mapsByLevel) {
-				roomPlannerRoads = _.map(this.roomPlanner.memory.mapsByLevel[8][STRUCTURE_ROAD],
+				roomPlannerRoads = (this.roomPlanner.memory.mapsByLevel[8][STRUCTURE_ROAD] || []).map(
 										 protoPos => derefRoomPosition(protoPos));
 			} else {
-				log.error(`RoadPlanner@${this.colony.room.print}: could not get road positions from room planner!`);
+				log.error(`RoadPlanner@${getRoomPrint(this.colony.room)}: could not get road positions from room planner!`);
 				roomPlannerRoads = [];
 			}
 		}
-		const allRoadPos: RoomPosition[] = _.compact(this.roadPositions.concat(roomPlannerRoads));
-		const allRoadPosByRoomName = _.groupBy(allRoadPos, pos => pos.roomName);
+		const allRoadPos: RoomPosition[] = compact(this.roadPositions.concat(roomPlannerRoads));
+		const allRoadPosByRoomName = groupBy(allRoadPos, pos => pos.roomName);
 		this.memory.roadCoordsPacked = {};
 		for (const roomName in allRoadPosByRoomName) {
 			this.memory.roadCoordsPacked[roomName] = packCoordList(allRoadPosByRoomName[roomName]);
@@ -317,8 +332,8 @@ export class RoadPlanner {
 	}
 
 	static shouldBuild(structureType: BuildableStructureConstant, pos: RoomPosition): boolean {
-		if (!pos.room) return false;
-		const buildings = _.filter(pos.lookFor(LOOK_STRUCTURES), s => s && s.structureType == structureType);
+		if (!getRoomPositionRoom(pos)) return false;
+		const buildings = pos.lookFor(LOOK_STRUCTURES).filter(s => s && s.structureType == structureType);
 		const sites = pos.lookFor(LOOK_CONSTRUCTION_SITES);
 		if (!buildings || buildings.length == 0) {
 			if (!sites || sites.length == 0) {
@@ -339,14 +354,14 @@ export class RoadPlanner {
 				unpackCoordListAsPosList(this.memory.roadCoordsPacked[roomName], roomName));
 		}
 		const origin = (this.colony.storage || this.colony.hatchery || this.colony).pos;
-		roadPositions = _.sortBy(roadPositions, pos => pos.getMultiRoomRangeTo(origin));
+		roadPositions = sortBy(roadPositions, pos => roomPositionGetMultiRoomRangeTo(pos, origin));
 		let needsRoad = false;
 		for (const pos of roadPositions) {
 			if (isDeferredTunnel(pos)) continue;
-			if (!pos.room) {
+			if (!getRoomPositionRoom(pos)) {
 				continue; // can't check if there is a road here if you can't see the room
 			}
-			const road = pos.lookForStructure(STRUCTURE_ROAD);
+			const road = roomPositionLookForStructure(pos, STRUCTURE_ROAD);
 			if (!road) {
 				needsRoad = true;
 				if (count > 0) {
@@ -354,7 +369,7 @@ export class RoadPlanner {
 					if (ret != OK) {
 						if (ret == ERR_NOT_OWNER) {
 							if (Game.time % 50 == 0) {
-								log.warning(`${this.colony.print}: couldn't create road site at ${pos.print}; room ` +
+								log.warning(`${this.colony.print}: couldn't create road site at ${getRoomPositionPrint(pos)}; room ` +
 											`is reserved/owned by hostile forces!`);
 							}
 						} else if (ret == ERR_FULL) {
@@ -362,11 +377,11 @@ export class RoadPlanner {
 							// you're already at max placed sites searches through EVERY SINGLE GAME OBJECT you have
 							// access to, which is quite expensive! Don't try to make a bunch more of these or you'll
 							// murder your CPU.
-							log.warning(`${this.colony.print}: couldn't create road site at ${pos.print}, too many ` +
+							log.warning(`${this.colony.print}: couldn't create road site at ${getRoomPositionPrint(pos)}, too many ` +
 										`construction sites!`);
 							break;
 						} else {
-							log.warning(`${this.colony.print}: couldn't create road site at ${pos.print} (${ret})`);
+							log.warning(`${this.colony.print}: couldn't create road site at ${getRoomPositionPrint(pos)} (${ret})`);
 						}
 					} else {
 						count--;
@@ -384,8 +399,8 @@ export class RoadPlanner {
 	 */
 	roadShouldBeHere(pos: RoomPosition): boolean {
 		if (this._roadLookup == undefined) {
-			this._roadLookup = _.memoize(
-				(p: RoomPosition) => (this.memory.roadCoordsPacked[p.roomName] || '').includes(packCoord(p)));
+			this._roadLookup = memoize((p: RoomPosition) =>
+				(this.memory.roadCoordsPacked[p.roomName] || '').includes(packCoord(p)));
 		}
 		return this._roadLookup(pos);
 	}

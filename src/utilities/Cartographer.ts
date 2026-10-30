@@ -1,5 +1,6 @@
 import {log} from '../console/log';
 import {profile} from '../profiler/decorator';
+import {flatten} from './native';
 
 export const ROOMTYPE_SOURCEKEEPER = 'SK';
 export const ROOMTYPE_CORE = 'CORE';
@@ -22,7 +23,7 @@ export class Cartographer {
 	 * Lists all rooms up to and including a given distance away, including roomName
 	 */
 	static findRoomsInRange(roomName: string, depth: number): string[] {
-		return _.flatten(_.values(this.recursiveRoomSearch(roomName, depth)));
+		return flatten(Object.values(this.recursiveRoomSearch(roomName, depth) ?? {}));
 	}
 
 	/**
@@ -58,7 +59,7 @@ export class Cartographer {
 		} else {
 			visited[roomName] = Math.min(depth, visited[roomName]);
 		}
-		const neighbors = _.values(Game.map.describeExits(roomName)) as string[];
+		const neighbors = Object.values(Game.map.describeExits(roomName) ?? {}) as string[];
 		if (depth < maxDepth) {
 			for (const neighbor of neighbors) {
 				// Visit the neighbor if not already done or if this would be a more direct route

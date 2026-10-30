@@ -1,3 +1,4 @@
+import {getRoomPrint} from '../game/Room';
 import {Colony, getAllColonies} from '../Colony';
 import {maxMarketPrices, TraderJoe} from '../logistics/TradeNetwork';
 import {profile} from '../profiler/decorator';
@@ -16,6 +17,7 @@ import {
 	INTERMEDIATE_REACTANTS,
 	REAGENTS
 } from './map_resources';
+import {range, isEmpty} from '../utilities/native';
 
 export const REACTION_PRIORITIES = [
 
@@ -240,11 +242,11 @@ export class Abathur {
 	static getNextReaction(colony: Colony): Reaction | undefined {
 		const BATCH_SIZE = Abathur.settings.batchSize;
 		const globalAssets = Overmind.terminalNetwork.getAssets();
-		const numColonies = _.filter(getAllColonies(), colony => !!colony.terminal).length;
+		const numColonies = getAllColonies().filter(colony => !!colony.terminal).length;
 
 		let possibleReactions = REACTION_PRIORITIES;
 		if (colony.labs.length < 10) { // don't make the really long cooldown stuff if you don't have all labs
-			possibleReactions = _.filter(possibleReactions,
+			possibleReactions = possibleReactions.filter(
 										 resource => ((<any>REACTION_TIME)[resource] || Infinity) <= 30);
 		}
 
@@ -254,9 +256,9 @@ export class Abathur {
 		const ingredientsUnavailable: { [resource: string]: boolean } = {}; // track what we can't make to save CPU
 		const maxAmountOfEachBoostPerColony = 50000;
 		const maxBatches = Math.ceil(maxAmountOfEachBoostPerColony / BATCH_SIZE);
-		for (const batchNum of _.range(1, maxBatches)) {
+		for (const batchNum of range(1, maxBatches)) {
 
-			nextTargetResource = _.find(possibleReactions, resource => {
+			nextTargetResource = possibleReactions.find(resource => {
 
 				// If we've already figured out we can't make this in a previous pass then skip it
 				if (ingredientsUnavailable[resource]) return false;
@@ -341,7 +343,7 @@ export class Abathur {
 	}
 
 	private static someColonyHasExcess(mineralType: ResourceConstant, excessAmount = 0): boolean {
-		return _.any(getAllColonies(), colony => Abathur.hasExcess(colony, mineralType, excessAmount));
+		return getAllColonies().some(colony => Abathur.hasExcess(colony, mineralType, excessAmount));
 	}
 
 	/**
@@ -359,7 +361,7 @@ export class Abathur {
 																	 amountNeeded - amountOwned, verbose);
 
 					const missingBaseMinerals = Abathur.getMissingBasicMinerals(colony, reactionQueue);
-					if (!_.any(missingBaseMinerals)
+					if (!Object.values(missingBaseMinerals).some(Boolean)
 						|| this.canReceiveBasicMineralsForReaction(missingBaseMinerals, amountNeeded + 1000)
 						|| this.canBuyBasicMineralsForReaction(missingBaseMinerals)) {
 						return reactionQueue;
@@ -380,7 +382,7 @@ export class Abathur {
 	private static buildReactionQueue(colony: Colony, mineral: ResourceConstant, amount: number,
 									  verbose = false): Reaction[] {
 		amount = Abathur.settings.batchSize; // minMax(amount, Abathur.settings.minBatchSize, Abathur.settings.maxBatchSize);
-		if (verbose) console.log(`Abathur@${colony.room.print}: building reaction queue for ${amount} ${mineral}`);
+		if (verbose) console.log(`Abathur@${getRoomPrint(colony.room)}: building reaction queue for ${amount} ${mineral}`);
 		let reactionQueue: Reaction[] = [];
 		for (const ingredient of Abathur.enumerateReactionProducts(mineral)) {
 			let productionAmount = amount;
@@ -396,7 +398,7 @@ export class Abathur {
 		if (verbose) console.log(`Pre-trim queue: ${JSON.stringify(reactionQueue)}`);
 		reactionQueue = Abathur.trimReactionQueue(reactionQueue);
 		if (verbose) console.log(`Post-trim queue: ${JSON.stringify(reactionQueue)}`);
-		reactionQueue = _.filter(reactionQueue, rxn => rxn.amount > 0);
+		reactionQueue = reactionQueue.filter(rxn => rxn.amount > 0);
 		if (verbose) console.log(`Final queue: ${JSON.stringify(reactionQueue)}`);
 		return reactionQueue;
 	}
@@ -409,8 +411,8 @@ export class Abathur {
 		reactionQueue.reverse();
 		for (const reaction of reactionQueue) {
 			const [ing1, ing2] = REAGENTS[reaction.mineralType];
-			const precursor1 = _.findIndex(reactionQueue, rxn => rxn.mineralType == ing1);
-			const precursor2 = _.findIndex(reactionQueue, rxn => rxn.mineralType == ing2);
+			const precursor1 = reactionQueue.findIndex(rxn => rxn.mineralType == ing1);
+			const precursor2 = reactionQueue.findIndex(rxn => rxn.mineralType == ing2);
 			for (const index of [precursor1, precursor2]) {
 				if (index != -1) {
 					if (reactionQueue[index].amount == 0) {
@@ -472,7 +474,7 @@ export class Abathur {
 	 * Recursively generate a list of outputs from reactions required to generate a compound
 	 */
 	private static enumerateReactionProducts(mineral: ResourceConstant): ResourceConstant[] {
-		if (!REAGENTS[mineral] || _.isEmpty(mineral)) {
+		if (!REAGENTS[mineral] || isEmpty(mineral)) {
 			return [];
 		} else {
 			return Abathur.enumerateReactionProducts(REAGENTS[mineral][0])

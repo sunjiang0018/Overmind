@@ -1,3 +1,4 @@
+import {isRoomMine} from '../../game/Room';
 import {log} from '../../console/log';
 import {ExtractorOverlord} from '../../overlords/mining/extractor';
 import {OverlordPriority} from '../../priorities/priorities_overlords';
@@ -27,7 +28,7 @@ export class DirectiveExtract extends Directive {
 
 	spawnMoarOverlords() {
 		let priority: number;
-		if (this.room && this.room.my) {
+		if (this.room && isRoomMine(this.room)) {
 			if (this.colony.level == 8) {
 				priority = OverlordPriority.ownedRoom.mineralRCL8;
 			} else {

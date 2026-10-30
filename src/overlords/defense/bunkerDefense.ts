@@ -1,3 +1,5 @@
+import {getRoomHostiles} from '../../game/Room';
+import {getRoomWalkableRamparts} from '../../game/RoomStructures';
 import {log} from '../../console/log';
 import {CombatCreepSetup} from '../../creepSetups/CombatCreepSetup';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
@@ -29,12 +31,12 @@ export class BunkerDefenseOverlord extends CombatOverlord {
 
 	private handleDefender(lurker: CombatZerg): void {
 		if (!lurker.inRampart) {
-			const nearbyRampart = _.find(lurker.room.walkableRamparts, rampart => rampart.pos.getRangeTo(lurker) < 5);
+			const nearbyRampart = getRoomWalkableRamparts(lurker.room).find(rampart => rampart.pos.getRangeTo(lurker) < 5);
 			if (nearbyRampart) {
 				lurker.goTo(nearbyRampart);
 			}
 		}
-		if (lurker.room.hostiles.length > 0) {
+		if (getRoomHostiles(lurker.room).length > 0) {
 			lurker.autoBunkerCombat(lurker.room.name);
 		} else {
 			// go out of way in bunker

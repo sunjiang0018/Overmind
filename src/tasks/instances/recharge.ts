@@ -1,3 +1,11 @@
+import {getRoomRechargeables, getRoomSources} from '../../game/RoomStructures';
+import {
+	roomPositionAvailableNeighbors,
+	roomPositionFindClosestByMultiRoomRange,
+	roomPositionGetMultiRoomRangeTo,
+} from '../../game/RoomPosition';
+import {getTargetedBy} from '../../game/RoomObject';
+import {getStoredEnergy} from '../../game/Structures';
 import {ColonyStage} from '../../Colony';
 import {log} from '../../console/log';
 import {isResource} from '../../declarations/typeGuards';
@@ -8,6 +16,7 @@ import {Task} from '../Task';
 import {TaskHarvest} from './harvest';
 import {pickupTaskName, TaskPickup} from './pickup';
 import {TaskWithdraw, withdrawTaskName} from './withdraw';
+import {sum, compactMap} from '../../utilities/native';
 
 export type rechargeTargetType = HasRef & HasPos;  // This is handled better in the Tasks.recharge() dispatcher
 // export type rechargeTargetType = null;
@@ -32,12 +41,12 @@ export class TaskRecharge extends Task<rechargeTargetType> {
 			&& creep.roleName != 'queen') {
 			if (creep.colony.stage == ColonyStage.Larva) {
 				const MINIMUM_BATTERY_THRESHOLD = 1500;
-				if (_.any(creep.colony.hatchery.batteries,
-						  battery => battery.id == obj.id && battery.energy < MINIMUM_BATTERY_THRESHOLD)) {
+				if (creep.colony.hatchery.batteries.some(
+						  battery => battery.id == obj.id && getStoredEnergy(battery) < MINIMUM_BATTERY_THRESHOLD)) {
 					return false; // at low levels allow others to use hatchery battery if it is almost full
 				}
 			} else {
-				if (_.any(creep.colony.hatchery.batteries, battery => battery.id == obj.id)) {
+				if (creep.colony.hatchery.batteries.some(battery => battery.id == obj.id)) {
 					return false; // only queens can use the hatchery batteries
 				}
 			}
@@ -45,10 +54,11 @@ export class TaskRecharge extends Task<rechargeTargetType> {
 
 		// Don't allow workers to withdraw from mining containers at lower levels
 		if (creep.colony && creep.colony.stage == ColonyStage.Larva && creep.roleName == 'worker') {
-			const miningSiteContainers = _.compact(_.map(creep.colony.miningSites, site => site.overlords.mine.container));
+			const miningSiteContainers = compactMap(Object.values(creep.colony.miningSites),
+												site => site.overlords.mine.container) as StructureContainer[];
 			// if this is a mining site container, don't let creeps withdraw from it unless it is sort of full
 			const CONTAINER_THRESHOLD = 1000;
-			if (_.any(miningSiteContainers, (c: StructureContainer) => c.id == obj.id && c.energy < CONTAINER_THRESHOLD)) {
+			if (miningSiteContainers.some((c: StructureContainer) => c.id == obj.id && getStoredEnergy(c) < CONTAINER_THRESHOLD)) {
 				return false;
 			}
 		}
@@ -59,13 +69,13 @@ export class TaskRecharge extends Task<rechargeTargetType> {
 		}
 
 		// TODO: generalize this into a getPredictedStore function which includes all targeting creeps
-		const otherTargeters = _.filter(_.map(obj.targetedBy, name => Overmind.zerg[name]),
+		const otherTargeters = (getTargetedBy(obj) || []).map(name => Overmind.zerg[name]).filter(
 										zerg => !!zerg && zerg.task
 												&& (zerg.task.name == withdrawTaskName || zerg.task.name == pickupTaskName));
 
-		const resourceOutflux = _.sum(_.map(otherTargeters, other => other.store.getFreeCapacity()));
+		const resourceOutflux = sum(otherTargeters, other => other.store.getFreeCapacity());
 		amount = minMax(amount - resourceOutflux, 0, creep.carryCapacity);
-		const effectiveAmount = amount / (creep.pos.getMultiRoomRangeTo(obj.pos) + 1);
+		const effectiveAmount = amount / (roomPositionGetMultiRoomRangeTo(creep.pos, obj.pos) + 1);
 		if (effectiveAmount <= 0) {
 			return false;
 		} else {
@@ -81,21 +91,21 @@ export class TaskRecharge extends Task<rechargeTargetType> {
 		}
 		// Choose the target to maximize your energy gain subject to other targeting workers
 		const possibleTargets = creep.colony && creep.inColonyRoom ? creep.colony.rechargeables
-																   : creep.room.rechargeables;
+																   : getRoomRechargeables(creep.room);
 
 		const target = maxBy(possibleTargets, o => this.rechargeRateForCreep(creep, o));
-		if (!target || creep.pos.getMultiRoomRangeTo(target.pos) > 40) {
+		if (!target || roomPositionGetMultiRoomRangeTo(creep.pos, target.pos) > 40) {
 			// workers shouldn't harvest; let drones do it (disabling this check can destabilize early economy)
 			const canHarvest = creep.getActiveBodyparts(WORK) > 0 && creep.roleName != 'worker';
 			if (canHarvest) {
 				// Harvest from a source if there is no recharge target available
-				const availableSources = _.filter(creep.room.sources, function(source) {
+				const availableSources = getRoomSources(creep.room).filter(function(source) {
 					const filledSource = source.energy > 0 || source.ticksToRegeneration < 20;
 					// Only harvest from sources which aren't surrounded by creeps excluding yourself
-					const isSurrounded = source.pos.availableNeighbors(false).length == 0;
+					const isSurrounded = roomPositionAvailableNeighbors(source.pos, false).length == 0;
 					return filledSource && (!isSurrounded || creep.pos.isNearTo(source));
 				});
-				const availableSource = creep.pos.findClosestByMultiRoomRange(availableSources);
+				const availableSource = roomPositionFindClosestByMultiRoomRange(creep.pos, availableSources);
 				if (availableSource) {
 					creep.task = new TaskHarvest(availableSource);
 					return;

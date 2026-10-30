@@ -1,3 +1,5 @@
+import {getTargetedBy} from '../../game/RoomObject';
+import {getStoredEnergy, isControllerSignedByMe, isControllerSignedByScreeps} from '../../game/Structures';
 import {Roles, Setups} from '../../creepSetups/setups';
 import {UpgradeSite} from '../../hiveClusters/upgradeSite';
 import {OverlordPriority} from '../../priorities/priorities_overlords';
@@ -73,8 +75,8 @@ export class UpgradingOverlord extends Overlord {
 				return;
 			}
 			// Sign controller if needed
-			if (!this.upgradeSite.controller.signedByMe &&
-				!this.upgradeSite.controller.signedByScreeps) {
+			if (!isControllerSignedByMe(this.upgradeSite.controller) &&
+				!isControllerSignedByScreeps(this.upgradeSite.controller)) {
 				upgrader.task = Tasks.signController(this.upgradeSite.controller);
 				return;
 			}
@@ -83,12 +85,12 @@ export class UpgradingOverlord extends Overlord {
 			// Recharge from link or battery
 			if (this.upgradeSite.link && this.upgradeSite.link.energy > 0) {
 				upgrader.task = Tasks.withdraw(this.upgradeSite.link);
-			} else if (this.upgradeSite.battery && this.upgradeSite.battery.energy > 0) {
+			} else if (this.upgradeSite.battery && getStoredEnergy(this.upgradeSite.battery) > 0) {
 				upgrader.task = Tasks.withdraw(this.upgradeSite.battery);
 			}
 			// Find somewhere else to recharge from
 			else { // TODO: BUG HERE IF NO UPGRADE CONTAINER
-				if (this.upgradeSite.battery && this.upgradeSite.battery.targetedBy.length == 0) {
+				if (this.upgradeSite.battery && getTargetedBy(this.upgradeSite.battery).length == 0) {
 					upgrader.task = Tasks.recharge();
 				}
 			}

@@ -3,6 +3,7 @@
 import {Colony} from '../../Colony';
 import {packCoord} from '../../utilities/packrat';
 import {getAllStructureCoordsFromLayout, StructureLayout} from '../RoomPlanner';
+import {mapValues, zipObject} from '../../utilities/native';
 
 
 export const BUNKER_RADIUS = 6;
@@ -475,11 +476,10 @@ for (let rcl of [1, 2, 3, 4, 5, 6, 7, 8]) {
 }
 export const allBunkerCoords = _allBunkerCoords;
 
-export const bunkerCoordLookup = _.mapValues(_allBunkerCoords,
+export const bunkerCoordLookup = mapValues(_allBunkerCoords,
 											 (coordArr: Coord[]) =>
-												 _.zipObject(_.map(coordArr,
-																   c => [packCoord(c), true])
-												 )) as { [rcl: number]: { [coordName: string]: true | undefined } };
+												 zipObject(coordArr.map(
+																   c => [packCoord(c), true]))) as { [rcl: number]: { [coordName: string]: true | undefined } };
 
 // Fast function for checking if a position is inside the bunker
 export function insideBunkerBounds(pos: RoomPosition, colony: Colony): boolean {

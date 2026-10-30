@@ -1,6 +1,7 @@
-import {DirectiveOutpost} from '../directives/colony/outpost';
-import {DirectiveSKOutpost} from '../directives/colony/outpostSK';
-import {profile} from '../profiler/decorator';
+import { DirectiveOutpost } from '../directives/colony/outpost';
+import { DirectiveSKOutpost } from '../directives/colony/outpostSK';
+import { profile } from '../profiler/decorator';
+import {groupBy} from '../utilities/native';
 
 /**
  * GameCache does initial low-level preprocessing before each tick is run
@@ -17,12 +18,12 @@ export class GameCache implements ICache {
 		this.overlords = {};
 		this.creepsByColony = {};
 		this.targets = {};
-		this.outpostFlags = _.filter(Game.flags, flag => DirectiveOutpost.filter(flag)
-														 || DirectiveSKOutpost.filter(flag));
+		this.outpostFlags = Object.values(Game.flags ?? {}).filter(flag => DirectiveOutpost.filter(flag)
+			|| DirectiveSKOutpost.filter(flag));
 	}
 
 	private cacheCreepsByColony() {
-		this.creepsByColony = _.groupBy(Game.creeps, creep => creep.memory[MEM.COLONY]);
+		this.creepsByColony = groupBy(Object.values(Game.creeps ?? {}), creep => creep.memory[MEM.COLONY]);
 	}
 
 	/**
@@ -31,14 +32,14 @@ export class GameCache implements ICache {
 	private cacheOverlords() {
 		this.overlords = {};
 		// keys: overlordRef, value: creepNames[]
-		const creepNamesByOverlord = _.groupBy(_.keys(Game.creeps),
-											   name => Game.creeps[name].memory[MEM.OVERLORD]);
-		const powerCreepNamesByOverlord = _.groupBy(_.keys(Game.powerCreeps),
-													name => Game.powerCreeps[name].memory[MEM.OVERLORD]);
+		const creepNamesByOverlord = groupBy(Object.keys(Game.creeps ?? {}),
+			name => Game.creeps[name].memory[MEM.OVERLORD]);
+		const powerCreepNamesByOverlord = groupBy(Object.keys(Game.powerCreeps ?? {}),
+			name => Game.powerCreeps[name].memory[MEM.OVERLORD]);
 		for (const ref in creepNamesByOverlord) {
 			// keys: roleName, value: creepNames[]
-			this.overlords[ref] = _.groupBy(creepNamesByOverlord[ref],
-											name => (Game.creeps[name] || Game.powerCreeps[name]).memory.role);
+			this.overlords[ref] = groupBy(creepNamesByOverlord[ref],
+				name => (Game.creeps[name] || Game.powerCreeps[name]).memory.role);
 		}
 	}
 

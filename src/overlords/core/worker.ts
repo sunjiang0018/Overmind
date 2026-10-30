@@ -1,3 +1,8 @@
+import {isControllerSignedByMe, isControllerSignedByScreeps} from '../../game/Structures';
+import {getTargetedBy} from '../../game/RoomObject';
+import {roomPositionFindClosestByMultiRoomRange} from '../../game/RoomPosition';
+import {getRoomDangerousHostiles, getRoomFleeDefaults} from '../../game/Room';
+import {getRoomBarriers, getRoomRamparts} from '../../game/RoomStructures';
 import {$} from '../../caching/GlobalCache';
 import {Colony, ColonyStage, DEFCON} from '../../Colony';
 import {CreepSetup} from '../../creepSetups/CreepSetup';
@@ -17,6 +22,7 @@ import {minBy} from '../../utilities/utils';
 import {Visualizer} from '../../visuals/Visualizer';
 import {Zerg} from '../../zerg/Zerg';
 import {Overlord} from '../Overlord';
+import {groupBy, sortBy, sum, remove, max, min} from '../../utilities/native';
 
 /**
  * Spawns general-purpose workers, which maintain a colony, performing actions such as building, repairing, fortifying,
@@ -60,16 +66,16 @@ export class WorkerOverlord extends Overlord {
 			(hasRoomOverride(colony.name) ? 50000 : WorkerOverlord.settings.barrierHits.critical));
 		// Compute barriers needing fortification or critical attention
 		this.fortifyBarriers = $.structures(this, 'fortifyBarriers', () =>
-			_.sortBy(_.filter(this.room.barriers, s =>
+			sortBy(getRoomBarriers(this.room).filter(s =>
 				s.hits < barrierTarget
 				&& this.colony.roomPlanner.barrierPlanner.barrierShouldBeHere(s.pos)
 			), s => s.hits), 25);
 		this.criticalBarriers = $.structures(this, 'criticalBarriers', () =>
-			_.filter(this.fortifyBarriers,
+			this.fortifyBarriers.filter(
 					 barrier => barrier.hits < criticalTarget), 10);
 		// Generate a list of structures needing repairing (different from fortifying except in critical case)
 		this.repairStructures = $.structures(this, 'repairStructures', () =>
-			_.filter(this.colony.repairables, structure => {
+			this.colony.repairables.filter(structure => {
 				if (structure.structureType == STRUCTURE_CONTAINER) {
 					// only repair containers in owned room
 					if (structure.pos.roomName == this.colony.name) {
@@ -88,7 +94,7 @@ export class WorkerOverlord extends Overlord {
 		// Filter constructionSites to only build valid ones
 		const room = this.colony.room as any;
 		const level = this.colony.controller.level;
-		this.constructionSites = _.filter(this.colony.constructionSites, function(site) {
+		this.constructionSites = this.colony.constructionSites.filter(function(site) {
 			if (site.structureType == STRUCTURE_ROAD && isDeferredTunnel(site.pos)) return false;
 			// If site will be more than max amount of a structure at current level, ignore (happens after downgrade)
 			const structureAmount = room[site.structureType + 's'] ? room[site.structureType + 's'].length :
@@ -106,7 +112,7 @@ export class WorkerOverlord extends Overlord {
 				if (site.pos.roomName != homeRoomName
 					&& Cartographer.roomType(site.pos.roomName) == ROOMTYPE_CONTROLLER) {
 					return site.structureType != STRUCTURE_CONTAINER &&
-						   !(site.room && site.room.dangerousHostiles.length > 0);
+						   !(site.room && getRoomDangerousHostiles(site.room).length > 0);
 				} else {
 					return true;
 				}
@@ -117,7 +123,7 @@ export class WorkerOverlord extends Overlord {
 		this.nukeDefenseRamparts = [];
 		this.nukeDefenseHitsRemaining = {};
 		if (this.room.find(FIND_NUKES).length > 0) {
-			for (const rampart of this.colony.room.ramparts) {
+			for (const rampart of getRoomRamparts(this.colony.room)) {
 				const neededHits = this.neededRampartHits(rampart);
 				if (rampart.hits < neededHits && rampart.pos.findInRange(FIND_NUKES, 2).length > 0
 					&& DirectiveNukeResponse.shouldReinforceLocation(rampart.pos)) {
@@ -130,8 +136,8 @@ export class WorkerOverlord extends Overlord {
 		}
 
 		// Spawn boosted workers if there is significant fortifying which needs to be done
-		const totalNukeDefenseHitsRemaining = _.sum(_.values(this.nukeDefenseHitsRemaining));
-		const totalFortifyHitsRemaining = _.sum(this.fortifyBarriers, barrier =>
+		const totalNukeDefenseHitsRemaining = sum(Object.values(this.nukeDefenseHitsRemaining ?? {}));
+		const totalFortifyHitsRemaining = sum(this.fortifyBarriers, barrier =>
 			Math.max(barrierTarget - barrier.hits, 0));
 		const approxRepairAmountPerLifetime = REPAIR_POWER * 50 / 3 * CREEP_LIFE_TIME;
 		if (totalNukeDefenseHitsRemaining > 3 * approxRepairAmountPerLifetime ||
@@ -177,15 +183,15 @@ export class WorkerOverlord extends Overlord {
 			numWorkers = $.number(this, 'numWorkers', () => {
 				// At lower levels, try to saturate the energy throughput of the colony
 				const MAX_WORKERS = 30; // Maximum number of workers to spawn
-				const energyMinedPerTick = _.sum(_.map(this.colony.miningSites, function(site) {
+				const energyMinedPerTick = sum(Object.values(this.colony.miningSites).map(function(site) {
 					const overlord = site.overlords.mine;
-					const miningPowerAssigned = _.sum(overlord.miners, miner => miner.getActiveBodyparts(WORK));
+					const miningPowerAssigned = sum(overlord.miners, (miner: Zerg) => miner.getActiveBodyparts(WORK));
 					const saturation = Math.min(miningPowerAssigned / overlord.miningPowerNeeded, 1);
 					return overlord.energyPerTick * saturation;
 				}));
 				const transporterSaturation = Math.min(this.colony.overlords.logistics.memory.transporterSaturation, 1);
 				// Average energy per tick when working
-				const energySpentPerTickPerWorkPart = _.filter(this.colony.constructionSites,
+				const energySpentPerTickPerWorkPart = this.colony.constructionSites.filter(
 															   s => s.structureType != STRUCTURE_ROAD).length > 0 ? BUILD_POWER : 1;
 				const energyPerTickPerWorker = workPartsPerWorker * energySpentPerTickPerWorkPart;
 				const workerUptime = 1.0;
@@ -207,17 +213,17 @@ export class WorkerOverlord extends Overlord {
 					if (this.nukeDefenseRamparts.length > 0) {
 						return MAX_WORKERS;
 					}
-					const buildTicks = _.sum(this.constructionSites,
+					const buildTicks = sum(this.constructionSites,
 											 site => Math.max(site.progressTotal - site.progress, 0)) / BUILD_POWER;
-					const repairTicks = _.sum(this.repairStructures,
+					const repairTicks = sum(this.repairStructures,
 											  structure => structure.hitsMax - structure.hits) / REPAIR_POWER;
-					const activeRooms = _.filter(this.colony.roomNames, roomName => this.colony.isRoomActive(roomName));
-					const paveTicks = _.sum(activeRooms,
+					const activeRooms = this.colony.roomNames.filter(roomName => this.colony.isRoomActive(roomName));
+					const paveTicks = sum(activeRooms,
 											roomName => this.colony.roadLogistics.energyToRepave(roomName));
 					let fortifyTicks = 0;
 					const shouldFortify = this.colony.assets.energy > WorkerOverlord.settings.fortifyDutyThreshold;
 					if (shouldFortify) {
-						fortifyTicks = 0.25 * _.sum(this.fortifyBarriers, barrier =>
+						fortifyTicks = 0.25 * sum(this.fortifyBarriers, barrier =>
 							Math.max(0, this.barrierTarget
 										- barrier.hits)) / REPAIR_POWER;
 					}
@@ -273,7 +279,7 @@ export class WorkerOverlord extends Overlord {
 	}
 
 	private repairActions(worker: Zerg): boolean {
-		const target = worker.pos.findClosestByMultiRoomRange(this.repairStructures);
+		const target = roomPositionFindClosestByMultiRoomRange(worker.pos, this.repairStructures);
 		if (target) {
 			worker.task = Tasks.repair(target);
 			return true;
@@ -283,10 +289,10 @@ export class WorkerOverlord extends Overlord {
 	}
 
 	private buildActions(worker: Zerg): boolean {
-		const groupedSites = _.groupBy(this.constructionSites, site => site.structureType);
+		const groupedSites = groupBy(this.constructionSites, site => site.structureType);
 		for (const structureType of BuildPriorities) {
 			if (groupedSites[structureType]) {
-				const target = worker.pos.findClosestByMultiRoomRange(groupedSites[structureType]);
+				const target = roomPositionFindClosestByMultiRoomRange(worker.pos, groupedSites[structureType]);
 				if (target) {
 					worker.task = Tasks.build(target);
 					return true;
@@ -297,10 +303,10 @@ export class WorkerOverlord extends Overlord {
 	}
 
 	private dismantleActions(worker: Zerg): boolean {
-		const targets = _.filter(this.dismantleStructures, s => (s.targetedBy || []).length < 3);
-		const target = worker.pos.findClosestByMultiRoomRange(targets);
+		const targets = this.dismantleStructures.filter(s => (getTargetedBy(s) || []).length < 3);
+		const target = roomPositionFindClosestByMultiRoomRange(worker.pos, targets);
 		if (target) {
-			_.remove(this.dismantleStructures, s => s == target);
+			remove(this.dismantleStructures, s => s == target);
 			worker.task = Tasks.dismantle(target);
 			return true;
 		} else {
@@ -325,20 +331,20 @@ export class WorkerOverlord extends Overlord {
 	private fortifyActions(worker: Zerg, fortifyStructures = this.fortifyBarriers): boolean {
 		const hitsMax = this.barrierTarget;
 		// Cached candidates may already have reached the new upkeep target.
-		fortifyStructures = _.filter(fortifyStructures, structure => structure.hits < hitsMax);
+		fortifyStructures = fortifyStructures.filter(structure => structure.hits < hitsMax);
 		let lowBarriers: (StructureWall | StructureRampart)[];
-		const highestBarrierHits = _.max(_.map(fortifyStructures, structure => structure.hits));
+		const highestBarrierHits = max(fortifyStructures, structure => structure.hits);
 		if (highestBarrierHits > WorkerOverlord.settings.hitTolerance) {
 			// At high barrier HP, fortify only structures that are within a threshold of the lowest
-			const lowestBarrierHits = _.min(_.map(fortifyStructures, structure => structure.hits));
-			lowBarriers = _.filter(fortifyStructures, structure => structure.hits <= lowestBarrierHits +
+			const lowestBarrierHits = min(fortifyStructures, structure => structure.hits);
+			lowBarriers = fortifyStructures.filter(structure => structure.hits <= lowestBarrierHits +
 																   WorkerOverlord.settings.hitTolerance);
 		} else {
 			// Otherwise fortify the lowest N structures
 			const numBarriersToConsider = 5; // Choose the closest barrier of the N barriers with lowest hits
-			lowBarriers = _.take(fortifyStructures, numBarriersToConsider);
+			lowBarriers = fortifyStructures.slice(0, numBarriersToConsider);
 		}
-		const target = worker.pos.findClosestByMultiRoomRange(lowBarriers);
+		const target = roomPositionFindClosestByMultiRoomRange(worker.pos, lowBarriers);
 		if (target) {
 			worker.task = Tasks.fortify(target, hitsMax);
 			return true;
@@ -350,14 +356,14 @@ export class WorkerOverlord extends Overlord {
 	private nukeFortifyActions(worker: Zerg, fortifyStructures = this.nukeDefenseRamparts): boolean {
 		const target = minBy(fortifyStructures, rampart => {
 			const structuresUnderRampart = rampart.pos.lookFor(LOOK_STRUCTURES);
-			return _.min(_.map(structuresUnderRampart, structure => {
-				const priority = _.findIndex(FortifyPriorities, sType => sType == structure.structureType);
+			return min(structuresUnderRampart, structure => {
+				const priority = FortifyPriorities.findIndex(sType => sType == structure.structureType);
 				if (priority >= 0) { // if found
 					return priority;
 				} else { // not found
 					return 999;
 				}
-			}));
+			});
 		});
 		if (target) {
 			worker.task = Tasks.fortify(target);
@@ -369,7 +375,7 @@ export class WorkerOverlord extends Overlord {
 
 	private upgradeActions(worker: Zerg): boolean {
 		// Sign controller if needed
-		if ((!this.colony.controller.signedByMe && !this.colony.controller.signedByScreeps)) {
+		if ((!isControllerSignedByMe(this.colony.controller) && !isControllerSignedByScreeps(this.colony.controller))) {
 			worker.task = Tasks.signController(this.colony.controller);
 			return true;
 		}
@@ -439,6 +445,6 @@ export class WorkerOverlord extends Overlord {
 
 	run() {
 		this.autoRun(this.workers, worker => this.handleWorker(worker),
-					 worker => worker.flee(worker.room.fleeDefaults, {invalidateTask: true}));
+					 worker => worker.flee(getRoomFleeDefaults(worker.room), {invalidateTask: true}));
 	}
 }

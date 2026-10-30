@@ -1,3 +1,5 @@
+import {getRoomCreeps, getRoomHostileStructures, getRoomHostiles} from '../../game/Room';
+import {getRoomInvaderCore} from '../../game/RoomStructures';
 import {GuardSwarmOverlord} from '../../overlords/defense/guardSwarm';
 import {DefenseNPCOverlord} from '../../overlords/defense/npcDefense';
 import {profile} from '../../profiler/decorator';
@@ -38,7 +40,7 @@ export class DirectiveGuard extends Directive {
 	}
 
 	init(): void {
-		if (this.room && this.room.invaderCore) {
+		if (this.room && getRoomInvaderCore(this.room)) {
 			this.memory.invaderCore = true;
 		}
 		if (this.memory.invaderCore) {
@@ -48,9 +50,9 @@ export class DirectiveGuard extends Directive {
 
 	run(): void {
 		// If there are no hostiles or hostiles structures left in the room, possibly remove
-		if (this.room && this.room.hostiles.length == 0 && this.room.hostileStructures.length == 0) {
+		if (this.room && getRoomHostiles(this.room).length == 0 && getRoomHostileStructures(this.room).length == 0) {
 			// If everyone's healed up and the room is safe, remove
-			const creepsNeedingHealing = _.filter(this.room.creeps, creep => creep.hits < creep.hitsMax);
+			const creepsNeedingHealing = getRoomCreeps(this.room).filter(creep => creep.hits < creep.hitsMax);
 			if (creepsNeedingHealing.length == 0 && this.room.isSafe) {
 				this.remove();
 			}

@@ -1,3 +1,6 @@
+import {getRoomHostiles} from '../../game/Room';
+import {getRoomPowerSpawn} from '../../game/RoomStructures';
+import {roomPositionInRangeToPos} from '../../game/RoomPosition';
 import {log} from '../../console/log';
 import {profile} from '../../profiler/decorator';
 import {Visualizer} from '../../visuals/Visualizer';
@@ -64,7 +67,7 @@ export class DirectiveBaseOperator extends Directive {
 	// Wrapped powerCreep methods ==================================================================================
 
 	renew(powerCreep: PowerCreep, powerSource: StructurePowerBank | StructurePowerSpawn) {
-		if (powerCreep.pos.inRangeToPos(powerSource.pos, 1)) {
+		if (roomPositionInRangeToPos(powerCreep.pos, powerSource.pos, 1)) {
 			return powerCreep.renew(powerSource);
 		} else {
 			return powerCreep.moveTo(powerSource, {
@@ -76,7 +79,7 @@ export class DirectiveBaseOperator extends Directive {
 
 	enablePower(powerCreep: PowerCreep, controller: StructureController) {
 		log.alert(`Trying to enable power for ${controller} with `);
-		if (powerCreep.pos.inRangeToPos(controller.pos, 1)) {
+		if (roomPositionInRangeToPos(powerCreep.pos, controller.pos, 1)) {
 			return powerCreep.enableRoom(controller);
 		} else {
 			// let path = powerCreep.pos.findPathTo(controller, {ignoreRoads: true, range: 1, swampCost: 1});
@@ -134,25 +137,26 @@ export class DirectiveBaseOperator extends Directive {
 
 		// console.log(`Running power creep ${JSON.stringify(powerCreep)}
 		// with ttl ${powerCreep.ticksToLive} with ${this.room!.powerSpawn}`);
+		const powerSpawn = this.room && getRoomPowerSpawn(this.room);
 		if (!this.room) {
 			return;
-		} else if (!powerCreep.ticksToLive && this.room && this.room.powerSpawn) {
+		} else if (!powerCreep.ticksToLive && this.room && powerSpawn) {
 			// Spawn creep
-			const res = powerCreep.spawn(this.room.powerSpawn);
+			const res = powerCreep.spawn(powerSpawn);
 			log.alert(`Running ${powerCreep} with spawn of ${res}`);
 		} else if (this.room.controller && !this.room.controller.isPowerEnabled) {
 			// Enable power
 			const res = this.enablePower(powerCreep, this.room.controller);
 			log.alert(`Running ${powerCreep} with enable power of ${res}`);
-		} else if (powerCreep && powerCreep.ticksToLive && powerCreep.ticksToLive < 900 && this.room.powerSpawn) {
-			const res = this.renew(powerCreep, this.room.powerSpawn);
+		} else if (powerCreep && powerCreep.ticksToLive && powerCreep.ticksToLive < 900 && powerSpawn) {
+			const res = this.renew(powerCreep, powerSpawn);
 			log.alert(`Running ${powerCreep} with renew of ${res}`);
 		} else {
 			const res = this.runPowers(powerCreep);
 			// log.alert(`Running ${powerCreep} with power of ${res}`);
 		}
 
-		if (this.room.hostiles.length > 2 || (powerCreep.pos && DirectiveNukeResponse.isPresent(powerCreep.pos.roomName))) {
+		if (getRoomHostiles(this.room).length > 2 || (powerCreep.pos && DirectiveNukeResponse.isPresent(powerCreep.pos.roomName))) {
 			const towersToBoost = this.colony.towers.filter(tower => !tower.effects || tower.effects.length == 0);
 			if (towersToBoost.length > 0) {
 				powerCreep.usePower(PWR_OPERATE_TOWER, towersToBoost[0]);

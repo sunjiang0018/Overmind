@@ -35,7 +35,7 @@ export class TaskTransfer extends Task<transferTargetType> {
 	isValidTarget() {
 		const amount = this.data.amount || 1;
 		// TODO: if you don't have vision of the creep (transferring to other creep?)
-		return !!this.target && this.target.store.getFreeCapacity(this.data.resourceType) >= amount;
+		return !!this.target && (this.target.store.getFreeCapacity(this.data.resourceType) ?? 0) >= amount;
 
 
 		// LEGACY:

@@ -1,3 +1,5 @@
+import {getRoomPrint} from '../game/Room';
+import {getRoomPositionPrint} from '../game/RoomPosition';
 import {log} from '../console/log';
 import {bodyCost} from '../creepSetups/CreepSetup';
 import {CombatSetups, Setups} from '../creepSetups/setups';
@@ -13,6 +15,7 @@ import {
 	ROOMTYPE_CROSSROAD,
 	ROOMTYPE_SOURCEKEEPER
 } from '../utilities/Cartographer';
+import {sortBy} from '../utilities/native';
 import set = Reflect.set;
 
 export const EXPANSION_EVALUATION_FREQ = 500;
@@ -32,7 +35,7 @@ export class ExpansionEvaluator {
 		// This method is typed a little strangely to avoid some circular dependency problems
 
 		// This only gets run once per colony
-		if (_.keys(expansionData.possibleExpansions).length == 0 || Game.time > expansionData.expiration) {
+		if (Object.keys(expansionData.possibleExpansions ?? {}).length == 0 || Game.time > expansionData.expiration) {
 			// Generate a list of rooms which can possibly be settled in
 			const nearbyRooms = Cartographer.recursiveRoomSearch(colonyRoomName, 5);
 			let possibleExpansions: string[] = [];
@@ -99,7 +102,7 @@ export class ExpansionEvaluator {
 				return false;
 			}
 
-			sourcePathLengths[source.pos.print] = path.path.length;
+			sourcePathLengths[getRoomPositionPrint(source.pos)] = path.path.length;
 		}
 
 		// Compute Energy Supply
@@ -109,7 +112,7 @@ export class ExpansionEvaluator {
 		for (const source of sourcePositions) {
 			const setup = roomType == ROOMTYPE_CONTROLLER ? Setups.drones.miners.standard.generateMaxedBody()
 				: Setups.drones.miners.sourceKeeper.generateMaxedBody();
-			const effectiveCreepUptime = (CREEP_LIFE_TIME - sourcePathLengths[source.pos.print]);
+			const effectiveCreepUptime = (CREEP_LIFE_TIME - sourcePathLengths[getRoomPositionPrint(source.pos)]);
 			creepEnergyCost += bodyCost(setup)/effectiveCreepUptime;
 			spawnTimeCost += setup.length*CREEP_SPAWN_TIME/effectiveCreepUptime;
 			// Always harvesting, sometimes replacement is moving
@@ -130,7 +133,7 @@ export class ExpansionEvaluator {
 					log.error(`Couldn't find path to controller ${controller} for mining efficiency calc`);
 					return false;
 				}
-				const claimPower = _.filter(setup, (part: BodyPartConstant) => part == CLAIM).length;
+				const claimPower = setup.filter((part: BodyPartConstant) => part == CLAIM).length;
 				const effectiveLifetimeReservationGeneration = (CREEP_CLAIM_LIFE_TIME - controllerPath.path.length) * claimPower;
 				creepEnergyCost += bodyCost(setup)/effectiveLifetimeReservationGeneration;
 				spawnTimeCost += setup.length*CREEP_SPAWN_TIME/effectiveLifetimeReservationGeneration;
@@ -157,9 +160,9 @@ export class ExpansionEvaluator {
 		for (const source of sourcePositions) {
 			const setup = Setups.transporters.default.generateMaxedBody();
 			// Calculate amount of hauling each transporter provides in a lifetime
-			const transporterCarryParts = _.filter(setup, (part: BodyPartConstant) => part == CARRY).length;
+			const transporterCarryParts = setup.filter((part: BodyPartConstant) => part == CARRY).length;
 			const effectiveEnergyTransportedPerTick = transporterCarryParts * CARRY_CAPACITY
-				/ (2 * sourcePathLengths[source.pos.print]); // round trip
+				/ (2 * sourcePathLengths[getRoomPositionPrint(source.pos)]); // round trip
 			const transportersPerSource = energyPerSource/ENERGY_REGEN_TIME/effectiveEnergyTransportedPerTick;
 
 			creepEnergyCost += bodyCost(setup)*transportersPerSource/CREEP_LIFE_TIME;
@@ -178,7 +181,7 @@ export class ExpansionEvaluator {
 
 	// Compute the total score for a room
 	static computeExpansionData(room: Room, verbose = false): boolean {
-		if (verbose) log.info(`Computing score for ${room.print}...`);
+		if (verbose) log.info(`Computing score for ${getRoomPrint(room)}...`);
 		if (!room.controller) {
 			RoomIntel.setExpansionData(room.name, false);
 			return false;
@@ -199,7 +202,7 @@ export class ExpansionEvaluator {
 				if (verbose) log.info(`No memory of neighbor: ${roomName}. Aborting score calculation!`);
 				return false;
 			} else {
-				outpostSourcePositions[roomName] = _.map(sourcePositions, src => src.pos);
+				outpostSourcePositions[roomName] = sourcePositions.map(src => src.pos);
 			}
 		}
 
@@ -212,7 +215,7 @@ export class ExpansionEvaluator {
 		}
 
 		// evaluate energy contribution and compute outpost scores
-		if (verbose) log.info(`Origin: ${bunkerLocation.print}`);
+		if (verbose) log.info(`Origin: ${getRoomPositionPrint(bunkerLocation)}`);
 
 		const outpostScores: { [roomName: string]: number } = {};
 
@@ -230,7 +233,7 @@ export class ExpansionEvaluator {
 
 			let roomScore = 0;
 			for (const position of sourcePositions) {
-				const msg = verbose ? `Computing distance from ${bunkerLocation.print} to ${position.print}... ` : '';
+				const msg = verbose ? `Computing distance from ${getRoomPositionPrint(bunkerLocation)} to ${getRoomPositionPrint(position)}... ` : '';
 				const ret = Pathing.findShortestPath(bunkerLocation, position,
 													 {ignoreStructures: true, allowHostile: true});
 				if (ret.incomplete || ret.path.length > 100 /* Colony.settings.maxSourceDistance */) {
@@ -250,7 +253,7 @@ export class ExpansionEvaluator {
 		// Compute the total score of the room as the maximum energy score of max number of sources harvestable
 		let totalScore = 0;
 		let sourceCount = 0;
-		const roomsByScore = _.sortBy(_.keys(outpostScores), roomName => -1 * outpostScores[roomName]);
+		const roomsByScore = sortBy(Object.keys(outpostScores ?? {}), roomName => -1 * outpostScores[roomName]);
 		for (const roomName of roomsByScore) {
 			if (sourceCount > 9 /*Colony.settings.remoteSourcesByLevel[8]*/) break;
 			const factor = roomName == room.name ? 2 : 1; // weight owned room scores more heavily

@@ -1,3 +1,5 @@
+import {getRoomSpawns} from '../game/RoomStructures';
+import {isRoomMine} from '../game/Room';
 import {Colony, getAllColonies} from '../Colony';
 import {log} from '../console/log';
 import {DEFAULT_MAX_PATH_LENGTH} from '../directives/Directive';
@@ -6,6 +8,7 @@ import {Mem} from '../memory/Memory';
 import {Pathing} from '../movement/Pathing';
 import {profile} from '../profiler/decorator';
 import {getCacheExpiration, minBy, onPublicServer} from '../utilities/utils';
+import {sum, defaults, max, compactMap} from '../utilities/native';
 
 interface SpawnGroupMemory {
 	colonies: string[];
@@ -77,31 +80,30 @@ export class SpawnGroup {
 		this.memory = Mem.wrap(Memory.rooms[this.roomName], 'spawnGroup', getDefaultSpawnGroupMemory);
 		this.ref = initializer.ref + ':SG';
 		this.stats = {
-			avgDistance: (_.sum(this.memory.distances) / _.keys(this.memory.distances).length) || 100,
+			avgDistance: (sum(this.memory.distances) / Object.keys(this.memory.distances ?? {}).length) || 100,
 		};
 		this.requests = [];
-		this.settings = _.defaults(settings, defaultSettings) as SpawnGroupSettings;
+		this.settings = defaults(settings, defaultSettings) as SpawnGroupSettings;
 		if (Game.time >= this.memory.expiration) {
 			this.recalculateColonies();
 		}
 		// Compute stats
-		this.colonyNames = _.filter(this.memory.colonies,
+		this.colonyNames = (this.memory.colonies || []).filter(
 									roomName => this.memory.distances[roomName] <= this.settings.maxPathDistance &&
-												Game.rooms[roomName] && Game.rooms[roomName].my &&
+												Game.rooms[roomName] && isRoomMine(Game.rooms[roomName]) &&
 												Game.rooms[roomName].controller!.level >= this.settings.requiredRCL);
 
 		if (this.colonyNames.length == 0) {
 			log.warning(`No colonies meet the requirements for SpawnGroup: ${this.ref}`);
 		}
-		this.energyCapacityAvailable = _.max(_.map(this.colonyNames,
-												   roomName => Game.rooms[roomName].energyCapacityAvailable));
+		this.energyCapacityAvailable = max(this.colonyNames, roomName => Game.rooms[roomName].energyCapacityAvailable);
 		this._colonies = undefined;
 		Overmind.spawnGroups[this.ref] = this;
 	}
 
 	get colonies(): Colony[] {
 		if (!this._colonies) {
-			this._colonies = _.compact(_.map(this.colonyNames, roomName => Overmind.colonies[roomName]));
+			this._colonies = compactMap(this.colonyNames, roomName => Overmind.colonies[roomName]);
 		}
 		return this._colonies;
 	}
@@ -117,10 +119,10 @@ export class SpawnGroup {
 
 	private recalculateColonies() { // don't use settings when recalculating colonies as spawnGroups share memory
 		// Get all colonies in range that are of required level, then filter out ones that are too far from best
-		let coloniesInRange = _.filter(getAllColonies(), colony =>
+		let coloniesInRange = getAllColonies().filter(colony =>
 			Game.map.getRoomLinearDistance(colony.room.name, this.roomName) <= MAX_LINEAR_DISTANCE);
-		const maxColonyLevel = _.max(_.map(coloniesInRange, colony => colony.level));
-		coloniesInRange = _.filter(coloniesInRange,
+		const maxColonyLevel = max(coloniesInRange, colony => colony.level);
+		coloniesInRange = coloniesInRange.filter(
 								   colony => maxColonyLevel - colony.level <= this.settings.maxLevelDifference);
 
 		const colonyNames = [] as string[];
@@ -128,7 +130,7 @@ export class SpawnGroup {
 		// let paths = {} as { [colonyName: string]: { startPos: RoomPosition, path: string[] } };
 		const distances = {} as { [colonyName: string]: number };
 		for (const colony of coloniesInRange) {
-			const spawn = colony.room.spawns[0];
+			const spawn = getRoomSpawns(colony.room)[0];
 			if (spawn) {
 				// const route = Pathing.findRoute(colony.room.name, this.roomName);
 				const path = Pathing.findPathToRoom(spawn.pos, this.roomName);
@@ -157,8 +159,8 @@ export class SpawnGroup {
 	init(): void {
 
 		// Most initialization needs to be done at init phase because colonies are still being constructed earlier
-		const colonies = _.compact(_.map(this.colonyNames, name => Overmind.colonies[name])) as Colony[];
-		const hatcheries = _.compact(_.map(colonies, colony => colony.hatchery)) as Hatchery[];
+		const colonies = compactMap(this.colonyNames, name => Overmind.colonies[name]) as Colony[];
+		const hatcheries = compactMap(colonies, colony => colony.hatchery) as Hatchery[];
 		const distanceTo = (hatchery: Hatchery) => this.memory.distances[hatchery.pos.roomName] + 25;
 
 		// Enqueue each requests to the hatchery with least expected wait time, which is updated after each enqueue

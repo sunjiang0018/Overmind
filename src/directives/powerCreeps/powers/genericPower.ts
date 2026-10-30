@@ -1,3 +1,4 @@
+import {getRoomObjectRef} from '../../../game/RoomObject';
 import {profile} from '../../../profiler/decorator';
 import {powerId} from './generateOps';
 
@@ -25,7 +26,7 @@ export abstract class Power {
 		};
 		if (target) {
 			this._target = {
-				ref : target.ref,
+				ref : getRoomObjectRef(target),
 				_pos: target.pos,
 			};
 		}

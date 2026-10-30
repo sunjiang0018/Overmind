@@ -3,8 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const {installNative} = require('./helpers/native-runtime.cjs');
 
 function evaluate(source, context) {
+  installNative(context);
   vm.runInNewContext(ts.transpileModule(source, {
     compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2017, experimentalDecorators: true},
   }).outputText, context);

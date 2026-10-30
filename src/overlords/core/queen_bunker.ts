@@ -1,3 +1,4 @@
+import {getRoomContainers, getRoomLinks} from '../../game/RoomStructures';
 import {$} from '../../caching/GlobalCache';
 import {Colony} from '../../Colony';
 import {log} from '../../console/log';
@@ -14,6 +15,7 @@ import {Tasks} from '../../tasks/Tasks';
 import {hasMinerals, mergeSum, minBy} from '../../utilities/utils';
 import {Zerg} from '../../zerg/Zerg';
 import {Overlord} from '../Overlord';
+import {compact, zipObject, sum, sortBy} from '../../utilities/native';
 
 type SupplyStructure = StructureExtension | StructureSpawn | StructureTower | StructureLab;
 
@@ -25,10 +27,10 @@ function isSupplyStructure(structure: Structure): structure is SupplyStructure {
 }
 
 function computeQuadrant(colony: Colony, quadrant: Coord[]): SupplyStructure[] {
-	const positions = _.map(quadrant, coord => getPosFromBunkerCoord(coord, colony));
+	const positions = quadrant.map(coord => getPosFromBunkerCoord(coord, colony));
 	const structures: SupplyStructure[] = [];
 	for (const pos of positions) {
-		const structure = _.find(pos.lookFor(LOOK_STRUCTURES), s => isSupplyStructure(s)) as SupplyStructure | undefined;
+		const structure = pos.lookFor(LOOK_STRUCTURES).find(s => isSupplyStructure(s)) as SupplyStructure | undefined;
 		if (structure) {
 			structures.push(structure);
 		}
@@ -57,9 +59,9 @@ export class BunkerQueenOverlord extends Overlord {
 		super(hatchery, 'supply', priority);
 		this.queenSetup = Setups.queens.default;
 		this.queens = this.zerg(Roles.queen);
-		this.batteries = _.filter(this.room.containers, container => insideBunkerBounds(container.pos, this.colony));
-		this.links = _.filter(this.room.links, link => insideBunkerBounds(link.pos, this.colony));
-		this.storeStructures = _.compact([this.colony.terminal!,
+		this.batteries = getRoomContainers(this.room).filter(container => insideBunkerBounds(container.pos, this.colony));
+		this.links = getRoomLinks(this.room).filter(link => insideBunkerBounds(link.pos, this.colony));
+		this.storeStructures = compact([this.colony.terminal!,
 										  this.colony.storage!,
 										  ...this.batteries,
 										  ...this.links]);
@@ -77,8 +79,8 @@ export class BunkerQueenOverlord extends Overlord {
 	 * and assigns them to the attending queens.
 	 */
 	private computeQueenAssignments() {
-		this.assignments = _.zipObject(_.map(this.queens, queen => [queen.name, {}]));
-		const activeQueens = _.filter(this.queens, queen => !queen.spawning);
+		this.assignments = zipObject(this.queens.map(queen => [queen.name, {}]));
+		const activeQueens = this.queens.filter(queen => !queen.spawning);
 		this.numActiveQueens = activeQueens.length;
 		if (this.numActiveQueens > 0) {
 			const quadrantAssignmentOrder = [this.quadrants.lowerRight,
@@ -88,7 +90,7 @@ export class BunkerQueenOverlord extends Overlord {
 			let i = 0;
 			for (const quadrant of quadrantAssignmentOrder) {
 				const queen = activeQueens[i % activeQueens.length];
-				_.extend(this.assignments[queen.name], _.zipObject(_.map(quadrant, s => [s.id, true])));
+				Object.assign(this.assignments[queen.name], zipObject(quadrant.map(s => [s.id, true])));
 				i++;
 			}
 		}
@@ -99,7 +101,7 @@ export class BunkerQueenOverlord extends Overlord {
 		$.refresh(this, 'batteries', 'storeStructures');
 		$.refreshObject(this, 'quadrants');
 		// Re-compute queen assignments if the number of queens has changed
-		if (_.filter(this.queens, queen => !queen.spawning).length != this.numActiveQueens) {
+		if (this.queens.filter(queen => !queen.spawning).length != this.numActiveQueens) {
 			this.computeQueenAssignments();
 		}
 	}
@@ -122,7 +124,7 @@ export class BunkerQueenOverlord extends Overlord {
 
 		// Step 1: empty all contents (this shouldn't be necessary since queen is normally empty at this point)
 		let queenPos = queen.pos;
-		if (_.sum(queen.carry) > 0) {
+		if (sum(queen.carry) > 0) {
 			const transferTarget = this.colony.terminal || this.colony.storage || this.batteries[0];
 			if (transferTarget) {
 				tasks.push(Tasks.transferAll(transferTarget));
@@ -135,7 +137,7 @@ export class BunkerQueenOverlord extends Overlord {
 
 		// Step 2: figure out what you need to supply for and calculate the needed resources
 		const queenCarry = {} as { [resourceType: string]: number };
-		const allStore = mergeSum(_.map(this.storeStructures, s => s.store));
+		const allStore = mergeSum(this.storeStructures.map(s => s.store));
 		const supplyRequests: TransportRequest[] = [];
 		for (const priority in this.colony.transportRequests.supply) {
 			for (const request of this.colony.transportRequests.supply[priority]) {
@@ -147,7 +149,7 @@ export class BunkerQueenOverlord extends Overlord {
 		const supplyTasks: Task<any>[] = [];
 		for (const request of supplyRequests) {
 			// stop when carry will be full
-			const remainingAmount = queen.carryCapacity - _.sum(queenCarry);
+			const remainingAmount = queen.carryCapacity - sum(queenCarry);
 			if (remainingAmount == 0) break;
 			// figure out how much you can withdraw
 			let amount = Math.min(request.amount, remainingAmount);
@@ -164,9 +166,9 @@ export class BunkerQueenOverlord extends Overlord {
 
 		// Step 3: make withdraw tasks to get the needed resources
 		const withdrawTasks: Task<any>[] = [];
-		const neededResources = _.keys(queenCarry) as ResourceConstant[];
-		const targets: AnyStoreStructure[] = _.filter(this.storeStructures, s =>
-			_.all(neededResources, resource => (s.store[resource] || 0) >= (queenCarry[resource] || 0)));
+		const neededResources = Object.keys(queenCarry ?? {}) as ResourceConstant[];
+		const targets: AnyStoreStructure[] = this.storeStructures.filter(s =>
+			neededResources.every(resource => (s.store[resource] || 0) >= (queenCarry[resource] || 0)));
 		const withdrawTarget = minBy(targets, target => Pathing.distance(queenPos, target.pos) || Infinity);
 		if (withdrawTarget) {
 			for (const resourceType of neededResources) {
@@ -183,8 +185,7 @@ export class BunkerQueenOverlord extends Overlord {
 						withdrawTasks.push(Tasks.withdraw(closestTarget, resourceType, queenCarry[resourceType]));
 					} else {
 						// TODO ordering tasks for fastest route, maybe a sortby for withdraw targets?
-						const hasResource = _.sortBy(
-							_.filter(this.storeStructures, s => s.store[resourceType] > 0),
+						const hasResource = sortBy(this.storeStructures.filter(s => s.store[resourceType] > 0),
 							s => -s.store[resourceType]); // descending sort
 						let collected = 0;
 						for (const storeLoc of hasResource) {
@@ -219,7 +220,7 @@ export class BunkerQueenOverlord extends Overlord {
 		const tasks: Task<any>[] = [];
 		const transferTarget = this.colony.terminal || this.colony.storage || this.batteries[0];
 		// Step 1: empty all contents (this shouldn't be necessary since queen is normally empty at this point)
-		if (_.sum(queen.carry) > 0) {
+		if (sum(queen.carry) > 0) {
 			if (transferTarget) {
 				tasks.push(Tasks.transferAll(transferTarget));
 			} else {
@@ -241,7 +242,7 @@ export class BunkerQueenOverlord extends Overlord {
 		}
 		for (const request of withdrawRequests) {
 			// stop when carry will be full
-			const remainingAmount = queen.carryCapacity - _.sum(queenCarry);
+			const remainingAmount = queen.carryCapacity - sum(queenCarry);
 			if (remainingAmount == 0) break;
 			// figure out how much you can withdraw
 			const amount = Math.min(request.amount, remainingAmount);
@@ -306,12 +307,12 @@ export class BunkerQueenOverlord extends Overlord {
 	private handleQueen(queen: Zerg): void {
 		// Does something need withdrawing?
 		if (this.colony.transportRequests.needsWithdrawing() &&
-			_.any(_.keys(this.assignments[queen.name]), id => this.colony.transportRequests.withdrawByID[id])) {
+			Object.keys(this.assignments[queen.name] ?? {}).some(id => this.colony.transportRequests.withdrawByID[id])) {
 			queen.task = this.buildWithdrawTaskManifest(queen);
 		}
 		// Does something need supplying?
 		else if (this.colony.transportRequests.needsSupplying() &&
-				 _.any(_.keys(this.assignments[queen.name]), id => this.colony.transportRequests.supplyByID[id])) {
+				 Object.keys(this.assignments[queen.name] ?? {}).some(id => this.colony.transportRequests.supplyByID[id])) {
 			queen.task = this.buildSupplyTaskManifest(queen);
 		}
 		// Do we need safemodes?
@@ -319,7 +320,7 @@ export class BunkerQueenOverlord extends Overlord {
 				 this.colony.terminal && this.colony.terminal.store[RESOURCE_GHODIUM] >= 1000 &&
 				 queen.carryCapacity >= 1000) {
 			// Only use 1 queen to avoid adding 2 safemodes
-			if (queen.name == _.first(_.sortBy(this.queens, q => q.name)).name) {
+			if (queen.name == sortBy(this.queens, q => q.name)[0].name) {
 				queen.task = Tasks.chain([
 											 Tasks.transferAll(this.colony.terminal),
 											 Tasks.withdraw(this.colony.terminal, RESOURCE_GHODIUM, 1000),

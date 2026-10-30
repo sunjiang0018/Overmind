@@ -2,10 +2,11 @@
   "compilerOptions": {
     "allowJs": true,
     "module": "esnext",
-    "lib": ["esnext"],
-    "target": "es2017",
+    "lib": ["es2024"],
+    "target": "es2024",
     "moduleResolution": "bundler",
-    "newLine": "CRLF",
+    "newLine": "LF",
+    "rootDir": "src",
     "outDir": "tsc-out",
     "paths": {
       "*": ["./src/*"]
@@ -16,6 +17,9 @@
     "noImplicitThis": false,
     "skipLibCheck": true,
     "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "isolatedModules": false,
+    "forceConsistentCasingInFileNames": true,
     "allowUnusedLabels": true,
     "allowSyntheticDefaultImports": true,
     "allowUnreachableCode": false,
@@ -25,7 +29,6 @@
     ],
     "types": [
       "screeps",
-      "lodash",
       "node"
     ]
   },
@@ -34,14 +37,6 @@
   ],
   "exclude": [
     "node_modules"
-  ],
-  "typedocOptions": {
-    "mode": "file",
-    "out": "../overmind-docs/docs",
-    "ignoreCompilerErrors": true,
-    "excludeNotExported": true,
-    "exclude": "**/*+(Assimilator|Overmind).ts",
-    "readme": "none"
-  }
+  ]
 }
 

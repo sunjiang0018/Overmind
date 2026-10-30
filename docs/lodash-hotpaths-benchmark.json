@@ -1,0 +1,297 @@
+{
+  "node": "v24.11.1",
+  "lodash": "3.10.1",
+  "cpu": "Apple M4",
+  "platform": "darwin",
+  "arch": "arm64",
+  "samples": 7,
+  "unit": "median nanoseconds per operation",
+  "method": "5000 warmups, adaptive batches, rotating variant order; includes result allocation",
+  "scope": "synthetic function timings, not Screeps tick CPU; cached getters measured on their first access",
+  "bodySizes": [
+    1,
+    10,
+    50
+  ],
+  "rows": [
+    {
+      "operation": "body cost",
+      "size": 1,
+      "applied": true,
+      "nsPerOp": {
+        "before": 13.5,
+        "after": 4.3
+      }
+    },
+    {
+      "operation": "synchronization name lookup",
+      "size": 1,
+      "applied": true,
+      "nsPerOp": {
+        "before": 20.4,
+        "after": 13.8
+      }
+    },
+    {
+      "operation": "unique body boosts",
+      "size": 1,
+      "applied": true,
+      "fixture": "mixed boosts",
+      "nsPerOp": {
+        "before": 23.7,
+        "after": 11.1
+      }
+    },
+    {
+      "operation": "unique body boosts",
+      "size": 1,
+      "applied": true,
+      "fixture": "unboosted",
+      "nsPerOp": {
+        "before": 17.9,
+        "after": 5.3
+      }
+    },
+    {
+      "operation": "approximate movement speed",
+      "size": 1,
+      "applied": true,
+      "nsPerOp": {
+        "before": 31.4,
+        "after": 8.1
+      }
+    },
+    {
+      "operation": "creep weight",
+      "size": 1,
+      "applied": true,
+      "nsPerOp": {
+        "before": 18.9,
+        "after": 10.4
+      }
+    },
+    {
+      "operation": "boost mineral demand",
+      "size": 1,
+      "applied": true,
+      "nsPerOp": {
+        "before": 32.1,
+        "after": 5
+      }
+    },
+    {
+      "operation": "body cost",
+      "size": 10,
+      "applied": true,
+      "nsPerOp": {
+        "before": 83,
+        "after": 52.8
+      }
+    },
+    {
+      "operation": "synchronization name lookup",
+      "size": 10,
+      "applied": true,
+      "nsPerOp": {
+        "before": 127.5,
+        "after": 85.8
+      }
+    },
+    {
+      "operation": "unique body boosts",
+      "size": 10,
+      "applied": true,
+      "fixture": "mixed boosts",
+      "nsPerOp": {
+        "before": 110.1,
+        "after": 33.1
+      }
+    },
+    {
+      "operation": "unique body boosts",
+      "size": 10,
+      "applied": true,
+      "fixture": "unboosted",
+      "nsPerOp": {
+        "before": 59,
+        "after": 17.9
+      }
+    },
+    {
+      "operation": "approximate movement speed",
+      "size": 10,
+      "applied": true,
+      "nsPerOp": {
+        "before": 132.8,
+        "after": 17.9
+      }
+    },
+    {
+      "operation": "creep weight",
+      "size": 10,
+      "applied": true,
+      "nsPerOp": {
+        "before": 201.8,
+        "after": 136.7
+      }
+    },
+    {
+      "operation": "boost mineral demand",
+      "size": 10,
+      "applied": true,
+      "nsPerOp": {
+        "before": 164.6,
+        "after": 35.1
+      }
+    },
+    {
+      "operation": "body cost",
+      "size": 50,
+      "applied": true,
+      "nsPerOp": {
+        "before": 361.9,
+        "after": 251.4
+      }
+    },
+    {
+      "operation": "synchronization name lookup",
+      "size": 50,
+      "applied": true,
+      "nsPerOp": {
+        "before": 1140.4,
+        "after": 931.6
+      }
+    },
+    {
+      "operation": "unique body boosts",
+      "size": 50,
+      "applied": true,
+      "fixture": "mixed boosts",
+      "nsPerOp": {
+        "before": 489.9,
+        "after": 142.9
+      }
+    },
+    {
+      "operation": "unique body boosts",
+      "size": 50,
+      "applied": true,
+      "fixture": "unboosted",
+      "nsPerOp": {
+        "before": 248.7,
+        "after": 79.6
+      }
+    },
+    {
+      "operation": "approximate movement speed",
+      "size": 50,
+      "applied": true,
+      "nsPerOp": {
+        "before": 535.6,
+        "after": 78.2
+      }
+    },
+    {
+      "operation": "creep weight",
+      "size": 50,
+      "applied": true,
+      "nsPerOp": {
+        "before": 938.4,
+        "after": 561.2
+      }
+    },
+    {
+      "operation": "boost mineral demand",
+      "size": 50,
+      "applied": true,
+      "nsPerOp": {
+        "before": 830.4,
+        "after": 171.3
+      }
+    },
+    {
+      "operation": "range to room edge",
+      "size": 2500,
+      "applied": true,
+      "nsPerOp": {
+        "before": 13.5,
+        "after": 4.9
+      }
+    },
+    {
+      "operation": "multi-room range",
+      "size": 2,
+      "applied": true,
+      "nsPerOp": {
+        "before": 81.2,
+        "after": 74.3
+      }
+    },
+    {
+      "operation": "generic mapped sum candidate",
+      "size": 10,
+      "applied": false,
+      "reason": "inlined synthetic loop only; other sum inputs and callback arities are outside this pass",
+      "nsPerOp": {
+        "before": 44.8,
+        "after": 12.4
+      }
+    },
+    {
+      "operation": "flatMap candidate",
+      "size": 10,
+      "applied": false,
+      "reason": "native flatMap is slower on these fixtures",
+      "nsPerOp": {
+        "before": 112,
+        "after": 292.8
+      }
+    },
+    {
+      "operation": "generic mapped sum candidate",
+      "size": 50,
+      "applied": false,
+      "reason": "inlined synthetic loop only; other sum inputs and callback arities are outside this pass",
+      "nsPerOp": {
+        "before": 231.9,
+        "after": 51.3
+      }
+    },
+    {
+      "operation": "flatMap candidate",
+      "size": 50,
+      "applied": false,
+      "reason": "native flatMap is slower on these fixtures",
+      "nsPerOp": {
+        "before": 609.4,
+        "after": 1217.9
+      }
+    }
+  ],
+  "checksum": 0,
+  "lodashCallAudit": {
+    "before": 695,
+    "after": 678,
+    "removed": {
+      "compact": 2,
+      "sum": 3,
+      "zipObject": 6,
+      "max": 1,
+      "countBy": 2,
+      "unique": 2,
+      "min": 1
+    }
+  },
+  "sourceSha256": {
+    "src/utilities/creepUtils.ts": "f2b4fc0795d4ae9586b6d75bd48a67c0cf99b663ea0bdaa597b9354af47a79a3",
+    "src/overlords/Overlord.ts": "d3a6f2343dcb0cdb10d9ab9455be930eab64dbcc687d776317febdb5aae0edc0",
+    "src/overlords/PowerOverlord.ts": "410d9673a35561bb4750a2d3d3aed55fd885a17af57b74b14acdb6a6f818ad77",
+    "src/intel/CombatIntel.ts": "d29c9fb01167bf2ff09d62e227bf3ca7edbf9d7aedafbf27b3c391b873cfc0dc",
+    "src/prototypes/Creep.ts": "8440125dfcaaaa7a05a62bf680238a7b028eae84c9d7fbb0b3fef58f8702f2c7",
+    "src/creepSetups/CreepSetup.ts": "b42680bcf0b1002a6e02c42c5fd8e5ae7dd7ecaed511f106aea11d5d4e8d8456",
+    "src/movement/helpers.ts": "ace3c956787cb7fb45139366db0624f056a01dfc60edbe546b04a8d605437d70",
+    "src/hiveClusters/evolutionChamber.ts": "623f5b31af3702751eda6b882c46e94a0a8554460af65fb9aec5c1f6ea29a598",
+    "src/prototypes/RoomPosition.ts": "083856136333e6894d0c83cdfe8f4a6a9fec8d13efb71df29596b4a81cb27916",
+    "tests/fixtures/lodash-hotpaths.cjs": "a697adfab30cfcfb061e798ed7cb98a6c465eba06da4b44e41495c03494655d1"
+  }
+}

@@ -288,7 +288,7 @@ export function createGraph(roomName: string, toProtect: Rectangle[],
 	}
 	// Preferentially weight closer tiles
 	if (preferCloserBarriers) {
-		for (r of _.take(toProtect, preferCloserBarrierLimit)) {
+		for (r of toProtect.slice(0, preferCloserBarrierLimit)) {
 			const [xmin, xmax] = [Math.max(r.x1 - RANGE_PADDING, 0), Math.min(r.x2 + RANGE_PADDING, 49)];
 			const [ymin, ymax] = [Math.max(r.y1 - RANGE_PADDING, 0), Math.min(r.y2 + RANGE_PADDING, 49)];
 			for (x = xmin; x <= xmax; x++) {

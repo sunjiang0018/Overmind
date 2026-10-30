@@ -1,3 +1,5 @@
+import {roomPositionFindClosestByMultiRoomRange} from '../../game/RoomPosition';
+import {getRoomContainers, getRoomRamparts, getRoomTowers} from '../../game/RoomStructures';
 import {$} from '../../caching/GlobalCache';
 import {Roles, Setups} from '../../creepSetups/setups';
 import {DirectiveTemplate} from '../../directives/~template/templateDirective';
@@ -6,6 +8,7 @@ import {profile} from '../../profiler/decorator';
 import {Tasks} from '../../tasks/Tasks';
 import {Zerg} from '../../zerg/Zerg';
 import {Overlord, OverlordMemory} from '../Overlord';
+import {sortBy} from '../../utilities/native';
 
 // Memory should have an interface extending flag memory and should not be exported
 interface TemplateOverlordMemory extends OverlordMemory {
@@ -73,14 +76,14 @@ export class TemplateOverlord extends Overlord {
 		super(directive, 'template', priority, getDefaultTemplateOverlordMemory);
 
 		// You can use $.structures and similar methods to cache properties which won't change very often
-		this.property0 = _.first(this.room.containers);
+		this.property0 = getRoomContainers(this.room)[0];
 		this.property1 = $.structures(this, 'property1',
-									  () => _.filter(this.colony.spawns, spawn => spawn.pos.x > 20));
+									  () => this.colony.spawns.filter(spawn => spawn.pos.x > 20));
 		this.property2 = $.structures(this, 'property2', () => {
-			return _.sortBy(_.filter(this.room.ramparts, rampart => rampart.hits > 99999), rampart => rampart.hits);
+			return sortBy(getRoomRamparts(this.room).filter(rampart => rampart.hits > 99999), rampart => rampart.hits);
 		});
 		// You shouldn't use $ methods for things that can frequently change
-		this.property3 = _.filter(this.room.towers, tower => tower.store.getFreeCapacity(RESOURCE_ENERGY) > 100);
+		this.property3 = getRoomTowers(this.room).filter(tower => tower.store.getFreeCapacity(RESOURCE_ENERGY) > 100);
 		// Cost matrices can be cached too
 		this.property4 = $.costMatrix(this.pos.roomName, 'property2', () => {
 			return new PathFinder.CostMatrix();
@@ -101,7 +104,7 @@ export class TemplateOverlord extends Overlord {
 		super.refresh();
 		$.refresh(this, 'property1', 'property2');
 		// Things that can change frequently will need to be refreshed
-		this.property3 = _.filter(this.room.towers, tower => tower.store.getFreeCapacity(RESOURCE_ENERGY) > 100);
+		this.property3 = getRoomTowers(this.room).filter(tower => tower.store.getFreeCapacity(RESOURCE_ENERGY) > 100);
 	}
 
 	/**
@@ -161,7 +164,7 @@ export class TemplateOverlord extends Overlord {
 	// be private and should be named taskActions (where task is the type of thing to do)
 
 	private repairActions(worker: Zerg): boolean {
-		const target = worker.pos.findClosestByMultiRoomRange(this.property3);
+		const target = roomPositionFindClosestByMultiRoomRange(worker.pos, this.property3);
 		if (target) {
 			worker.task = Tasks.repair(target);
 			return true;
@@ -170,7 +173,7 @@ export class TemplateOverlord extends Overlord {
 	}
 
 	private buildActions(worker: Zerg): boolean {
-		const target = worker.pos.findClosestByMultiRoomRange(this.colony.constructionSites);
+		const target = roomPositionFindClosestByMultiRoomRange(worker.pos, this.colony.constructionSites);
 		if (target) {
 			worker.task = Tasks.build(target);
 			return true;

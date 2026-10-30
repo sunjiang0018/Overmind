@@ -256,25 +256,23 @@ function packRoomName(roomName: string): string {
 function unpackRoomName(char: string): string {
 	if (PERMACACHE._unpackedRoomNames[char] === undefined) {
 		const num = char.charCodeAt(0) - 65;
-		const {q, x, y} = {
-			q: (num & 0b11000000111111) >>> 12,
-			x: (num & 0b00111111000000) >>> 6,
-			y: (num & 0b00000000111111),
-		};
+		const q = (num & 0b11000000111111) >>> 12;
+		const x = (num & 0b00111111000000) >>> 6;
+		const y = num & 0b00000000111111;
 
 		let roomName: string;
 		switch (q) {
 			case 0:
-				roomName = 'W' + x + 'N' + y;
+				roomName = `W${x}N${y}`;
 				break;
 			case 1:
-				roomName = 'W' + x + 'S' + y;
+				roomName = `W${x}S${y}`;
 				break;
 			case 2:
-				roomName = 'E' + x + 'N' + y;
+				roomName = `E${x}N${y}`;
 				break;
 			case 3:
-				roomName = 'E' + x + 'S' + y;
+				roomName = `E${x}S${y}`;
 				break;
 			default:
 				roomName = 'ERROR';
@@ -619,7 +617,5 @@ export class PackratTests {
 }
 
 global.PackratTests = PackratTests;
-
-
 
 

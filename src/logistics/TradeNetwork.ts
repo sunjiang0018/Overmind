@@ -1,3 +1,6 @@
+import {marketDeal} from '../game/Game';
+import {isTerminalReady} from '../game/Structures';
+import {getRoomPrint, isRoomMine} from '../game/Room';
 import {assimilationLocked} from '../assimilation/decorator';
 import {getAllColonies} from '../Colony';
 import {log} from '../console/log';
@@ -7,6 +10,7 @@ import {Abathur} from '../resources/Abathur';
 import {alignedNewline, bullet, leftArrow, rightArrow} from '../utilities/stringConstants';
 import {maxBy, minBy, printRoomName} from '../utilities/utils';
 import {RESERVE_CREDITS} from '../~settings';
+import {groupBy, max, min, sortBy, last, sum, sample, defaults} from '../utilities/native';
 
 interface MarketCache {
 	sell: { [resourceType: string]: { high: number, low: number } };
@@ -192,25 +196,25 @@ export class TraderJoe implements ITradeNetwork {
 	private buildMarketCache(verbose = false, orderThreshold = 1000): void {
 		this.debug('Building market cache');
 		this.invalidateMarketCache();
-		const myActiveOrderIDs = _.map(_.filter(Game.market.orders, order => order.active), order => order.id);
+		const myActiveOrderIDs = Object.values(Game.market.orders ?? {}).filter(order => order.active).map(order => order.id);
 		const allOrders = Game.market.getAllOrders(order => !myActiveOrderIDs.includes(order.id) &&
 															order.amount >= orderThreshold); // don't include tiny orders
-		const groupedBuyOrders = _.groupBy(_.filter(allOrders, o => o.type == ORDER_BUY), o => o.resourceType);
-		const groupedSellOrders = _.groupBy(_.filter(allOrders, o => o.type == ORDER_SELL), o => o.resourceType);
+		const groupedBuyOrders = groupBy(allOrders.filter(o => o.type == ORDER_BUY), o => o.resourceType);
+		const groupedSellOrders = groupBy(allOrders.filter(o => o.type == ORDER_SELL), o => o.resourceType);
 		for (const resourceType in groupedBuyOrders) {
 			// Store buy order with maximum price in cache
-			const prices = _.map(groupedBuyOrders[resourceType], o => o.price);
-			const high = _.max(prices);
-			const low = _.min(prices);
+			const prices = (groupedBuyOrders[resourceType] || []).map(o => o.price);
+			const high = max(prices);
+			const low = min(prices);
 			if (verbose) console.log(`${resourceType} BUY: high: ${high}  low: ${low}`);
 			// this.memory.cache.buy[resourceType] = minBy(groupedBuyOrders[resourceType], (o:Order) => -1 * o.price);
 			this.memory.cache.buy[resourceType] = {high: high, low: low};
 		}
 		for (const resourceType in groupedSellOrders) {
 			// Store sell order with minimum price in cache
-			const prices = _.map(groupedSellOrders[resourceType], o => o.price);
-			const high = _.max(prices);
-			const low = _.min(prices);
+			const prices = (groupedSellOrders[resourceType] || []).map(o => o.price);
+			const high = max(prices);
+			const low = min(prices);
 			if (verbose) console.log(`${resourceType} SELL: high: ${high}  low: ${low}`);
 			// this.memory.cache.sell[resourceType] = minBy(groupedSellOrders[resourceType], (o:Order) => o.price);
 			this.memory.cache.sell[resourceType] = {high: high, low: low};
@@ -224,23 +228,23 @@ export class TraderJoe implements ITradeNetwork {
 	private buildMarketHistoryCache(): void {
 		this.debug('Building market history cache');
 		const history = Game.market.getHistory();
-		const historyByResource = _.groupBy(history, hist => hist.resourceType);
+		const historyByResource = groupBy(history, hist => hist.resourceType);
 		// Compute stats for each resource
 		for (const resource in historyByResource) {
-			const resourceHistory = _.sortBy(historyByResource[resource], hist => hist.date); // oldest to newest
-			const prices = _.map(resourceHistory, hist => hist.avgPrice);
+			const resourceHistory = sortBy(historyByResource[resource], hist => hist.date); // oldest to newest
+			const prices = resourceHistory.map(hist => hist.avgPrice);
 
 			// Get average price and standard deviation for today
-			const avg = _.last(resourceHistory).avgPrice;
-			const std = _.last(resourceHistory).stddevPrice;
+			const avg = last(resourceHistory).avgPrice;
+			const std = last(resourceHistory).stddevPrice;
 
 			// Compute average price over last 14 days
-			const avg14 = _.sum(resourceHistory, hist => hist.avgPrice * hist.volume) /
-						  _.sum(resourceHistory, hist => hist.volume); // this could be Infinity
+			const avg14 = sum(resourceHistory, hist => hist.avgPrice * hist.volume) /
+						  sum(resourceHistory, hist => hist.volume); // this could be Infinity
 			// Compute average standard deviation over last 14 days using Bessel-corrected variance summation
 			const std14 = Math.sqrt(
-				_.sum(resourceHistory, h => h.volume * (h.avgPrice - avg14) ** 2 + h.stddevPrice ** 2) /
-				_.sum(resourceHistory, h => h.volume)
+				sum(resourceHistory, h => h.volume * (h.avgPrice - avg14) ** 2 + h.stddevPrice ** 2) /
+				sum(resourceHistory, h => h.volume)
 			); // this could be Infinity
 			this.memory.cache.history[resource] = {
 				avg, std, avg14, std14
@@ -252,13 +256,12 @@ export class TraderJoe implements ITradeNetwork {
 	 * Computes the effective price of energy accounting for transfer costs
 	 */
 	private computeEffectiveEnergyPrices(): void {
-		const energyOrders = _(Game.market.getAllOrders({resourceType: RESOURCE_ENERGY}))
-			.filter(order => order.amount >= 5000)
-			.groupBy(order => order.type).value();
+		const energyOrders = groupBy(Game.market.getAllOrders({resourceType: RESOURCE_ENERGY})
+			.filter(order => order.amount >= 5000), order => order.type);
 		const sellOrders = energyOrders[ORDER_SELL];
 		const buyOrders = energyOrders[ORDER_BUY];
 
-		for (const colony of _.sample(getAllColonies(), 5)) {
+		for (const colony of sample(getAllColonies(), 5)) {
 			const room = colony.room.name;
 			const sellDirectPrice = maxBy(buyOrders, order => order.price - this.marginalTransactionPrice(order, room));
 			const buyDirectPrice = minBy(sellOrders, order => order.price + this.marginalTransactionPrice(order, room));
@@ -306,14 +309,14 @@ export class TraderJoe implements ITradeNetwork {
 	getExistingOrders(type: ORDER_BUY | ORDER_SELL, resource: ResourceConstant | 'any', roomName?: string): Order[] {
 		let orders: Order[];
 		if (roomName) {
-			orders = _.filter(Game.market.orders, order => order.type == type &&
+			orders = Object.values(Game.market.orders ?? {}).filter(order => order.type == type &&
 														   (order.resourceType == resource || resource == 'any') &&
 														   order.roomName == roomName);
 			if (orders.length > 1 && resource != 'any') {
 				log.error(`Multiple orders for ${resource} detected in ${printRoomName(roomName)}!`);
 			}
 		} else {
-			orders = _.filter(Game.market.orders, order => order.type == type &&
+			orders = Object.values(Game.market.orders ?? {}).filter(order => order.type == type &&
 														   (order.resourceType == resource || resource == 'any'));
 		}
 		return orders;
@@ -323,7 +326,7 @@ export class TraderJoe implements ITradeNetwork {
 	 * Returns whether an order is yours
 	 */
 	private isOrderMine(order: Order): boolean {
-		return Game.rooms[order.roomName!] && Game.rooms[order.roomName!].my;
+		return Game.rooms[order.roomName!] && isRoomMine(Game.rooms[order.roomName!]);
 	}
 
 	/**
@@ -353,7 +356,7 @@ export class TraderJoe implements ITradeNetwork {
 	private getPriceForBaseIngredients(resource: ResourceConstant/*, colony?: Colony*/): number {
 		const ingredients = Abathur.enumerateReactionBaseIngredients(resource);
 		if (ingredients.length > 0) { // a synthesizeable compound
-			return _.sum(ingredients, res =>
+			return sum(ingredients, res =>
 				this.memory.cache.history[res] ? this.memory.cache.history[res].avg14 || Infinity : Infinity);
 		} else { // not synthesizeable
 			if (this.memory.cache.history[resource]) {
@@ -379,7 +382,7 @@ export class TraderJoe implements ITradeNetwork {
 		}
 
 		// Get all orders for this resource and group by type
-		const allOrdersOfResource = _.groupBy(Game.market.getAllOrders({resourceType: resource}), 'type');
+		const allOrdersOfResource = groupBy(Game.market.getAllOrders({resourceType: resource}), order => order?.type);
 		const allBuyOrders = allOrdersOfResource[ORDER_BUY];
 		const allSellOrders = allOrdersOfResource[ORDER_SELL];
 
@@ -396,7 +399,7 @@ export class TraderJoe implements ITradeNetwork {
 		// Compute an adjustment factor based on how long it's been sitting on the market
 		const adjustMagnitude = 0.1;
 		let adjustment = 1;
-		const existingOrder = _.first(this.getExistingOrders(ORDER_SELL, resource, room));
+		const existingOrder = this.getExistingOrders(ORDER_SELL, resource, room)[0];
 		if (existingOrder) {
 			const timeOnMarket = Game.time - existingOrder.created;
 			const orderDiscountTimescale = 50000; // order will change by adjustMagnitude percent every this many ticks
@@ -450,7 +453,7 @@ export class TraderJoe implements ITradeNetwork {
 	 */
 	private maintainOrder(terminal: StructureTerminal, type: ORDER_SELL | ORDER_BUY,
 						  resource: ResourceConstant, amount: number, opts: TradeOpts): number {
-		this.debug(`maintain ${type} order for ${terminal.room.print}: ${amount} ${resource}`);
+		this.debug(`maintain ${type} order for ${getRoomPrint(terminal.room)}: ${amount} ${resource}`);
 
 		// This is all somewhat expensive so only do this occasionally
 		if (!this.ordersProcessedThisTick()) {
@@ -470,7 +473,7 @@ export class TraderJoe implements ITradeNetwork {
 			return NO_ACTION;
 		}
 
-		const existingOrder = _.first(this.getExistingOrders(type, resource, terminal.room.name));
+		const existingOrder = this.getExistingOrders(type, resource, terminal.room.name)[0];
 
 		// Maintain an existing order
 		if (existingOrder) {
@@ -490,7 +493,7 @@ export class TraderJoe implements ITradeNetwork {
 			if (amount > existingOrder.remainingAmount && normalFluctuation) {
 				const addAmount = amount - existingOrder.remainingAmount;
 				const ret = Game.market.extendOrder(existingOrder.id, addAmount);
-				this.notify(`${terminal.room.print}: extending ${type} order for ${resource} by ${addAmount}.` +
+				this.notify(`${getRoomPrint(terminal.room)}: extending ${type} order for ${resource} by ${addAmount}.` +
 							` Response: ${ret}`);
 				return ret;
 			}
@@ -498,7 +501,7 @@ export class TraderJoe implements ITradeNetwork {
 			// Small chance of changing the price if it's not competitive; don't do too often or you are high risk
 			if (!normalFluctuation && Math.random() < 1 / 2000) {
 				const ret = Game.market.changeOrderPrice(existingOrder.id, price);
-				this.notify(`${terminal.room.print}: changing ${type} order price for ${resource} from ` +
+				this.notify(`${getRoomPrint(terminal.room)}: changing ${type} order price for ${resource} from ` +
 							`${existingOrder.price} to ${price}. Response: ${ret}`);
 				return ret;
 			}
@@ -567,7 +570,7 @@ export class TraderJoe implements ITradeNetwork {
 	}
 
 	private cleanOrders() {
-		const ordersToClean = _.filter(Game.market.orders, order => {
+		const ordersToClean = Object.values(Game.market.orders ?? {}).filter(order => {
 			// Clean up inactive orders where you've bought/sold everything
 			if (order.active == false && order.remainingAmount == 0) {
 				return true;
@@ -602,9 +605,9 @@ export class TraderJoe implements ITradeNetwork {
 	 */
 	private buyDirect(terminal: StructureTerminal, resource: ResourceConstant, amount: number,
 					  opts: TradeOpts): number {
-		this.debug(`buyDirect for ${terminal.room.print}: ${amount} ${resource}`);
+		this.debug(`buyDirect for ${getRoomPrint(terminal.room)}: ${amount} ${resource}`);
 		// If terminal is on cooldown or just did something then skip
-		if (!terminal.isReady && !opts.dryRun) {
+		if (!isTerminalReady(terminal) && !opts.dryRun) {
 			return NO_ACTION; // don't return ERR_TIRED here because it doesn't signal an inability to buy
 		}
 		// Wait until you accumulate more of the resource to buy with bigger transactions
@@ -619,7 +622,7 @@ export class TraderJoe implements ITradeNetwork {
 		// If flexibleAmount is allowed, consider buying from orders which don't need the full amount
 		const minAmount = opts.flexibleAmount ? Math.min(TraderJoe.settings.market.orders.minBuyDirectAmount, amount)
 											  : amount;
-		const validOrders = _.filter(Game.market.getAllOrders({resourceType: resource, type: ORDER_SELL}),
+		const validOrders = Game.market.getAllOrders({resourceType: resource, type: ORDER_SELL}).filter(
 									 order => order.amount >= minAmount);
 
 		// Find the cheapest order, minimizing by (buying price + marginal cost of transaction)
@@ -663,8 +666,8 @@ export class TraderJoe implements ITradeNetwork {
 				return haveEnoughCredits ? OK : ERR_NOT_ENOUGH_RESOURCES;
 			}
 			// Otherwise make the deal
-			const response = Game.market.deal(order.id, buyAmount, terminal.room.name);
-			this.debug(`buyDirect executed for ${terminal.room.print}: ${buyAmount} ${resource} (${response})`);
+			const response = marketDeal(order.id, buyAmount, terminal.room.name);
+			this.debug(`buyDirect executed for ${getRoomPrint(terminal.room)}: ${buyAmount} ${resource} (${response})`);
 			// this.logTransaction(order, terminal.room.name, amount, response);
 			return response;
 		} else {
@@ -677,9 +680,9 @@ export class TraderJoe implements ITradeNetwork {
 	 */
 	private sellDirect(terminal: StructureTerminal, resource: ResourceConstant, amount: number,
 					   opts: TradeOpts): number {
-		this.debug(`sellDirect for ${terminal.room.print}: ${amount} ${resource}`);
+		this.debug(`sellDirect for ${getRoomPrint(terminal.room)}: ${amount} ${resource}`);
 		// If terminal is on cooldown or just did something then skip
-		if (!terminal.isReady && !opts.dryRun) {
+		if (!isTerminalReady(terminal) && !opts.dryRun) {
 			return NO_ACTION; // don't return ERR_TIRED here because it doesn't signal an inability to sell
 		}
 		// Wait until you accumulate more of the resource to sell with bigger transactions
@@ -693,7 +696,7 @@ export class TraderJoe implements ITradeNetwork {
 		// If flexibleAmount is allowed, consider selling to orders which don't need the full amount
 		const minAmount = opts.flexibleAmount ? Math.min(amount, TraderJoe.settings.market.orders.minSellDirectAmount)
 											  : amount;
-		const validOrders = _.filter(Game.market.getAllOrders({resourceType: resource, type: ORDER_BUY}),
+		const validOrders = Game.market.getAllOrders({resourceType: resource, type: ORDER_BUY}).filter(
 									 order => order.amount >= minAmount);
 
 		// Find the best order, maximizing by (buying price - marginal loss from transaction)
@@ -743,8 +746,8 @@ export class TraderJoe implements ITradeNetwork {
 				return OK;
 			}
 			// Otherwise do the deal
-			const response = Game.market.deal(order.id, sellAmount, terminal.room.name);
-			this.debug(`sellDirect executed for ${terminal.room.print}: ${sellAmount} ${resource} (${response})`);
+			const response = marketDeal(order.id, sellAmount, terminal.room.name);
+			this.debug(`sellDirect executed for ${getRoomPrint(terminal.room)}: ${sellAmount} ${resource} (${response})`);
 			// this.logTransaction(order, terminal.room.name, amount, response);
 			return response;
 		} else {
@@ -757,28 +760,28 @@ export class TraderJoe implements ITradeNetwork {
 	 */
 	buy(terminal: StructureTerminal, resource: ResourceConstant, amount: number, opts: TradeOpts = {}): number {
 
-		_.defaults(opts, defaultTradeOpts);
+		defaults(opts, defaultTradeOpts);
 
 		if (Game.market.credits < TraderJoe.settings.market.credits.canBuyAbove) {
-			log.error(`Credits insufficient to buy resource ${amount} ${resource} to ${terminal.room.print}; ` +
+			log.error(`Credits insufficient to buy resource ${amount} ${resource} to ${getRoomPrint(terminal.room)}; ` +
 					  `shouldn't be making this TradeNetwork.buy() request!`);
 			return ERR_CREDIT_THRESHOLDS;
 		}
 
 		if (Game.market.credits < TraderJoe.settings.market.credits.canBuyBoostsAbove && Abathur.isBoost(resource)) {
-			log.error(`Credits insufficient to buy boost ${amount} ${resource} to ${terminal.room.print}; ` +
+			log.error(`Credits insufficient to buy boost ${amount} ${resource} to ${getRoomPrint(terminal.room)}; ` +
 					  `shouldn't be making this TradeNetwork.buy() request!`);
 			return ERR_CREDIT_THRESHOLDS;
 		}
 
 		if (Game.market.credits < TraderJoe.settings.market.credits.canBuyEnergyAbove && resource == RESOURCE_ENERGY) {
-			log.error(`Credits insufficient to buy ${amount} energy to ${terminal.room.print}; ` +
+			log.error(`Credits insufficient to buy ${amount} energy to ${getRoomPrint(terminal.room)}; ` +
 					  `shouldn't be making this TradeNetwork.buy() request!`);
 			return ERR_CREDIT_THRESHOLDS;
 		}
 
 		if (Abathur.isIntermediateReactant(resource) || resource == RESOURCE_GHODIUM) {
-			log.error(`Shouldn't request reaction intermediate ${amount} ${resource} to ${terminal.room.print}!`);
+			log.error(`Shouldn't request reaction intermediate ${amount} ${resource} to ${getRoomPrint(terminal.room)}!`);
 			return ERR_DONT_BUY_REACTION_INTERMEDIATES;
 		}
 
@@ -806,7 +809,7 @@ export class TraderJoe implements ITradeNetwork {
 	 */
 	sell(terminal: StructureTerminal, resource: ResourceConstant, amount: number, opts: TradeOpts = {}): number {
 
-		_.defaults(opts, defaultTradeOpts);
+		defaults(opts, defaultTradeOpts);
 
 
 		// If you don't have a lot of credits or preferDirect==true, try to sell directly to an existing buy order
@@ -869,7 +872,7 @@ export class TraderJoe implements ITradeNetwork {
 				const cost = (transaction.amount * transaction.order.price).toFixed(2);
 				// I am selling to another person's buy order
 				if (transaction.order.type == ORDER_BUY) {
-					const coststr = `[+${cost}c]`.padRight('[-10000.00c]'.length);
+					const coststr = `[+${cost}c]`.padEnd('[-10000.00c]'.length);
 					msg = coststr + ` sell direct: ${printRoomName(transaction.to, true)} ${leftArrow} ` +
 						  `${transaction.amount} ${transaction.resourceType} ${leftArrow} ` +
 						  `${printRoomName(transaction.from, true)} `;
@@ -883,7 +886,7 @@ export class TraderJoe implements ITradeNetwork {
 				}
 				// Someone else is buying from by sell order
 				else {
-					const coststr = `[+${cost}c]`.padRight('[-10000.00c]'.length);
+					const coststr = `[+${cost}c]`.padEnd('[-10000.00c]'.length);
 					msg = coststr + ` sell order: ${printRoomName(transaction.from, true)} ${rightArrow} ` +
 						  `${transaction.amount} ${transaction.resourceType} ${rightArrow} ` +
 						  `${printRoomName(transaction.to, true)} `;
@@ -908,7 +911,7 @@ export class TraderJoe implements ITradeNetwork {
 				const cost = (transaction.amount * transaction.order.price).toFixed(2);
 				// I am receiving resources from a direct purchase of someone else's sell order
 				if (transaction.order.type == ORDER_SELL) {
-					const coststr = `[-${cost}c]`.padRight('[-10000.00c]'.length);
+					const coststr = `[-${cost}c]`.padEnd('[-10000.00c]'.length);
 					msg = coststr + ` buy direct: ${printRoomName(transaction.to, true)} ${leftArrow} ` +
 						  `${transaction.amount} ${transaction.resourceType} ${leftArrow} ` +
 						  `${printRoomName(transaction.from, true)} `;
@@ -922,7 +925,7 @@ export class TraderJoe implements ITradeNetwork {
 				}
 				// Another person is selling to my buy order
 				else {
-					const coststr = `[-${cost}c]`.padRight('[-10000.00c]'.length);
+					const coststr = `[-${cost}c]`.padEnd('[-10000.00c]'.length);
 					msg = coststr + ` buy order: ${printRoomName(transaction.from, true)} ${rightArrow} ` +
 						  `${transaction.amount} ${transaction.resourceType} ${rightArrow} ` +
 						  `${printRoomName(transaction.to, true)} `;

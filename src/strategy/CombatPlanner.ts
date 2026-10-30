@@ -1,3 +1,7 @@
+import {isStructureWalkable} from '../game/Structures';
+import {getRoomBarriers, getRoomRamparts, getRoomSpawns, getRoomTowers, getRoomWalls} from '../game/RoomStructures';
+import {roomPositionLookForStructure} from '../game/RoomPosition';
+import {getRoomHostiles, getRoomOwner, getRoomPrint, getRoomStructures, isRoomMine} from '../game/Room';
 // High-level planning for skirmishing and combats
 
 import {log} from '../console/log';
@@ -8,6 +12,7 @@ import {Pathing} from '../movement/Pathing';
 import {CombatOverlord} from '../overlords/CombatOverlord';
 import {ema, getCacheExpiration} from '../utilities/utils';
 import {CombatZerg} from '../zerg/CombatZerg';
+import {defaults, compact, range, randomInt, max, min, sum} from '../utilities/native';
 
 export interface Threat {
 	directive: DefenseDirective;
@@ -90,7 +95,7 @@ export class CombatPlanner {
 	creeps: CombatZerg[];
 
 	constructor() {
-		_.defaults(this.memory, defaultCombatPlannerMemory);
+		defaults(this.memory, defaultCombatPlannerMemory);
 	}
 
 	get memory(): CombatPlannerMemory {
@@ -137,7 +142,7 @@ export class CombatPlanner {
 		if (directive.room) {
 			return {
 				directive    : directive,
-				potentials   : CombatIntel.getCombatPotentials(directive.room.hostiles),
+				potentials   : CombatIntel.getCombatPotentials(getRoomHostiles(directive.room)),
 				roomName     : directive.room.name,
 				closestColony: directive.colony.name,
 				distances    : directive.overlord.spawnGroup.memory.distances,
@@ -222,11 +227,11 @@ export class CombatPlanner {
 
 		// Room is bunker if >80% of hostile structures are covered by ramparts
 		const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
-		const hostileStructuresInRampart = _.filter(hostileStructures, s => s.pos.lookForStructure(STRUCTURE_RAMPART));
+		const hostileStructuresInRampart = hostileStructures.filter(s => roomPositionLookForStructure(s.pos, STRUCTURE_RAMPART));
 		isBunker = (hostileStructuresInRampart.length / hostileStructures.length >= 0.8);
 
 		// Room is edgewall if every exit tile has wall or barrier at 2 range to left/right/top/bottom
-		const walledOffExitTiles = _.filter(exitPositions, pos => {
+		const walledOffExitTiles = exitPositions.filter(pos => {
 
 			let lookPos: RoomPosition;
 			const x = pos.x;
@@ -247,8 +252,8 @@ export class CombatPlanner {
 			if (terrain.get(lookPos.x, lookPos.y) == TERRAIN_MASK_WALL) {
 				return true;
 			} else {
-				const rampart = lookPos.lookForStructure(STRUCTURE_RAMPART);
-				const wall = lookPos.lookForStructure(STRUCTURE_WALL);
+				const rampart = roomPositionLookForStructure(lookPos, STRUCTURE_RAMPART);
+				const wall = roomPositionLookForStructure(lookPos, STRUCTURE_WALL);
 				return rampart != undefined || wall != undefined;
 			}
 
@@ -259,16 +264,15 @@ export class CombatPlanner {
 
 		// Room is inner wall if not bunker or edgewall and there is no path to spawn, otherwise exposed
 		if (!isBunker && !isEdgeWall) {
-			const entryPoints = _.compact(
-				[_.find(exitPositions, pos => pos.x == 0),  // left
-				 _.find(exitPositions, pos => pos.x == 49), // right
-				 _.find(exitPositions, pos => pos.y == 0),  // top
-				 _.find(exitPositions, pos => pos.y == 49), // bottom
+			const entryPoints = compact([exitPositions.find(pos => pos.x == 0),  // left
+				 exitPositions.find(pos => pos.x == 49), // right
+				 exitPositions.find(pos => pos.y == 0),  // top
+				 exitPositions.find(pos => pos.y == 49), // bottom
 				]) as RoomPosition[];
-			const target = (room.spawns[0] || room.towers[0]);
+			const target = (getRoomSpawns(room)[0] || getRoomTowers(room)[0]);
 			if (target) {
-				const obstacles = _.filter(room.structures, s => !s.isWalkable);
-				const isReachable = _.find(entryPoints, pos => Pathing.isReachable(pos, target.pos, obstacles));
+				const obstacles = getRoomStructures(room).filter(s => !isStructureWalkable(s));
+				const isReachable = entryPoints.find(pos => Pathing.isReachable(pos, target.pos, obstacles));
 				if (isReachable) {
 					isExposed = true;
 				}
@@ -287,7 +291,7 @@ export class CombatPlanner {
 		} else if (isInnerWall) {
 			return 'innerwall';
 		} else {
-			log.warning(`Inconclusive room layout for ${room.print}! Assuming inner wall.`);
+			log.warning(`Inconclusive room layout for ${getRoomPrint(room)}! Assuming inner wall.`);
 			return 'innerwall';
 		}
 
@@ -295,17 +299,16 @@ export class CombatPlanner {
 
 	static getSiegeAnalysis(room: Room): SiegeAnalysis {
 
-		const owner = room.owner;
+		const owner = getRoomOwner(room);
 		const level = room.controller ? room.controller.level : 0;
-		const towerDamageSamplePositions = _.map(_.range(20),
-												 i => new RoomPosition(_.random(1, 48), _.random(1, 48), room.name));
-		const maxTowerDamage = _.max(_.map(towerDamageSamplePositions,
-										   pos => CombatIntel.towerDamageAtPos(pos, true)));
-		const minBarrierHits = room.barriers.length > 0 ? _.min(_.map(room.barriers, b => b.hits)) : 0;
-		const avgBarrierHits = room.barriers.length > 0 ? _.sum(room.barriers, b => b.hits) / room.barriers.length : 0;
+		const towerDamageSamplePositions = range(20).map(
+												 i => new RoomPosition(randomInt(1, 48), randomInt(1, 48), room.name));
+		const maxTowerDamage = max(towerDamageSamplePositions, pos => CombatIntel.towerDamageAtPos(pos, true));
+		const minBarrierHits = getRoomBarriers(room).length > 0 ? min(getRoomBarriers(room), b => b.hits) : 0;
+		const avgBarrierHits = getRoomBarriers(room).length > 0 ? sum(getRoomBarriers(room), b => b.hits) / getRoomBarriers(room).length : 0;
 
-		const numWalls = room.walls.length;
-		const numRamparts = room.ramparts.length;
+		const numWalls = getRoomWalls(room).length;
+		const numRamparts = getRoomRamparts(room).length;
 
 		const expiration = getCacheExpiration(SIEGE_ANALYSIS_EXPIRATION);
 
@@ -342,7 +345,7 @@ export class CombatPlanner {
 			const room: Room = Game.rooms[roomName];
 
 			// Make new siege analyses for rooms needing it
-			if (room.owner && !room.my) {
+			if (getRoomOwner(room) && !isRoomMine(room)) {
 				this.registerSiegeAnalysis(room);
 			}
 

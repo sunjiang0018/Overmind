@@ -1,3 +1,13 @@
+import {getRoomPositionNeighbors, roomPositionIsWalkable} from '../../game/RoomPosition';
+import {getRoomSources} from '../../game/RoomStructures';
+import {
+	getRoomConstructionSites,
+	getRoomDangerousHostiles,
+	getRoomOwner,
+	getRoomPlayerHostiles,
+	isColonyRoom,
+	isOutpostRoom,
+} from '../../game/Room';
 import {log} from '../../console/log';
 import {ClaimingOverlord} from '../../overlords/colonization/claimer';
 import {RoomPoisonerOverlord} from '../../overlords/colonization/roomPoisoner';
@@ -8,6 +18,7 @@ import {MY_USERNAME} from '../../~settings';
 import {DirectiveOutpostDefense} from '../defense/outpostDefense';
 import {Directive} from '../Directive';
 import {DirectiveControllerAttack} from '../offense/controllerAttack';
+import {compact, uniqueBy, flatten} from '../../utilities/native';
 
 
 /**
@@ -46,7 +57,7 @@ export class DirectivePoisonRoom extends Directive {
 			remove = true;
 		}
 		// Remove if owned by other player
-		if (this.room && this.room.owner && this.room.owner != MY_USERNAME) {
+		if (this.room && getRoomOwner(this.room) && getRoomOwner(this.room) != MY_USERNAME) {
 			log.error(`Removing poisonRoom directive in ${this.pos.roomName}: room already owned by another player.`);
 			remove = true;
 		}
@@ -64,10 +75,10 @@ export class DirectivePoisonRoom extends Directive {
 	 * Returns whether the room has already been poisoned
 	 */
 	static roomAlreadyPoisoned(room: Room): boolean {
-		const thingsToBlock = _.compact([room.controller, ...room.sources]) as RoomObject[];
-		const neighborTiles = _.unique(_.flatten(_.map(thingsToBlock, obj => obj.pos.neighbors)),
+		const thingsToBlock = compact([room.controller, ...getRoomSources(room)]) as RoomObject[];
+		const neighborTiles = uniqueBy(flatten(thingsToBlock.map(obj => getRoomPositionNeighbors(obj.pos))),
 									   pos => packPos(pos));
-		const blockPositions = _.filter(neighborTiles, pos => pos.isWalkable(true));
+		const blockPositions = neighborTiles.filter(pos => roomPositionIsWalkable(pos, true));
 		return blockPositions.length == 0;
 	}
 
@@ -76,7 +87,7 @@ export class DirectivePoisonRoom extends Directive {
 	 * room and can poison another room (these checks should be done once on Overseer)
 	 */
 	static canAutoPoison(room: Room, allowReserved = false): boolean {
-		if (room.isColony || room.isOutpost) {
+		if (isColonyRoom(room) || isOutpostRoom(room)) {
 			return false;
 		}
 		if (!room.controller) {
@@ -85,10 +96,10 @@ export class DirectivePoisonRoom extends Directive {
 		if (allowReserved && room.controller.reservation) {
 			return false;
 		}
-		if (room.dangerousHostiles.length > 0) {
+		if (getRoomDangerousHostiles(room).length > 0) {
 			return false;
 		}
-		if (_.filter(room.controller.pos.neighbors, pos => pos.isWalkable(true)).length == 0) {
+		if (getRoomPositionNeighbors(room.controller.pos).filter(pos => roomPositionIsWalkable(pos, true)).length == 0) {
 			return false;
 		}
 		return true;
@@ -100,10 +111,10 @@ export class DirectivePoisonRoom extends Directive {
 
 		// Re-compute the list of positions to block
 		if (this.room) {
-			const thingsToBlock = _.compact([this.room.controller, ...this.room.sources]) as RoomObject[];
-			const neighborTiles = _.unique(_.flatten(_.map(thingsToBlock, obj => obj.pos.neighbors)),
+			const thingsToBlock = compact([this.room.controller, ...getRoomSources(this.room)]) as RoomObject[];
+			const neighborTiles = uniqueBy(flatten(thingsToBlock.map(obj => getRoomPositionNeighbors(obj.pos))),
 										   pos => packPos(pos));
-			this.blockPositions = _.filter(neighborTiles, pos => pos.isWalkable(true));
+			this.blockPositions = neighborTiles.filter(pos => roomPositionIsWalkable(pos, true));
 		} else {
 			this.blockPositions = [];
 		}
@@ -123,8 +134,8 @@ export class DirectivePoisonRoom extends Directive {
 					s.structureType != STRUCTURE_LAB &&
 					s.structureType != STRUCTURE_NUKER
 			});
-			_.forEach(removeStructures, s => s.destroy());
-			_.forEach(this.room.find(FIND_HOSTILE_CONSTRUCTION_SITES), csite => csite.remove());
+			removeStructures.forEach(s => s.destroy());
+			this.room.find(FIND_HOSTILE_CONSTRUCTION_SITES).forEach(csite => csite.remove());
 		}
 	}
 
@@ -132,12 +143,12 @@ export class DirectivePoisonRoom extends Directive {
 		if (!(this.room && this.room.controller && this.room.controller.level == 2)) {
 			return;
 		}
-		const positionToBlock = _.first(this.blockPositions);
+		const positionToBlock = this.blockPositions[0];
 		if (!positionToBlock) {
 			return; // all blocked off
 		}
 		// Don't lock off the last position unless there's a creep with energy to build the site
-		const enoughEnergyToBuildFinalWall = _.any(this.overlords.roomPoisoner.roomPoisoners,
+		const enoughEnergyToBuildFinalWall = this.overlords.roomPoisoner.roomPoisoners.some(
 												   creep => creep.carry.energy >= BUILD_POWER);
 		if (this.blockPositions.length == 1 && !enoughEnergyToBuildFinalWall) {
 			return;
@@ -157,7 +168,7 @@ export class DirectivePoisonRoom extends Directive {
 					s.structureType != STRUCTURE_LAB &&
 					s.structureType != STRUCTURE_NUKER
 			});
-			_.forEach(allStructures, s => s.destroy());
+			allStructures.forEach(s => s.destroy());
 		}
 	}
 
@@ -169,13 +180,13 @@ export class DirectivePoisonRoom extends Directive {
 				DirectiveControllerAttack.createIfNotPresent(this.room.controller.pos, 'room');
 			}
 			// Send fighters if needed
-			if (this.room.playerHostiles.length > 0) {
+			if (getRoomPlayerHostiles(this.room).length > 0) {
 				DirectiveOutpostDefense.createIfNotPresent(this.room.controller.pos, 'room');
 			}
 		}
 
 		if (this.room && this.room.controller && this.room.controller.my) {
-			if (Game.time % DirectivePoisonRoom.settings.runFrequency == 0 || this.room.constructionSites.length == 0) {
+			if (Game.time % DirectivePoisonRoom.settings.runFrequency == 0 || getRoomConstructionSites(this.room).length == 0) {
 				// At RCL 1, prepare room by removing structures and hostile construction sites
 				if (this.room.controller.level == 1) {
 					this.prePoisonActions();

@@ -1,9 +1,12 @@
+import {getRoomHostiles, getRoomPrint, getRoomRuins} from '../../game/Room';
+import {getRoomPositionRoom, isPositionVisible, roomPositionLookForStructure} from '../../game/RoomPosition';
 import {log} from '../../console/log';
 import {PowerDrillOverlord} from '../../overlords/powerMining/PowerDrill';
 import {PowerHaulingOverlord} from '../../overlords/powerMining/PowerHauler';
 import {profile} from '../../profiler/decorator';
 import {calculateFormationStrength} from '../../utilities/creepUtils';
 import {Directive} from '../Directive';
+import {groupBy} from '../../utilities/native';
 
 
 export enum PowerMineState {
@@ -64,24 +67,24 @@ export class DirectivePowerMine extends Directive {
 	}
 
 	get drops(): { [resourceType: string]: Resource[] } {
-		if (!this.pos.isVisible) {
+		if (!isPositionVisible(this.pos)) {
 			return {};
 		}
-		if (!this._drops || _.keys(this._drops).length == 0) {
+		if (!this._drops || Object.keys(this._drops ?? {}).length == 0) {
 			const drops = (this.pos.lookFor(LOOK_RESOURCES) || []) as Resource[];
-			this._drops = _.groupBy(drops, drop => drop.resourceType);
+			this._drops = groupBy(drops, drop => drop.resourceType);
 		}
 		return this._drops;
 	}
 
 	get hasDrops(): boolean {
-		return _.keys(this.drops).length > 0;
+		return Object.keys(this.drops ?? {}).length > 0;
 	}
 
 	get powerBank(): StructurePowerBank | undefined {
-		if (this.pos.isVisible) {
+		if (isPositionVisible(this.pos)) {
 			this._powerBank = this._powerBank || !!this.flag.room
-							  ? this.flag.pos.lookForStructure(STRUCTURE_POWER_BANK) as StructurePowerBank
+							  ? roomPositionLookForStructure(this.flag.pos, STRUCTURE_POWER_BANK) as StructurePowerBank
 							  : undefined;
 			return this._powerBank;
 		}
@@ -91,7 +94,7 @@ export class DirectivePowerMine extends Directive {
 	 * Total amount of resources remaining to be transported; cached into memory in case room loses visibility
 	 */
 	get totalResources() {
-		if (this.pos.isVisible) {
+		if (isPositionVisible(this.pos)) {
 			// update total amount remaining
 			this.memory.totalResources = this.powerBank ? this.powerBank.power : this.memory.totalResources;
 		}
@@ -125,7 +128,7 @@ export class DirectivePowerMine extends Directive {
 			if (this.powerBank.pos.findInRange(FIND_MY_CREEPS, 3).length == 0
 				&& this.powerBank.pos.findInRange(FIND_HOSTILE_CREEPS, 3).length > 0) {
 				// Power bank is damage but we didn't mine it
-				log.alert(`Power bank mining ${this.print} competing with ${this.powerBank.room.hostiles[0].owner.username}.`);
+				log.alert(`Power bank mining ${this.print} competing with ${getRoomHostiles(this.powerBank.room)[0].owner.username}.`);
 				// this.remove();
 			} else {
 				// Set to mining started
@@ -136,16 +139,16 @@ export class DirectivePowerMine extends Directive {
 			Game.notify('Activating spawning haulers for power mining in room ' + this.pos.roomName);
 			log.info('Activating spawning haulers for power mining in room ' + this.pos.roomName);
 			this.memory.state = 2;
-		} else if (currentState == 2 && this.room && !this.powerBank && (this.hasDrops || this.room.ruins.length == 0)) {
-			Game.notify(`Mining is complete for ${this.print} in ${this.room.print} at time ${Game.time}`);
-			log.alert(`Mining is complete for ${this.print} in ${this.room.print} at time ${Game.time}`);
+		} else if (currentState == 2 && this.room && !this.powerBank && (this.hasDrops || getRoomRuins(this.room).length == 0)) {
+			Game.notify(`Mining is complete for ${this.print} in ${getRoomPrint(this.room)} at time ${Game.time}`);
+			log.alert(`Mining is complete for ${this.print} in ${getRoomPrint(this.room)} at time ${Game.time}`);
 			this.memory.state = 3;
 			// TODO reassign them to guard the bank
 			delete this.overlords.powerMine;
 			this._powerBank = undefined; // This might be fluff
 		} else if ((currentState == 0 || currentState == 1 || currentState == 2) && this.room
-				   && this.pos.isVisible && !this.powerBank) {
-			if (!this.hasDrops && this.room.ruins.length == 0) {
+				   && isPositionVisible(this.pos) && !this.powerBank) {
+			if (!this.hasDrops && getRoomRuins(this.room).length == 0) {
 				// TODO this had an error where it triggered incorrectly
 				Game.notify(`WE FAILED. SORRY CHIEF, COULDN'T FINISH POWER MINING IN ${this.print} ` +
 							`DELETING Directive at time ${Game.time}`);
@@ -158,12 +161,12 @@ export class DirectivePowerMine extends Directive {
 							`setting state to 3 ${Game.time}`);
 				this.memory.state = 3;
 			}
-		} else if (currentState == 3 && this.room && this.pos.isVisible && !this.hasDrops
-				   && this.room.ruins.filter(ruin => !!ruin.store[RESOURCE_POWER]
+		} else if (currentState == 3 && this.room && isPositionVisible(this.pos) && !this.hasDrops
+				   && getRoomRuins(this.room).filter(ruin => !!ruin.store[RESOURCE_POWER]
 				   && ruin.store[RESOURCE_POWER]! > 0).length == 0) {
-			Game.notify(`Hauler pickup is complete for ${this.print} in ${this.room.print} at time ${Game.time}`);
+			Game.notify(`Hauler pickup is complete for ${this.print} in ${getRoomPrint(this.room)} at time ${Game.time}`);
 			// Hauler pickup is now complete
-			log.alert(`Hauler pickup is complete for ${this.print} in ${this.room.print} at time ${Game.time}`);
+			log.alert(`Hauler pickup is complete for ${this.print} in ${getRoomPrint(this.room)} at time ${Game.time}`);
 			this.memory.state = 4;
 			// TODO  Stop spawning haulers
 		} else if (currentState == 4 && this.overlords.powerHaul && (this.overlords.powerHaul as PowerHaulingOverlord)
@@ -180,7 +183,7 @@ export class DirectivePowerMine extends Directive {
 
 	init(): void {
 		let alert;
-		if (this.pos.room && !!this.powerBank) {
+		if (getRoomPositionRoom(this.pos) && !!this.powerBank) {
 			alert = `PM ${this.memory.state} ${this.totalResources} P${Math.floor(
 				100 * this.powerBank.hits / this.powerBank.hitsMax)}% @ ${this.powerBank.ticksToDecay}TTL`;
 

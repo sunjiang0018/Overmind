@@ -1,13 +1,18 @@
+import {roomVisualStructure} from '../game/RoomVisual';
+import {getRoomPositionPrint, roomPositionAvailableNeighbors, roomPositionLookForStructure} from '../game/RoomPosition';
 import {getCutTiles} from '../algorithms/minCut';
 import {Colony} from '../Colony';
 import {log} from '../console/log';
+import {isOwnedStructure} from '../declarations/typeGuards';
 import {Mem} from '../memory/Memory';
 import {profile} from '../profiler/decorator';
 import {packCoord, packCoordList, unpackCoordListAsPosList} from '../utilities/packrat';
 import {minMax} from '../utilities/utils';
 import {Visualizer} from '../visuals/Visualizer';
 import {BUNKER_RADIUS, bunkerLayout, insideBunkerBounds} from './layouts/bunker';
+import {hasRoomOverride} from './roomOverrides';
 import {getAllStructureCoordsFromLayout, RoomPlanner, translatePositions} from './RoomPlanner';
+import {memoize, compact} from '../utilities/native';
 
 export interface BarrierPlannerMemory {
 	barrierCoordsPacked: string;
@@ -61,8 +66,8 @@ export class BarrierPlanner {
 		}
 		// Get Min cut
 		const barrierCoords = getCutTiles(this.colony.name, rectArray, false, 2, false);
-		let positions = _.map(barrierCoords, coord => new RoomPosition(coord.x, coord.y, this.colony.name));
-		positions = positions.concat(upgradeSitePos.availableNeighbors(true));
+		let positions = barrierCoords.map(coord => new RoomPosition(coord.x, coord.y, this.colony.name));
+		positions = positions.concat(roomPositionAvailableNeighbors(upgradeSitePos, true));
 		return positions;
 	}
 
@@ -90,7 +95,7 @@ export class BarrierPlanner {
 		}
 		// Get Min cut
 		const barrierCoords = getCutTiles(this.colony.name, rectArray, true, 2, false);
-		return _.map(barrierCoords, coord => new RoomPosition(coord.x, coord.y, this.colony.name));
+		return barrierCoords.map(coord => new RoomPosition(coord.x, coord.y, this.colony.name));
 	}
 
 	init(): void {
@@ -117,13 +122,21 @@ export class BarrierPlanner {
 
 	/* Quick lookup for if a barrier should be in this position. Barriers returning false won't be maintained. */
 	barrierShouldBeHere(pos: RoomPosition): boolean {
+		if (hasRoomOverride(this.colony.name)) {
+			// A shield belongs on an actual critical building, not an empty future building tile.
+			const criticalTypes: StructureConstant[] = [STRUCTURE_SPAWN, STRUCTURE_TOWER,
+				STRUCTURE_STORAGE, STRUCTURE_TERMINAL];
+			return this.memory.barrierCoordsPacked.includes(packCoord(pos))
+				|| pos.lookFor(LOOK_STRUCTURES).some(structure =>
+					criticalTypes.includes(structure.structureType) && isOwnedStructure(structure) && structure.my);
+		}
 		// Once you are high level, only maintain ramparts at bunker or controller
 		if (this.colony.layout == 'bunker' && this.colony.level >= BarrierPlanner.settings.bunkerizeRCL) {
 			return insideBunkerBounds(pos, this.colony) || pos.getRangeTo(this.colony.controller) == 1;
 		}
 		// Otherwise look up from memory
 		if (this._barrierLookup == undefined) {
-			this._barrierLookup = _.memoize((p: RoomPosition) =>
+			this._barrierLookup = memoize((p: RoomPosition) =>
 												this.memory.barrierCoordsPacked.includes(packCoord(p)));
 		}
 		return this._barrierLookup(pos);
@@ -138,7 +151,7 @@ export class BarrierPlanner {
 		const barrierPositions = unpackCoordListAsPosList(this.memory.barrierCoordsPacked, this.colony.room.name);
 
 		// Add critical structures to barrier lookup
-		const criticalStructures: Structure[] = _.compact([...this.colony.towers,
+		const criticalStructures: Structure[] = compact([...this.colony.towers,
 														   ...this.colony.spawns,
 														   this.colony.storage!,
 														   this.colony.terminal!]);
@@ -150,7 +163,7 @@ export class BarrierPlanner {
 			if (count > 0 && RoomPlanner.canBuild(STRUCTURE_RAMPART, pos) && this.barrierShouldBeHere(pos)) {
 				const ret = pos.createConstructionSite(STRUCTURE_RAMPART);
 				if (ret != OK) {
-					log.warning(`${this.colony.name}: couldn't create rampart site at ${pos.print}. Result: ${ret}`);
+					log.warning(`${this.colony.name}: couldn't create rampart site at ${getRoomPositionPrint(pos)}. Result: ${ret}`);
 				} else {
 					count--;
 				}
@@ -162,15 +175,15 @@ export class BarrierPlanner {
 		if (!this.roomPlanner.bunkerPos) return;
 		const bunkerCoords = getAllStructureCoordsFromLayout(bunkerLayout, this.colony.level);
 		bunkerCoords.push(bunkerLayout.data.anchor); // add center bunker tile
-		let bunkerPositions = _.map(bunkerCoords, coord => new RoomPosition(coord.x, coord.y, this.colony.name));
+		let bunkerPositions = bunkerCoords.map(coord => new RoomPosition(coord.x, coord.y, this.colony.name));
 		bunkerPositions = translatePositions(bunkerPositions, bunkerLayout.data.anchor, this.roomPlanner.bunkerPos);
 		let count = RoomPlanner.settings.maxSitesPerColony - this.colony.constructionSites.length;
 		for (const pos of bunkerPositions) {
-			if (count > 0 && !pos.lookForStructure(STRUCTURE_RAMPART)
+			if (count > 0 && !roomPositionLookForStructure(pos, STRUCTURE_RAMPART)
 				&& pos.lookFor(LOOK_CONSTRUCTION_SITES).length == 0) {
 				const ret = pos.createConstructionSite(STRUCTURE_RAMPART);
 				if (ret != OK) {
-					log.warning(`${this.colony.name}: couldn't create bunker rampart at ${pos.print}. Result: ${ret}`);
+					log.warning(`${this.colony.name}: couldn't create bunker rampart at ${getRoomPositionPrint(pos)}. Result: ${ret}`);
 				} else {
 					count--;
 				}
@@ -203,7 +216,7 @@ export class BarrierPlanner {
 	visuals(): void {
 		if (!Visualizer.enabled) return;
 		for (const pos of this.barrierPositions) {
-			this.colony.room.visual.structure(pos.x, pos.y, STRUCTURE_RAMPART);
+			roomVisualStructure(this.colony.room.visual, pos.x, pos.y, STRUCTURE_RAMPART);
 		}
 	}
 

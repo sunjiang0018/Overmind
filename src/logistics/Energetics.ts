@@ -1,4 +1,5 @@
 import {Colony, ColonyStage} from '../Colony';
+import {sum} from '../utilities/native';
 
 /**
  * Energetics manager; makes high-level decisions based on energy amounts
@@ -32,8 +33,8 @@ export class Energetics {
 
 	static lowPowerMode(colony: Colony): boolean {
 		if (colony.stage == ColonyStage.Adult) {
-			if (_.sum(colony.storage!.store) > this.settings.storage.total.cap &&
-				colony.terminal && _.sum(colony.terminal.store) > this.settings.terminal.total.cap) {
+			if (sum(colony.storage!.store) > this.settings.storage.total.cap &&
+				colony.terminal && sum(colony.terminal.store) > this.settings.terminal.total.cap) {
 				return true;
 			}
 		}

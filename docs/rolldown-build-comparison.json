@@ -1,0 +1,56 @@
+{
+  "node": "v24.11.1",
+  "platform": "darwin-arm64",
+  "measuredAt": "2026-10-30T04:43:00.513Z",
+  "runs": 5,
+  "methodology": "Sequential fresh Node processes, one warm-up per bundler, alternating order; existing TypeScript plugin cache retained. Full includes identical tsc --noEmit checks; bundle skips only that check. CLI startup and config loading included.",
+  "versions": {
+    "rolldown": "1.2.16",
+    "rollup": "2.80.0",
+    "typescript": "5.9.3"
+  },
+  "results": {
+    "rollup": {
+      "fullMs": [
+        2183.77,
+        2110.05,
+        2140.89,
+        2165.48,
+        2277.46
+      ],
+      "bundleMs": [
+        998.01,
+        951.62,
+        971.28,
+        1072.61,
+        946.35
+      ],
+      "bytes": 1605278,
+      "sha256": "1b8b0931545020d6ebce62296210dc7bc0bc0cda147052b37d27ccf8c74feeb0",
+      "fullMedianMs": 2165.48,
+      "bundleMedianMs": 971.28
+    },
+    "rolldown": {
+      "fullMs": [
+        1294.38,
+        1392.69,
+        1323.56,
+        1333.39,
+        1432.19
+      ],
+      "bundleMs": [
+        204.38,
+        153.35,
+        244.39,
+        179.19,
+        198.96
+      ],
+      "bytes": 1100156,
+      "sha256": "cd60b005851d1d278b56eb4e0b6e181715cbe15d723e55e1eb94f3b3540c9c20",
+      "fullMedianMs": 1333.39,
+      "bundleMedianMs": 198.96
+    }
+  },
+  "sourceSha256": "a17e5c7cc02ab5a60c5b9d3e897a238d238764bf52b21b7a16e9a23e1ad82327",
+  "parityPassed": true
+}

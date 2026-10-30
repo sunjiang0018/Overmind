@@ -1,9 +1,11 @@
+import {getRoomSpawns} from '../game/RoomStructures';
 /* tslint:disable:no-string-literal */
 
 import {log} from '../console/log';
 import {Mem} from '../memory/Memory';
 import {packCoordList} from '../utilities/packrat';
 import {MY_USERNAME} from '../~settings';
+import {compact, mapKeys} from '../utilities/native';
 
 interface VersionMigratorMemory {
 	versions: { [version: string]: boolean };
@@ -194,9 +196,9 @@ export class VersionMigration {
 		for (const id in Game.structures) {
 			const s = Game.structures[id];
 			if (s.structureType == STRUCTURE_LINK) {
-				const isCommandCenterLink = s.pos.findInRange(_.compact([s.room.storage!,
+				const isCommandCenterLink = s.pos.findInRange(compact([s.room.storage!,
 																		 s.room.terminal!]), 2).length > 0;
-				const isHatcheryLink = s.pos.findInRange(s.room.spawns, 2).length > 0;
+				const isHatcheryLink = s.pos.findInRange(getRoomSpawns(s.room), 2).length > 0;
 				if (!isCommandCenterLink && !isHatcheryLink) {
 					s.destroy();
 				}
@@ -277,7 +279,7 @@ export class VersionMigration {
 		for (const name in Memory.flags) {
 
 			// Replace old keys with new ones
-			Memory.flags[name] = _.mapKeys((<any>Memory.flags[name]), function(value, key) {
+			Memory.flags[name] = mapKeys((<any>Memory.flags[name]), function(value, key) {
 				return newFlagKeys[key] || key;
 			});
 
@@ -305,7 +307,7 @@ export class VersionMigration {
 		};
 		for (const name in Memory.creeps) {
 			// Replace old keys with new ones
-			(<any>Memory.creeps[name]) = _.mapKeys((<any>Memory.creeps[name]), function(value, key) {
+			(<any>Memory.creeps[name]) = mapKeys((<any>Memory.creeps[name]), function(value, key) {
 				return newCreepKeys[key] || key;
 			});
 		}
@@ -463,7 +465,7 @@ export class VersionMigration {
 					const roadLookup = colmem.roadPlanner.roadLookup;
 					const roadCoordsPacked: { [roomName: string]: string } = {};
 					for (const roomName in roadLookup) {
-						const roadCoords = _.map(_.keys(roadLookup[roomName]), coordName => derefCoords(coordName));
+						const roadCoords = Object.keys(roadLookup[roomName] ?? {}).map(coordName => derefCoords(coordName));
 						roadCoordsPacked[roomName] = packCoordList(roadCoords);
 					}
 					colmem.roadPlanner.roadCoordsPacked = roadCoordsPacked;
@@ -476,7 +478,7 @@ export class VersionMigration {
 			if (colmem.barrierPlanner) {
 				if (colmem.barrierPlanner.barrierLookup) {
 					const barrierLookup = colmem.barrierPlanner.barrierLookup;
-					const barrierCoords = _.map(_.keys(barrierLookup), coordName => derefCoords(coordName));
+					const barrierCoords = Object.keys(barrierLookup ?? {}).map(coordName => derefCoords(coordName));
 					colmem.barrierPlanner.barrierCoordsPacked = packCoordList(barrierCoords);
 					delete colmem.barrierPlanner.barrierLookup;
 				}

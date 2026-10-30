@@ -1,3 +1,5 @@
+import {roomPositionGetMultiRoomRangeTo} from '../../game/RoomPosition';
+import {getRoomFlags, getRoomHostileStructures, getRoomHostiles} from '../../game/Room';
 import {CombatCreepSetup} from '../../creepSetups/CombatCreepSetup';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
 import {DirectivePairDestroy} from '../../directives/offense/pairDestroy';
@@ -10,6 +12,7 @@ import {profile} from '../../profiler/decorator';
 import {CombatTargeting} from '../../targeting/CombatTargeting';
 import {CombatZerg} from '../../zerg/CombatZerg';
 import {Overlord} from '../Overlord';
+import {compactMap} from '../../utilities/native';
 
 /**
  *  Destroyer overlord - spawns attacker/healer pairs for combat within a hostile room
@@ -36,9 +39,8 @@ export class PairDestroyerOverlord extends Overlord {
 	private findTarget(attacker: CombatZerg): Creep | Structure | undefined {
 		if (this.room) {
 			// Prioritize specifically targeted structures first
-			const targetingDirectives = DirectiveTargetSiege.find(this.room.flags) as DirectiveTargetSiege[];
-			const targetedStructures = _.compact(_.map(targetingDirectives,
-													   directive => directive.getTarget())) as Structure[];
+			const targetingDirectives = DirectiveTargetSiege.find(getRoomFlags(this.room)) as DirectiveTargetSiege[];
+			const targetedStructures = compactMap(targetingDirectives, directive => directive.getTarget()) as Structure[];
 			if (targetedStructures.length > 0) {
 				return CombatTargeting.findClosestReachable(attacker.pos, targetedStructures);
 			} else {
@@ -74,7 +76,7 @@ export class PairDestroyerOverlord extends Overlord {
 		// Case 1: you don't have an active healer
 		if (!healer || healer.spawning || healer.needsBoosts) {
 			// Wait near the colony controller if you don't have a healer
-			if (attacker.pos.getMultiRoomRangeTo(this.colony.controller.pos) > 5) {
+			if (roomPositionGetMultiRoomRangeTo(attacker.pos, this.colony.controller.pos) > 5) {
 				attacker.goTo(this.colony.controller, {range: 5});
 			} else {
 				attacker.park();
@@ -101,7 +103,7 @@ export class PairDestroyerOverlord extends Overlord {
 
 	private handleHealer(healer: CombatZerg): void {
 		// If there are no hostiles in the designated room, run medic actions
-		if (this.room && this.room.hostiles.length == 0 && this.room.hostileStructures.length == 0) {
+		if (this.room && getRoomHostiles(this.room).length == 0 && getRoomHostileStructures(this.room).length == 0) {
 			healer.doMedicActions(this.room.name);
 			return;
 		}
@@ -112,7 +114,7 @@ export class PairDestroyerOverlord extends Overlord {
 				healer.heal(healer);
 			}
 			// Wait near the colony controller if you don't have an attacker
-			if (healer.pos.getMultiRoomRangeTo(this.colony.controller.pos) > 5) {
+			if (roomPositionGetMultiRoomRangeTo(healer.pos, this.colony.controller.pos) > 5) {
 				healer.goTo(this.colony.controller, {range: 5});
 			} else {
 				healer.park();

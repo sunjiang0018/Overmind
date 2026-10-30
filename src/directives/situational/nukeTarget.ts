@@ -1,3 +1,4 @@
+import {getRoomPositionPrint} from '../../game/RoomPosition';
 import {log} from '../../console/log';
 import {profile} from '../../profiler/decorator';
 import {Directive} from '../Directive';
@@ -40,7 +41,7 @@ export class DirectiveNukeTarget extends Directive {
 		if (this.colony.nuker && this.colony.nuker.cooldown == 0) {
 			const res = this.colony.nuker.launchNuke(this.flag.pos);
 			if (res == OK) {
-				log.notify(`Launching nuclear strike at ${this.flag.pos.print}, ETA ${Game.time + NUKE_LAND_TIME}`);
+				log.notify(`Launching nuclear strike at ${getRoomPositionPrint(this.flag.pos)}, ETA ${Game.time + NUKE_LAND_TIME}`);
 				this.remove();
 			}
 		} else if (!this.colony.nuker || this.colony.nuker.cooldown > 0) {

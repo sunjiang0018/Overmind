@@ -1,3 +1,5 @@
+import {isStructureFull} from '../../game/Structures';
+import {isRoomMine} from '../../game/Room';
 import {Pathing} from '../../movement/Pathing';
 import {MiningOverlord} from '../../overlords/mining/miner';
 import {OverlordPriority} from '../../priorities/priorities_overlords';
@@ -5,6 +7,7 @@ import {profile} from '../../profiler/decorator';
 import {Cartographer, ROOMTYPE_SOURCEKEEPER} from '../../utilities/Cartographer';
 import {ema, getCacheExpiration} from '../../utilities/utils';
 import {Directive} from '../Directive';
+import {defaultsDeep} from '../../utilities/native';
 
 
 // Because harvest directives are the most common, they have special shortened memory keys to minimize memory impact
@@ -49,7 +52,7 @@ export class DirectiveHarvest extends Directive {
 			this.colony.miningSites[this.name] = this;
 			this.colony.destinations.push({pos: this.pos, order: this.memory[MEM.TICK] || Game.time});
 		}
-		_.defaultsDeep(this.memory, defaultDirectiveHarvestMemory);
+		defaultsDeep(this.memory, defaultDirectiveHarvestMemory);
 	}
 
 	// Hauling distance
@@ -68,7 +71,7 @@ export class DirectiveHarvest extends Directive {
 	spawnMoarOverlords() {
 		// Create a mining overlord for this
 		let priority = OverlordPriority.ownedRoom.mine;
-		if (!(this.room && this.room.my)) {
+		if (!(this.room && isRoomMine(this.room))) {
 			priority = Cartographer.roomType(this.pos.roomName) == ROOMTYPE_SOURCEKEEPER ?
 					   OverlordPriority.remoteSKRoom.mine : OverlordPriority.remoteRoom.mine;
 		}
@@ -89,7 +92,7 @@ export class DirectiveHarvest extends Directive {
 			this.memory[HARVEST_MEM.USAGE] = (source.energyCapacity - source.energy) / source.energyCapacity;
 		}
 		const container = this.overlords.mine.container;
-		this.memory[HARVEST_MEM.DOWNTIME] = +(ema(container ? +container.isFull : 0,
+		this.memory[HARVEST_MEM.DOWNTIME] = +(ema(container ? +isStructureFull(container) : 0,
 												  this.memory[HARVEST_MEM.DOWNTIME],
 												  CREEP_LIFE_TIME)).toFixed(5);
 	}

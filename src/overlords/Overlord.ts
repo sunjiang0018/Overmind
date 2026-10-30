@@ -1,3 +1,4 @@
+import {getRoomPositionPrint} from '../game/RoomPosition';
 import {Colony} from '../Colony';
 import {log} from '../console/log';
 import {CombatCreepSetup} from '../creepSetups/CombatCreepSetup';
@@ -12,6 +13,8 @@ import {Tasks} from '../tasks/Tasks';
 import {getOverlord, setOverlord} from '../zerg/AnyZerg';
 import {CombatZerg} from '../zerg/CombatZerg';
 import {Zerg} from '../zerg/Zerg';
+import {getNameLookup} from '../utilities/creepUtils';
+import {mapValues, remove, defaults, sortBy, sum, partition, flatten} from '../utilities/native';
 
 export interface OverlordInitializer {
 	ref: string;
@@ -109,7 +112,7 @@ export abstract class Overlord {
 		this._zerg = {};
 		this._combatZerg = {};
 		this.recalculateCreeps();
-		this.creepUsageReport = _.mapValues(this._creeps, creep => undefined);
+		this.creepUsageReport = mapValues(this._creeps, creep => undefined);
 
 		// Register the overlord on the colony overseer and on the overmind
 		Overmind.overlords[this.ref] = this;
@@ -152,8 +155,8 @@ export abstract class Overlord {
 
 	recalculateCreeps(): void {
 		// Recalculate the sets of creeps for each role in this overlord
-		this._creeps = _.mapValues(Overmind.cache.overlords[this.ref],
-								   creepsOfRole => _.map(creepsOfRole, creepName => Game.creeps[creepName]));
+		this._creeps = mapValues(Overmind.cache.overlords[this.ref],
+								   creepsOfRole => (creepsOfRole || []).map(creepName => Game.creeps[creepName]));
 		// Update zerg and combatZerg records
 		for (const role in this._zerg) {
 			this.synchronizeZerg(role);
@@ -264,10 +267,8 @@ export abstract class Overlord {
 
 	private synchronizeZerg(role: string, notifyWhenAttacked?: boolean): void {
 		// Synchronize the corresponding sets of Zerg
-		const zergNames = _.zipObject(_.map(this._zerg[role] || [],
-											zerg => [zerg.name, true])) as { [name: string]: boolean };
-		const creepNames = _.zipObject(_.map(this._creeps[role] || [],
-											 creep => [creep.name, true])) as { [name: string]: boolean };
+		const zergNames = getNameLookup(this._zerg[role]);
+		const creepNames = getNameLookup(this._creeps[role]);
 		// Add new creeps which aren't in the _zerg record
 		for (const creep of this._creeps[role] || []) {
 			if (!zergNames[creep.name]) {
@@ -281,7 +282,7 @@ export abstract class Overlord {
 				removeZergNames.push(zerg.name);
 			}
 		}
-		_.remove(this._zerg[role], deadZerg => removeZergNames.includes(deadZerg.name));
+		remove(this._zerg[role], deadZerg => removeZergNames.includes(deadZerg.name));
 	}
 
 	getAllZerg(): Zerg[] {
@@ -307,10 +308,8 @@ export abstract class Overlord {
 
 	private synchronizeCombatZerg(role: string, notifyWhenAttacked?: boolean): void {
 		// Synchronize the corresponding sets of CombatZerg
-		const zergNames = _.zipObject(_.map(this._combatZerg[role] || [],
-											zerg => [zerg.name, true])) as { [name: string]: boolean };
-		const creepNames = _.zipObject(_.map(this._creeps[role] || [],
-											 creep => [creep.name, true])) as { [name: string]: boolean };
+		const zergNames = getNameLookup(this._combatZerg[role]);
+		const creepNames = getNameLookup(this._creeps[role]);
 		// Add new creeps which aren't in the _combatZerg record
 		for (const creep of this._creeps[role] || []) {
 			if (!zergNames[creep.name]) {
@@ -328,7 +327,7 @@ export abstract class Overlord {
 				removeZergNames.push(zerg.name);
 			}
 		}
-		_.remove(this._combatZerg[role], deadZerg => removeZergNames.includes(deadZerg.name));
+		remove(this._combatZerg[role], deadZerg => removeZergNames.includes(deadZerg.name));
 	}
 
 	getAllCombatZerg(): CombatZerg[] {
@@ -345,13 +344,13 @@ export abstract class Overlord {
 	 * Gets the "ID" of the outpost this overlord is operating in. 0 for owned rooms, >= 1 for outposts, -1 for other
 	 */
 	get outpostIndex(): number {
-		return _.findIndex(this.colony.roomNames, roomName => roomName == this.pos.roomName);
+		return this.colony.roomNames.findIndex(roomName => roomName == this.pos.roomName);
 	}
 
 	// TODO: make this potentially colony independent
 	protected reassignIdleCreeps(role: string, maxPerTick=1): boolean {
 		// Find all creeps without an overlord
-		const idleCreeps = _.filter(this.colony.getCreepsByRole(role), creep => !getOverlord(creep));
+		const idleCreeps = this.colony.getCreepsByRole(role).filter(creep => !getOverlord(creep));
 		// Reassign them all to this flag
 		let reassigned = 0;
 		for (const creep of idleCreeps) {
@@ -375,17 +374,17 @@ export abstract class Overlord {
 	 */
 	protected requestSquad(setups: (CreepSetup | CombatCreepSetup)[], opts = {} as CreepRequestOptions) {
 		log.warning(`Overlord.requestSquad() is not finished yet!`); // TODO: finish
-		_.defaults(opts, {priority: this.priority, prespawn: DEFAULT_PRESPAWN});
+		defaults(opts, {priority: this.priority, prespawn: DEFAULT_PRESPAWN});
 		const spawner = this.spawnGroup || this.colony.spawnGroup || this.colony.hatchery;
 		if (spawner) {
 			if (setups.length > 3) {
 				log.warning(`Requesting squads of >3 is not advisable`);
 			}
 			const request: SpawnRequest = {
-				setup   : _.head(setups),
+				setup   : setups[0],
 				overlord: this,
 				priority: opts.priority!,
-				partners: _.tail(setups),
+				partners: setups.slice(1),
 			};
 			if (opts.options) {
 				request.options = opts.options;
@@ -393,7 +392,7 @@ export abstract class Overlord {
 			spawner.enqueue(request);
 		} else {
 			if (Game.time % 100 == 0) {
-				log.warning(`Overlord ${this.ref} @ ${this.pos.print}: no spawner object!`);
+				log.warning(`Overlord ${this.ref} @ ${getRoomPositionPrint(this.pos)}: no spawner object!`);
 			}
 		}
 	}
@@ -402,7 +401,7 @@ export abstract class Overlord {
 	 * Create a creep setup and enqueue it to the Hatchery; does not include automatic reporting
 	 */
 	protected requestCreep(setup: CreepSetup | CombatCreepSetup, opts = {} as CreepRequestOptions) {
-		_.defaults(opts, {priority: this.priority, prespawn: DEFAULT_PRESPAWN});
+		defaults(opts, {priority: this.priority, prespawn: DEFAULT_PRESPAWN});
 		const spawner = this.spawnGroup || this.colony.spawnGroup || this.colony.hatchery;
 		if (spawner) {
 			const request: SpawnRequest = {
@@ -419,7 +418,7 @@ export abstract class Overlord {
 			spawner.enqueue(request);
 		} else {
 			if (Game.time % 100 == 0) {
-				log.warning(`Overlord ${this.ref} @ ${this.pos.print}: no spawner object!`);
+				log.warning(`Overlord ${this.ref} @ ${getRoomPositionPrint(this.pos)}: no spawner object!`);
 			}
 		}
 	}
@@ -429,8 +428,8 @@ export abstract class Overlord {
 		if (!spawnDistance) {
 			spawnDistance = 0;
 			if (this.spawnGroup) {
-				const distances = _.take(_.sortBy(this.spawnGroup.memory.distances), 2);
-				spawnDistance = (_.sum(distances) / distances.length) || 0;
+				const distances = sortBy(this.spawnGroup.memory.distances).slice(0, 2);
+				spawnDistance = (sum(distances) / distances.length) || 0;
 			} else if (this.colony.hatchery) {
 				// Use distance or 0 (in case distance returns something undefined due to incomplete pathfinding)
 				spawnDistance = Pathing.distance(this.pos, this.colony.hatchery.pos) || 0;
@@ -443,7 +442,7 @@ export abstract class Overlord {
 		/* The last condition fixes a bug only present on private servers that took me a fucking week to isolate.
 		 * At the tick of birth, creep.spawning = false and creep.ticksTolive = undefined
 		 * See: https://screeps.com/forum/topic/443/creep-spawning-is-not-updated-correctly-after-spawn-process */
-		return _.filter(creeps, creep =>
+		return creeps.filter(creep =>
 			creep.ticksToLive! > CREEP_SPAWN_TIME * creep.body.length + spawnDistance! + prespawn ||
 			creep.spawning || (!creep.spawning && !creep.ticksToLive));
 	}
@@ -453,7 +452,7 @@ export abstract class Overlord {
 	 */
 	protected wishlist(quantity: number, setup: CreepSetup | CombatCreepSetup, opts = {} as CreepRequestOptions): void {
 
-		_.defaults(opts, {priority: this.priority, prespawn: DEFAULT_PRESPAWN, reassignIdle: false});
+		defaults(opts, {priority: this.priority, prespawn: DEFAULT_PRESPAWN, reassignIdle: false});
 
 		// TODO Don't spawn if spawning is halted
 		if (this.shouldSpawnAt && this.shouldSpawnAt > Game.time) {
@@ -464,7 +463,7 @@ export abstract class Overlord {
 		let creepQuantity: number;
 		if (opts.noLifetimeFilter) {
 			creepQuantity = (this._creeps[setup.role] || []).length;
-		} else if (_.has(this.initializer, 'waypoints')) {
+		} else if (Object.hasOwn(this.initializer, 'waypoints')) {
 			// TODO: replace hardcoded distance with distance computed through portals
 			creepQuantity = this.lifetimeFilter(this._creeps[setup.role] || [], opts.prespawn, 500).length;
 		} else {
@@ -473,7 +472,7 @@ export abstract class Overlord {
 
 		let spawnQuantity = quantity - creepQuantity;
 		if (opts.reassignIdle && spawnQuantity > 0) {
-			const idleCreeps = _.filter(this.colony.getCreepsByRole(setup.role), creep => !getOverlord(creep));
+			const idleCreeps = this.colony.getCreepsByRole(setup.role).filter(creep => !getOverlord(creep));
 			for (let i = 0; i < Math.min(idleCreeps.length, spawnQuantity); i++) {
 				setOverlord(idleCreeps[i], this);
 				spawnQuantity--;
@@ -498,7 +497,9 @@ export abstract class Overlord {
 	 */
 	preInit(): void {
 		// Handle requesting boosts from the evolution chamber
-		const allZerg = _.flatten([..._.values(this._zerg), ..._.values(this._combatZerg)]) as (Zerg | CombatZerg)[];
+		const allZerg = flatten([
+			...Object.values(this._zerg ?? {}), ...Object.values(this._combatZerg ?? {}),
+		]) as (Zerg | CombatZerg)[];
 		for (const zerg of allZerg) {
 			if (zerg.needsBoosts) {
 				const colony = Overmind.colonies[zerg.room.name] as Colony | undefined;
@@ -538,13 +539,13 @@ export abstract class Overlord {
 			}
 
 			const neededBoosts = zerg.getNeededBoosts();
-			const neededBoostResources = _.keys(neededBoosts);
+			const neededBoostResources = Object.keys(neededBoosts ?? {});
 
-			const [moveBoosts, nonMoveBoosts] = _.partition(neededBoostResources,
+			const [moveBoosts, nonMoveBoosts] = partition(neededBoostResources,
 															resource => Abathur.isMoveBoost(<ResourceConstant>resource));
 
 			for (const boost of [...moveBoosts, nonMoveBoosts]) { // try to get move boosts first if they're available
-				const boostLab = _.find(evolutionChamber.boostingLabs, lab => lab.mineralType == boost);
+				const boostLab = evolutionChamber.boostingLabs.find(lab => lab.mineralType == boost);
 				if (boostLab) {
 					zerg.task = Tasks.getBoosted(boostLab, <ResourceConstant>boost);
 					return;

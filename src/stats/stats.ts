@@ -1,3 +1,4 @@
+import {truncateNumber} from '../game/Miscellaneous';
 import {Mem} from '../memory/Memory';
 import {profile} from '../profiler/decorator';
 import {ema} from '../utilities/utils';
@@ -28,10 +29,10 @@ export class Stats {
 			if (truncateNumbers && value != undefined) {
 				const decimals = 5;
 				if (typeof value == 'number') {
-					value = value.truncate(decimals);
+					value = truncateNumber(value, decimals);
 				} else {
 					for (const i in value) {
-						value[i] = value[i].truncate(decimals);
+						value[i] = truncateNumber(value[i], decimals);
 					}
 				}
 			}

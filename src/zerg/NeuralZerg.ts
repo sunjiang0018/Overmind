@@ -1,3 +1,4 @@
+import {getRoomCreeps, getRoomHostiles} from '../game/Room';
 import {Movement} from '../movement/Movement';
 import {profile} from '../profiler/decorator';
 import {CombatZerg} from './CombatZerg';
@@ -22,28 +23,28 @@ export class NeuralZerg extends CombatZerg {
 	}
 
 	approachHostiles() {
-		const approach = _.map(this.room.hostiles, hostile => ({pos: hostile.pos, range: APPROACH_RANGE}));
+		const approach = getRoomHostiles(this.room).map(hostile => ({pos: hostile.pos, range: APPROACH_RANGE}));
 		return Movement.combatMove(this, approach, []);
 	}
 
 	avoidHostiles() {
-		const avoid = _.map(this.room.hostiles, hostile => ({pos: hostile.pos, range: AVOID_RANGE}));
+		const avoid = getRoomHostiles(this.room).map(hostile => ({pos: hostile.pos, range: AVOID_RANGE}));
 		return Movement.combatMove(this, [], avoid);
 	}
 
 	approachAllies() {
-		const approach = _.map(this.room.creeps, friendly => ({pos: friendly.pos, range: APPROACH_RANGE}));
+		const approach = getRoomCreeps(this.room).map(friendly => ({pos: friendly.pos, range: APPROACH_RANGE}));
 		return Movement.combatMove(this, approach, []);
 	}
 
 	avoidAllies() {
-		const avoid = _.map(this.room.creeps, friendly => ({pos: friendly.pos, range: AVOID_RANGE}));
+		const avoid = getRoomCreeps(this.room).map(friendly => ({pos: friendly.pos, range: AVOID_RANGE}));
 		return Movement.combatMove(this, [], avoid);
 	}
 
 	maneuver(approachTargs: HasPos[], avoidTargs: HasPos[]) {
-		const approach = _.map(approachTargs, targ => ({pos: targ.pos, range: APPROACH_RANGE}));
-		const avoid = _.map(avoidTargs, targ => ({pos: targ.pos, range: AVOID_RANGE}));
+		const approach = approachTargs.map(targ => ({pos: targ.pos, range: APPROACH_RANGE}));
+		const avoid = avoidTargs.map(targ => ({pos: targ.pos, range: AVOID_RANGE}));
 		return Movement.combatMove(this, approach, avoid);
 	}
 

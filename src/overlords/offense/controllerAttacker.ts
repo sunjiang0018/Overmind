@@ -1,3 +1,5 @@
+import {isControllerReservedByMe} from '../../game/Structures';
+import {roomPositionAvailableNeighbors} from '../../game/RoomPosition';
 import {SpawnGroup} from 'logistics/SpawnGroup';
 import {log} from '../../console/log';
 import {Roles, Setups} from '../../creepSetups/setups';
@@ -6,6 +8,7 @@ import {OverlordPriority} from '../../priorities/priorities_overlords';
 import {profile} from '../../profiler/decorator';
 import {Zerg} from '../../zerg/Zerg';
 import {Overlord} from '../Overlord';
+import {sortBy} from '../../utilities/native';
 
 /**
  * Controller attacker overlord.  Spawn CLAIM creeps to mass up on a controller and attack all at once
@@ -29,7 +32,7 @@ export class ControllerAttackerOverlord extends Overlord {
 	refresh() {
 		super.refresh();
 		if (this.room && this.room.controller) {
-			this.attackPositions = this.room.controller.pos.availableNeighbors(true);
+			this.attackPositions = roomPositionAvailableNeighbors(this.room.controller.pos, true);
 			this.readyTick = Game.time + (this.room.controller.upgradeBlocked || 0);
 		} else {
 			this.attackPositions = [];
@@ -41,7 +44,7 @@ export class ControllerAttackerOverlord extends Overlord {
 	private getPositionAssignments(): { [attackerName: string]: RoomPosition } {
 		const assignments: { [attackerName: string]: RoomPosition } = {};
 		const maxLoops = Math.min(this.attackPositions.length, this.controllerAttackers.length);
-		const controllerAttackers = _.sortBy(this.controllerAttackers, zerg => zerg.name);
+		const controllerAttackers = sortBy(this.controllerAttackers, zerg => zerg.name);
 		for (let i = 0; i < maxLoops; i++) {
 			assignments[controllerAttackers[i].name] = this.attackPositions[i];
 		}
@@ -64,11 +67,11 @@ export class ControllerAttackerOverlord extends Overlord {
 				log.debug(`No attack position for ${controllerAttacker.print}!`);
 			}
 		}
-		if (this.room && this.room.controller && this.room.controller.reservation && !this.room.controller.reservedByMe) {
+		if (this.room && this.room.controller && this.room.controller.reservation && !isControllerReservedByMe(this.room.controller)) {
 			this.launchAttack();
 		} else if (this.room && this.room.controller && !this.room.controller.upgradeBlocked) {
-			if (_.all(this.controllerAttackers, creep => creep.pos.isEqualTo(this.assignments[creep.name]))
-				|| _.any(this.controllerAttackers, creep => creep.pos.isNearTo(this.room!.controller!)
+			if (this.controllerAttackers.every(creep => creep.pos.isEqualTo(this.assignments[creep.name]))
+				|| this.controllerAttackers.some(creep => creep.pos.isNearTo(this.room!.controller!)
 															&& (creep.ticksToLive || 10) <= 2)) {
 				this.launchAttack();
 			}

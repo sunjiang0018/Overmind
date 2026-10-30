@@ -1,3 +1,5 @@
+import {mapValues} from '../utilities/native';
+
 /* tslint:disable: max-line-length */
 
 export const asciiLogo: string[] =
@@ -98,10 +100,10 @@ const _logoText: { [char: string]: { coords: [number, number], style: PolyStyle,
 const logoX = 2.5; // x-position of logo
 const logoY = 3.0; // y position of logo
 const logoScale = 0.6;
-export const logoComponents = _.mapValues(_logoComponents,
+export const logoComponents = mapValues(_logoComponents,
 										  c => ({
 											  style : c.style,
-											  points: _.map(c.points, xy => [logoX + logoScale * xy[0],
+											  points: c.points.map(xy => [logoX + logoScale * xy[0],
 																			 logoY + logoScale * xy[1]])
 										  })) as { [part: string]: { style: PolyStyle, points: [number, number][] } };
 
@@ -112,10 +114,10 @@ const textScale = 0.6 * logoScale;
 const charScale = 0.052 * textScale;
 
 let offset = 0;
-export const logoText = _.mapValues(_logoText, function(c) {
+export const logoText = mapValues(_logoText, function(c) {
 	const ret = {
 		style : c.style,
-		points: _.map(c.points, xy => [textX + textScale * (offset + xy[0]),
+		points: c.points.map(xy => [textX + textScale * (offset + xy[0]),
 									   textY + textScale * xy[1]])
 	};
 	offset += charScale * (c.coords[1] - c.coords[0]);

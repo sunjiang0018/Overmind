@@ -1,17 +1,19 @@
+import {isRoomMine} from '../game/Room';
 // Random utilities that don't belong anywhere else
 
-import {alignedNewline, bullet} from './stringConstants';
+import { alignedNewline, bullet } from './stringConstants';
+import { mapValues, defaults, max as nativeMax, sum } from './native';
 
 export function getAllRooms(): Room[] {
 	if (!Game._allRooms) {
-		Game._allRooms = _.values(Game.rooms); // this is cleared every tick
+		Game._allRooms = Object.values(Game.rooms ?? {}); // this is cleared every tick
 	}
 	return Game._allRooms;
 }
 
 export function getOwnedRooms(): Room[] {
 	if (!Game._ownedRooms) {
-		Game._ownedRooms = _.filter(getAllRooms(), room => room.my); // this is cleared every tick
+		Game._ownedRooms = getAllRooms().filter(room => isRoomMine(room)); // this is cleared every tick
 	}
 	return Game._ownedRooms;
 }
@@ -73,7 +75,7 @@ export function minMax(value: number, min: number, max: number): number {
 	return Math.max(Math.min(value, max), min);
 }
 
-export function hasMinerals(store: { [resourceType: string]: number }): boolean {
+export function hasMinerals(store: ResourceAmounts): boolean {
 	for (const resourceType in store) {
 		if (resourceType != RESOURCE_ENERGY && (store[<ResourceConstant>resourceType] || 0) > 0) {
 			return true;
@@ -82,7 +84,7 @@ export function hasMinerals(store: { [resourceType: string]: number }): boolean 
 	return false;
 }
 
-export function hasContents(store: { [resourceType: string]: number }): boolean {
+export function hasContents(store: ResourceAmounts): boolean {
 	for (const resourceType in store) {
 		if ((store[<ResourceConstant>resourceType] || 0) > 0) {
 			return true;
@@ -111,14 +113,16 @@ export function getMyUsername(): string {
 	return 'ERROR: Could not determine username.';
 }
 
-const MUON = 'Muon';
+const MUON = 'harland';
 
 export function isAlly(username: string): boolean {
 	return username == MUON || (Memory.settings.allies || []).includes(username);
 }
 
 export function hasJustSpawned(): boolean {
-	return _.keys(Overmind.colonies).length == 1 && _.keys(Game.creeps).length == 0 && _.keys(Game.spawns).length == 1;
+	return Object.keys(Overmind.colonies ?? {}).length == 1
+		&& Object.keys(Game.creeps ?? {}).length == 0
+		&& Object.keys(Game.spawns ?? {}).length == 1;
 }
 
 export function onPublicServer(): boolean {
@@ -163,20 +167,20 @@ export function bulleted(text: string[], aligned = true, startWithNewLine = true
  * Create column-aligned text array from object with string key/values
  */
 export function toColumns(obj: { [key: string]: string }, opts = {} as ToColumnOpts): string[] {
-	_.defaults(opts, {
+	defaults(opts, {
 		padChar: ' ',	// Character to pad with, e.g. "." would be key........val
 		justify: false 	// Right align values column?
 	});
 
 	const ret = [];
-	const keyPadding = _.max(_.map(_.keys(obj), str => str.length)) + 1;
-	const valPadding = _.max(_.mapValues(obj, str => str.length));
+	const keyPadding = nativeMax(Object.keys(obj ?? {}), str => str.length) + 1;
+	const valPadding = nativeMax(mapValues(obj, str => str.length));
 
 	for (const key in obj) {
 		if (opts.justify) {
-			ret.push(key.padRight(keyPadding, opts.padChar) + obj[key].padLeft(valPadding, opts.padChar));
+			ret.push(key.padEnd(keyPadding, opts.padChar) + obj[key].padStart(valPadding, opts.padChar));
 		} else {
-			ret.push(key.padRight(keyPadding, opts.padChar) + obj[key]);
+			ret.push(key.padEnd(keyPadding, opts.padChar) + obj[key]);
 		}
 	}
 
@@ -186,11 +190,11 @@ export function toColumns(obj: { [key: string]: string }, opts = {} as ToColumnO
 /**
  * Merges a list of store-like objects, summing overlapping keys. Useful for calculating assets from multiple sources
  */
-export function mergeSum(objects: { [key: string]: number | undefined }[]): { [key: string]: number } {
+export function mergeSum(objects: ResourceAmounts[]): { [key: string]: number } {
 	const ret: { [key: string]: number } = {};
 	for (const object of objects) {
 		for (const key in object) {
-			const amount = object[key] || 0;
+			const amount = object[key as ResourceConstant] || 0;
 			if (!ret[key]) {
 				ret[key] = 0;
 			}
@@ -218,13 +222,13 @@ const CHARCODE_A = 65;
 // 	return new RoomPosition(parseInt(x, 10), parseInt(y, 10), roomName);
 // }
 
+const readablePositionPattern = /([EW]\d+[NS]\d+):(\d+):(\d+)/;
+
 export function posFromReadableName(str: string | undefined | null): RoomPosition | undefined {
 	if (!str) return;
-	const posName = _.first(str.match(/(E|W)\d+(N|S)\d+:\d+:\d+/g) || []);
-	if (posName) {
-		const [roomName, x, y] = posName.split(':');
-		return new RoomPosition(parseInt(x, 10), parseInt(y, 10), roomName);
-	}
+	const match = readablePositionPattern.exec(str);
+	if (!match) return;
+	return new RoomPosition(parseInt(match[2], 10), parseInt(match[3], 10), match[1]);
 }
 
 export function equalXYR(pos1: ProtoPos, pos2: ProtoPos): boolean {
@@ -238,7 +242,7 @@ export function averageBy<T>(objects: T[], iteratee: ((obj: T) => number)): numb
 	if (objects.length == 0) {
 		return undefined;
 	} else {
-		return _.sum(objects, obj => iteratee(obj)) / objects.length;
+		return sum(objects, obj => iteratee(obj)) / objects.length;
 	}
 }
 
@@ -280,7 +284,7 @@ export function logHeapStats(): void {
 	if (typeof Game.cpu.getHeapStatistics === 'function') {
 		const heapStats = Game.cpu.getHeapStatistics();
 		const heapPercent = Math.round(100 * (heapStats.total_heap_size + heapStats.externally_allocated_size)
-									   / heapStats.heap_size_limit);
+			/ heapStats.heap_size_limit);
 		const heapSize = Math.round((heapStats.total_heap_size) / 1048576);
 		const externalHeapSize = Math.round((heapStats.externally_allocated_size) / 1048576);
 		const heapLimit = Math.round(heapStats.heap_size_limit / 1048576);
@@ -337,7 +341,7 @@ export function irregularEma(current: number, avg: number, dt: number, window: n
  * Create a shallow copy of a 2D array
  */
 export function clone2DArray<T>(a: T[][]): T[][] {
-	return _.map(a, e => e.slice());
+	return a.map(e => e.slice());
 }
 
 /**

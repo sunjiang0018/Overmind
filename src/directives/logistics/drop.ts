@@ -1,6 +1,8 @@
+import {isPositionVisible} from '../../game/RoomPosition';
 import {log} from '../../console/log';
 import {profile} from '../../profiler/decorator';
 import {Directive} from '../Directive';
+import {groupBy, sum} from '../../utilities/native';
 
 
 interface DirectiveDropMemory extends FlagMemory {
@@ -19,7 +21,7 @@ export class DirectiveDrop extends Directive {
 	static color = COLOR_GREEN;
 	static secondaryColor = COLOR_GREEN;
 
-	private _store: StoreDefinition;
+	private _store: ResourceAmounts | undefined;
 	private _drops: { [resourceType: string]: Resource[] };
 
 	memory: DirectiveDropMemory;
@@ -38,25 +40,25 @@ export class DirectiveDrop extends Directive {
 	}
 
 	private get drops(): { [resourceType: string]: Resource[] } {
-		if (!this.pos.isVisible) {
+		if (!isPositionVisible(this.pos)) {
 			return {};
 		}
 		if (!this._drops) {
 			const drops = (this.pos.lookFor(LOOK_RESOURCES) || []) as Resource[];
-			this._drops = _.groupBy(drops, drop => drop.resourceType);
+			this._drops = groupBy(drops, drop => drop.resourceType);
 		}
 		return this._drops;
 	}
 
-	get store(): { [resource: string]: number } {
+	get store(): ResourceAmounts {
 		if (!this._store) {
 			// Merge the "storage" of drops with the store of structure
 			const store: { [resourceType: string]: number } = {energy: 0};
 			// Merge with drops
-			for (const resourceType of _.keys(this.drops)) {
-				const totalResourceAmount = _.sum(this.drops[resourceType], drop => drop.amount);
+			for (const resourceType of Object.keys(this.drops ?? {}) as ResourceConstant[]) {
+				const totalResourceAmount = sum(this.drops[resourceType], drop => drop.amount);
 				if (store[resourceType]) {
-					store[resourceType] += totalResourceAmount;
+					store[resourceType]! += totalResourceAmount;
 				} else {
 					store[resourceType] = totalResourceAmount;
 				}
@@ -73,14 +75,14 @@ export class DirectiveDrop extends Directive {
 
 	private registerEnergyRequests(): void {
 		const threshold = 0.75;
-		if (this.store.energy < threshold * this.memory.amount) {
+		if ((this.store.energy || 0) < threshold * this.memory.amount) {
 			this.colony.logisticsNetwork.requestInput(this);
 		}
 	}
 
 	init(): void {
 		this.registerEnergyRequests();
-		this.alert(`Drop directive active - ${_.sum(this.store)}`);
+		this.alert(`Drop directive active - ${sum(this.store)}`);
 	}
 
 	run(): void {

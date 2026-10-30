@@ -1,3 +1,4 @@
+import {getRoomHostileStructures, getRoomHostiles} from '../../game/Room';
 import {log} from '../../console/log';
 import {profile} from '../../profiler/decorator';
 import {CombatPlanner, SiegeAnalysis} from '../../strategy/CombatPlanner';
@@ -55,7 +56,7 @@ export class DirectiveAutoSiege extends Directive {
 
 	run(): void {
 		// If there are no hostiles left in the room then remove the flag and associated healpoint
-		if (this.room && this.room.hostiles.length == 0 && this.room.hostileStructures.length == 0) {
+		if (this.room && getRoomHostiles(this.room).length == 0 && getRoomHostileStructures(this.room).length == 0) {
 			log.notify(`Auto-siege operation at ${this.pos.roomName} completed successfully.`);
 			this.remove();
 		}

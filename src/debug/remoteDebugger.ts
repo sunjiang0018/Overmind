@@ -5,6 +5,7 @@ import {Segmenter, SEGMENTS} from '../memory/Segmenter';
 import {alignedNewline} from '../utilities/stringConstants';
 import {color} from '../utilities/utils';
 import {MUON, MY_USERNAME} from '../~settings';
+import {defaultsDeep} from '../utilities/native';
 
 const DEBUG_TIMEOUT = 1000;
 const NO_COMMAND = 'No command';
@@ -37,7 +38,7 @@ export class RemoteDebugger {
 		if (!Memory.remoteDebugger) {
 			Memory.remoteDebugger = {};
 		}
-		_.defaultsDeep(Memory.remoteDebugger, defaultDebuggerMemory);
+		defaultsDeep(Memory.remoteDebugger, defaultDebuggerMemory);
 	}
 
 	private get memory(): DebuggerMemory {

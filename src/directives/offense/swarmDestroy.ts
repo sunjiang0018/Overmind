@@ -1,3 +1,4 @@
+import {getRoomHostileStructures, getRoomHostiles} from '../../game/Room';
 import {log} from '../../console/log';
 import {SwarmDestroyerOverlord} from '../../overlords/offense/swarmDestroyer';
 import {profile} from '../../profiler/decorator';
@@ -33,7 +34,7 @@ export class DirectiveSwarmDestroy extends Directive {
 
 	run(): void {
 		// If there are no hostiles left in the room then remove the flag and associated healpoint
-		if (this.room && this.room.hostiles.length == 0 && this.room.hostileStructures.length == 0) {
+		if (this.room && getRoomHostiles(this.room).length == 0 && getRoomHostileStructures(this.room).length == 0) {
 			log.notify(`Swarm destroyer mission at ${this.pos.roomName} completed successfully.`);
 			this.remove();
 		}

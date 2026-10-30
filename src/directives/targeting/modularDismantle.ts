@@ -1,3 +1,6 @@
+import {isStructureWalkable} from '../../game/Structures';
+import {getRoomCreeps, getRoomStructures} from '../../game/Room';
+import {getRoomPositionRoom, isPositionVisible, roomPositionAvailableNeighbors} from '../../game/RoomPosition';
 import {Pathing} from '../../movement/Pathing';
 import {DismantleOverlord} from '../../overlords/situational/dismantler';
 import {AttackStructurePriorities} from '../../priorities/priorities_structures';
@@ -50,7 +53,7 @@ export class DirectiveModularDismantle extends Directive {
 	}
 
 	getTarget(): Structure | undefined {
-		if (!this.pos.isVisible) {
+		if (!isPositionVisible(this.pos)) {
 			return;
 		}
 		const targetedStructureTypes = this.memory.onlyKillRampart ? [STRUCTURE_RAMPART] : AttackStructurePriorities;
@@ -80,12 +83,13 @@ export class DirectiveModularDismantle extends Directive {
 	}
 
 	getDismantleSpots(target: RoomPosition): RoomPosition[] | undefined {
-		const nearbySpots = target.availableNeighbors(true);
-		if (target.room && target.room.creeps.length > 0) {
-			const startingCreep = target.room.creeps.filter(creep => creep.my)[0];
+		const nearbySpots = roomPositionAvailableNeighbors(target, true);
+		const room = getRoomPositionRoom(target);
+		if (room && getRoomCreeps(room).length > 0) {
+			const startingCreep = getRoomCreeps(room).filter(creep => creep.my)[0];
 			if (!!startingCreep) {
-				const obstacles = _.filter(target.room.structures, s => !s.isWalkable);
-				return _.filter(nearbySpots, spot => Pathing.isReachable(startingCreep.pos, spot, obstacles));
+				const obstacles = getRoomStructures(room).filter(s => !isStructureWalkable(s));
+				return nearbySpots.filter(spot => Pathing.isReachable(startingCreep.pos, spot, obstacles));
 			}
 		}
 	}
@@ -100,7 +104,7 @@ export class DirectiveModularDismantle extends Directive {
 	run(): void {
 
 		// Remove the directive once structures have been destroyed
-		if (this.pos.isVisible && !this.getTarget()) {
+		if (isPositionVisible(this.pos) && !this.getTarget()) {
 			this.remove();
 		}
 	}

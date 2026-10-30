@@ -1,5 +1,11 @@
 {
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
-  "cSpell.words": ["Overmind"]
+  "cSpell.words": ["Overmind"],
+  "chat.tools.terminal.autoApprove": {
+    "/^node <<'NODE'\nconst \\{performance\\} = require\\('node:perf_hooks'\\);\nconst ts = require\\('typescript'\\);\nconst fs = require\\('node:fs'\\);\nconst vm = require\\('node:vm'\\);\nconst source = fs\\.readFileSync\\('src/utilities/groupBy\\.ts', 'utf8'\\);\nconst compiled = ts\\.transpileModule\\(source, \\{compilerOptions: \\{module: ts\\.ModuleKind\\.CommonJS, target: ts\\.ScriptTarget\\.ES2024\\}\\}\\)\\.outputText;\nconst sandbox = \\{exports: \\{\\}\\};\nvm\\.runInNewContext\\(compiled, sandbox\\);\nconst current = sandbox\\.exports\\.groupBy;\nfunction direct\\(items, getKey\\) \\{\n  const result = \\{\\};\n  if \\(items == null\\) return result;\n  for \\(const item of items\\) \\{\n    const key = getKey\\(item\\);\n    const normalizedKey = key == null \\? String\\(key\\) : key;\n    if \\(normalizedKey === '__proto__'\\) \\{\n      result\\[normalizedKey\\] = \\[item\\];\n      continue;\n    \\}\n    const group = result\\[normalizedKey\\];\n    if \\(Array\\.isArray\\(group\\)\\) group\\.push\\(item\\);\n    else result\\[normalizedKey\\] = \\[item\\];\n  \\}\n  return result;\n\\}\nfunction bench\\(fn, count\\) \\{\n  for \\(let i=0;i<1000;i\\+\\+\\) fn\\(\\);\n  const runs=\\[\\];\n  for\\(let r=0;r<5;r\\+\\+\\) \\{ const start=performance\\.now\\(\\); for\\(let i=0;i<count;i\\+\\+\\) fn\\(\\); runs\\.push\\(\\(performance\\.now\\(\\)-start\\)\\*1e6/count\\); \\}\n  runs\\.sort\\(\\(a,b\\)=>a-b\\); return Math\\.round\\(runs\\[2\\]\\);\n\\}\nfor \\(const n of \\[4,20,200\\]\\) \\{\n  const items=Array\\.from\\(\\{length:n\\},\\(_,i\\)=>\\(\\{key:'k'\\+\\(i%8\\)\\}\\)\\);\n  const key=x=>x\\.key;\n  const count = n===200\\?10000:50000;\n  console\\.log\\(JSON\\.stringify\\(\\{n,nsPerOp:\\{current:bench\\(\\(\\)=>current\\(items,key\\),count\\),direct:bench\\(\\(\\)=>direct\\(items,key\\),count\\)\\}\\}\\)\\);\n\\}\nNODE$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  }
 }

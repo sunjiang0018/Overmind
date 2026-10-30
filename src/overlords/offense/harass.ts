@@ -1,3 +1,4 @@
+import {getRoomDangerousHostiles} from '../../game/Room';
 import {log} from '../../console/log';
 import {CombatCreepSetup} from '../../creepSetups/CombatCreepSetup';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
@@ -43,10 +44,10 @@ export class HarassOverlord extends CombatOverlord {
 		}
 		if (this.targetRemoteToHarass && hydralisk.room.name != this.targetRemoteToHarass) {
 			hydralisk.goToRoom(this.targetRemoteToHarass);
-		} else if (hydralisk.room.dangerousHostiles.length > 2) {
+		} else if (getRoomDangerousHostiles(hydralisk.room).length > 2) {
 			// Time to move on
 			// Track when defense spawned
-			hydralisk.room.dangerousHostiles.forEach(hostile => {
+			getRoomDangerousHostiles(hydralisk.room).forEach(hostile => {
 				const nextSafeSpawn = (Game.time - HarassOverlord.settings.prespawn + (hostile.ticksToLive || 0));
 				if (nextSafeSpawn > this.directive.memory.nextSpawnTime) {
 					this.directive.memory.nextSpawnTime = nextSafeSpawn;

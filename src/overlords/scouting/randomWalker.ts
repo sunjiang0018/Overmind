@@ -1,3 +1,5 @@
+import {roomPositionFindClosestByMultiRoomRange} from '../../game/RoomPosition';
+import {getRoomWalls} from '../../game/RoomStructures';
 import {Colony} from '../../Colony';
 import {Roles, Setups} from '../../creepSetups/setups';
 import {RoomIntel} from '../../intel/RoomIntel';
@@ -7,6 +9,7 @@ import {Tasks} from '../../tasks/Tasks';
 import {Zerg} from '../../zerg/Zerg';
 import {Overlord} from '../Overlord';
 import {RANDOM_SCOUT_COUNT} from '../../~settings';
+import {sample} from '../../utilities/native';
 
 /**
  * Sends out scouts which randomly traverse rooms to uncover possible expansion locations and gather intel
@@ -33,13 +36,13 @@ export class RandomWalkerScoutOverlord extends Overlord {
 		// 	return;
 		// }
 		// Check if room might be connected to newbie/respawn zone
-		const indestructibleWalls = _.filter(scout.room.walls, wall => wall.hits == undefined);
+		const indestructibleWalls = getRoomWalls(scout.room).filter(wall => wall.hits == undefined);
 		if (indestructibleWalls.length > 0) { // go back to origin colony if you find a room near newbie zone
 			scout.task = Tasks.goToRoom(this.colony.room.name); // todo: make this more precise
 		} else {
 			// Pick a new room
-			const neighboringRooms = _.values(Game.map.describeExits(scout.pos.roomName)) as string[];
-			const roomName = _.sample(neighboringRooms);
+			const neighboringRooms = Object.values(Game.map.describeExits(scout.pos.roomName) ?? {}) as string[];
+			const roomName = sample(neighboringRooms);
 			if (RoomIntel.isRoomAccessible(roomName)) {
 				scout.task = Tasks.goToRoom(roomName);
 			}
@@ -52,7 +55,7 @@ export class RandomWalkerScoutOverlord extends Overlord {
 				if (scout.spawning) continue;
 				// Discard saved goToRoom tasks so retiring scouts cannot keep wandering.
 				scout.task = null;
-				const spawn = scout.pos.findClosestByMultiRoomRange(this.colony.spawns);
+				const spawn = roomPositionFindClosestByMultiRoomRange(scout.pos, this.colony.spawns);
 				if (!spawn) {
 					scout.suicide();
 				} else if (scout.pos.isNearTo(spawn)) {

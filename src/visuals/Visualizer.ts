@@ -1,9 +1,18 @@
+import {
+	roomVisualAnimatedPosition,
+	roomVisualBox,
+	roomVisualConnectRoads,
+	roomVisualInfoBox,
+	roomVisualMultitext,
+	roomVisualStructure,
+} from '../game/RoomVisual';
 import {MatrixLib} from '../matrix/MatrixLib';
 import {profile} from '../profiler/decorator';
 import {StructureLayout, StructureMap} from '../roomPlanner/RoomPlanner';
 import {rgbToHex} from '../utilities/utils';
 import {asciiLogo, logoComponents, logoText} from './logos';
 import {ENABLE_VISUALS} from '../~settings';
+import {groupBy, defaults, max} from '../utilities/native';
 
 
 const TEXT_COLOR = '#c9c9c9';
@@ -22,7 +31,7 @@ export class Visualizer {
 	}
 
 	private static textStyle(size = 1, style: TextStyle = {}) {
-		return _.defaults(style, {
+		return defaults(style, {
 			color  : TEXT_COLOR,
 			align  : 'left',
 			font   : `${size * TEXT_SIZE} Trebuchet MS`,
@@ -32,7 +41,7 @@ export class Visualizer {
 
 	static circle(pos: RoomPosition, color = 'red', opts = {}): RoomVisual | undefined {
 		if (!this.enabled) return;
-		_.defaults(opts, {
+		defaults(opts, {
 			fill   : color,
 			radius : 0.35,
 			opacity: 0.5,
@@ -42,7 +51,7 @@ export class Visualizer {
 
 	static rect(pos: RoomPosition, color = 'red', opts = {}): RoomVisual | undefined {
 		if (!this.enabled) return;
-		_.defaults(opts, {
+		defaults(opts, {
 			fill   : color,
 			opacity: 0.5,
 		});
@@ -51,7 +60,7 @@ export class Visualizer {
 
 	static marker(pos: RoomPosition, opts = {}): RoomVisual | undefined {
 		if (!this.enabled) return;
-		return new RoomVisual(pos.roomName).animatedPosition(pos.x, pos.y, opts);
+		return roomVisualAnimatedPosition(new RoomVisual(pos.roomName), pos.x, pos.y, opts);
 	}
 
 	static drawStructureMap(structureMap: StructureMap): void {
@@ -62,43 +71,43 @@ export class Visualizer {
 				if (!vis[pos.roomName]) {
 					vis[pos.roomName] = new RoomVisual(pos.roomName);
 				}
-				vis[pos.roomName].structure(pos.x, pos.y, structureType);
+				roomVisualStructure(vis[pos.roomName], pos.x, pos.y, structureType);
 			}
 		}
 		for (const roomName in vis) {
-			vis[roomName].connectRoads();
+			roomVisualConnectRoads(vis[roomName]);
 		}
 	}
 
 	static drawLayout(layout: StructureLayout, anchor: RoomPosition, opts = {}): void {
-		_.defaults(opts, {opacity: 0.5});
+		defaults(opts, {opacity: 0.5});
 		if (!this.enabled) return;
 		const vis = new RoomVisual(anchor.roomName);
 		for (const structureType in layout[8]!.buildings) {
 			for (const pos of layout[8]!.buildings[structureType].pos) {
 				const dx = pos.x - layout.data.anchor.x;
 				const dy = pos.y - layout.data.anchor.y;
-				vis.structure(anchor.x + dx, anchor.y + dy, structureType, opts);
+				roomVisualStructure(vis, anchor.x + dx, anchor.y + dy, structureType, opts);
 			}
 		}
-		vis.connectRoads(opts);
+		roomVisualConnectRoads(vis, opts);
 	}
 
 	static drawRoads(positoins: RoomPosition[]): void {
 		if (!this.enabled) return;
-		const pointsByRoom = _.groupBy(positoins, pos => pos.roomName);
+		const pointsByRoom = groupBy(positoins, pos => pos.roomName);
 		for (const roomName in pointsByRoom) {
 			const vis = new RoomVisual(roomName);
 			for (const pos of pointsByRoom[roomName]) {
-				vis.structure(pos.x, pos.y, STRUCTURE_ROAD);
+				roomVisualStructure(vis, pos.x, pos.y, STRUCTURE_ROAD);
 			}
-			vis.connectRoads();
+			roomVisualConnectRoads(vis);
 		}
 	}
 
 	static drawPath(path: RoomPosition[], style?: PolyStyle): void {
 		if (!this.enabled) return;
-		const pointsByRoom = _.groupBy(path, pos => pos.roomName);
+		const pointsByRoom = groupBy(path, pos => pos.roomName);
 		for (const roomName in pointsByRoom) {
 			new RoomVisual(roomName).poly(pointsByRoom[roomName], style);
 		}
@@ -108,7 +117,7 @@ export class Visualizer {
 							 opts = {dots: true, displayZero: true}): void {
 		if (!this.enabled) return;
 
-		opts = _.defaults(opts, {dots: true, displayZero: true});
+		opts = defaults(opts, {dots: true, displayZero: true});
 
 		const vis = new RoomVisual(roomName);
 		let x, y, cost, percentOfMax: number;
@@ -142,12 +151,13 @@ export class Visualizer {
 
 	}
 
-	static showInfo(info: string[], calledFrom: { room: Room | undefined, pos: RoomPosition }, opts = {}): RoomVisual | undefined {
+	static showInfo(info: string[], calledFrom: { room: Room | undefined, pos: RoomPosition }, opts = {}):
+		RoomVisual | undefined {
 		if (!this.enabled) return;
 		if (calledFrom.room) {
-			return calledFrom.room.visual.infoBox(info, calledFrom.pos.x, calledFrom.pos.y, opts);
+			return roomVisualInfoBox(calledFrom.room.visual, info, calledFrom.pos.x, calledFrom.pos.y, opts);
 		} else {
-			return new RoomVisual(calledFrom.pos.roomName).infoBox(info, calledFrom.pos.x, calledFrom.pos.y, opts);
+			return roomVisualInfoBox(new RoomVisual(calledFrom.pos.roomName), info, calledFrom.pos.x, calledFrom.pos.y, opts);
 		}
 	}
 
@@ -156,7 +166,7 @@ export class Visualizer {
 		if (!this.enabled) return {x: pos.x + 0.25, y: pos.y + 1.1 * CHAR_HEIGHT};
 		const vis = new RoomVisual(pos.roomName);
 		vis.rect(pos.x, pos.y - CHAR_HEIGHT, width, 1.1 * CHAR_HEIGHT, {opacity: 0.15});
-		vis.box(pos.x, pos.y - CHAR_HEIGHT, width, height + (1.1 + .25) * CHAR_HEIGHT, {color: TEXT_COLOR});
+		roomVisualBox(vis, pos.x, pos.y - CHAR_HEIGHT, width, height + (1.1 + .25) * CHAR_HEIGHT, {color: TEXT_COLOR});
 		vis.text(title, pos.x + .25, pos.y - .05, this.textStyle());
 		return {x: pos.x + 0.25, y: pos.y + 1.1 * CHAR_HEIGHT};
 	}
@@ -172,7 +182,7 @@ export class Visualizer {
 		const height = CHAR_HEIGHT * (content.length || 1);
 		const {x, y} = this.section(header, pos, width, height);
 		if (content.length > 0) {
-			if (_.isArray(content[0])) {
+			if (Array.isArray(content[0])) {
 				this.table(<string[][]>content, {
 					x       : x,
 					y       : y,
@@ -210,7 +220,7 @@ export class Visualizer {
 			mode = 'fraction';
 		}
 		// Draw frame
-		vis.box(pos.x, pos.y - CHAR_HEIGHT * scale, width, 1.1 * scale * CHAR_HEIGHT, {color: TEXT_COLOR});
+		roomVisualBox(vis, pos.x, pos.y - CHAR_HEIGHT * scale, width, 1.1 * scale * CHAR_HEIGHT, {color: TEXT_COLOR});
 		vis.rect(pos.x, pos.y - CHAR_HEIGHT * scale, percent * width, 1.1 * scale * CHAR_HEIGHT, {
 			fill       : TEXT_COLOR,
 			opacity    : 0.4,
@@ -239,7 +249,7 @@ export class Visualizer {
 		const style = this.textStyle();
 
 		// Determine column locations
-		const columns = Array(_.first(data).length).fill(0);
+		const columns = Array(data[0].length).fill(0);
 		for (const entries of data) {
 			for (let i = 0; i < entries.length - 1; i++) {
 				columns[i] = Math.max(columns[i], entries[i].length);
@@ -284,7 +294,7 @@ export class Visualizer {
 	static drawHUD(): void {
 		if (!this.enabled) return;
 		// Draw Overmind logo
-		new RoomVisual().multitext(asciiLogo, 0, 0, {textfont: 'monospace'});
+		roomVisualMultitext(new RoomVisual(), asciiLogo, 0, 0, {textfont: 'monospace'});
 		// // Display CPU Information
 		// new RoomVisual().text('CPU:' + ' bucket:' + Game.cpu.bucket +
 		// 					  ' tickLimit:' + Game.cpu.tickLimit, column, row, style);
@@ -308,7 +318,7 @@ export class Visualizer {
 						.poly(logoText.I.points, logoText.I.style)
 						.poly(logoText.N.points, logoText.N.style)
 						.poly(logoText.D.points, logoText.D.style);
-		Visualizer.text(`Colonies: ${_.keys(Overmind.colonies).length} | Creeps: ${_.keys(Game.creeps).length}`,
+		Visualizer.text(`Colonies: ${Object.keys(Overmind.colonies ?? {}).length} | Creeps: ${Object.keys(Game.creeps ?? {}).length}`,
 						{x: 1, y: 10}, .93);
 	}
 
@@ -320,7 +330,7 @@ export class Visualizer {
 		if (notificationMessages.length == 0) {
 			notificationMessages = ['No notifications'];
 		}
-		const maxStringLength = _.max(_.map(notificationMessages, msg => msg.length));
+		const maxStringLength = max(notificationMessages, msg => msg.length);
 		const width = Math.max(11, 1.2 * CHAR_WIDTH * maxStringLength);
 		this.infoBox('Notifications', notificationMessages, {x, y}, width);
 	}

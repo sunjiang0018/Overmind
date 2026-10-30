@@ -1,8 +1,10 @@
+const {createGameRuntime} = require('./helpers/game-runtime.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const {installNative} = require('./helpers/native-runtime.cjs');
 const compile = source => ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2017}}).outputText;
 function method(file, className, name) {
   const source=ts.createSourceFile(file,fs.readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true);
@@ -11,8 +13,8 @@ function method(file, className, name) {
 }
 function setup() {
   const room={name:'E58S42',controller:{level:4,my:true},dangerousHostiles:[],find:()=>[]};
-  const context={exports:{},Game:{shard:{name:'shard3'},rooms:{E58S42:room}},FIND_NUKES:1,
-    require:name=>name.includes('~settings')?{PEACETIME_BARRIER_HITS:5000}:{},console,ERR_INVALID_TARGET:-7};
+  const context=installNative({exports:{},Game:{shard:{name:'shard3'},rooms:{E58S42:room}},FIND_NUKES:1,
+    require:name=>name.includes('~settings')?{PEACETIME_BARRIER_HITS:5000}:{},console,ERR_INVALID_TARGET:-7});
   vm.runInNewContext(compile(fs.readFileSync('src/roomPlanner/roomOverrides.ts','utf8')),context);
   const api=context.exports;
   Object.assign(context,api);
@@ -71,10 +73,10 @@ test('signature accepts unbranded text, retaining the length check',()=>{
   assert.throws(()=>context.exports.Console.setSignature('x'.repeat(101)),/over 100/);
 });
 test('an old owned signature is replaced when configured text changes',()=>{
-  const file='src/prototypes/Structures.ts';const source=ts.createSourceFile(file,fs.readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true);
-  const statement=source.statements.find(n=>n.getText(source).startsWith("Object.defineProperty(StructureController.prototype, 'signedByMe'"));
-  const context={StructureController:class {},MY_USERNAME:'harland',Memory:{settings:{signature:'星海为途，长路有光'}},Game:{time:100}};
-  vm.runInNewContext(compile(statement.getText(source)),context);
-  const controller=new context.StructureController();controller.sign={username:'harland',text:'«ᴏᴠᴇʀᴍɪɴᴅ»',time:90};
-  assert.equal(controller.signedByMe,false);controller.sign.text=context.Memory.settings.signature;assert.equal(controller.signedByMe,true);
+  const context={MY_USERNAME:'harland',Memory:{settings:{signature:'星海为途，长路有光'}},Game:{time:100}};
+  const {isControllerSignedByMe} = createGameRuntime(context).load('Structures');
+  const controller = {sign:{username:'harland',text:'«ᴏᴠᴇʀᴍɪɴᴅ»',time:90}};
+  assert.equal(isControllerSignedByMe(controller),false);
+  controller.sign.text=context.Memory.settings.signature;
+  assert.equal(isControllerSignedByMe(controller),true);
 });

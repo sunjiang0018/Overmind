@@ -1,3 +1,4 @@
+import {getRoomHostiles} from '../../game/Room';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
 import {Directive} from '../../directives/Directive';
 import {OverlordPriority} from '../../priorities/priorities_overlords';
@@ -29,10 +30,10 @@ export class DistractionOverlord extends CombatOverlord {
 	}
 
 	private handleDistraction(distraction: CombatZerg): void {
-		if (this.room && this.room.hostiles.length > 0) {
+		if (this.room && getRoomHostiles(this.room).length > 0) {
 			distraction.autoCombat(this.room.name, false, 5, {preferRamparts: false});
-			DistractionOverlord.taunt(distraction, this.room.hostiles[0].owner.username);
-			const nearbyHostiles = this.room.hostiles.filter(hostile => hostile.pos.getRangeTo(distraction) <= 6);
+			DistractionOverlord.taunt(distraction, getRoomHostiles(this.room)[0].owner.username);
+			const nearbyHostiles = getRoomHostiles(this.room).filter(hostile => hostile.pos.getRangeTo(distraction) <= 6);
 			if (nearbyHostiles.length > 0) {
 				distraction.kite(nearbyHostiles);
 			}

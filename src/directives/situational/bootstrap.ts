@@ -1,3 +1,4 @@
+import {getRoomPrint} from '../../game/Room';
 import {Colony} from '../../Colony';
 import {log} from '../../console/log';
 import {Roles} from '../../creepSetups/setups';
@@ -45,7 +46,7 @@ export class DirectiveBootstrap extends Directive {
 	init(): void {
 		this.alert(`Colony in bootstrap mode!`, NotifierPriority.High);
 		if (Game.time % 100 == 0) {
-			log.alert(`Colony ${this.room.print} is in emergency recovery mode.`);
+			log.alert(`Colony ${getRoomPrint(this.room)} is in emergency recovery mode.`);
 		}
 	}
 
@@ -54,7 +55,7 @@ export class DirectiveBootstrap extends Directive {
 			if (this.colony.storage && this.colony.assets.energy < 5000) {
 				return; // wait a little while at higher levels before stopping bootstrapping
 			}
-			log.alert(`Colony ${this.room.print} has recovered from crash; removing bootstrap directive.`);
+			log.alert(`Colony ${getRoomPrint(this.room)} has recovered from crash; removing bootstrap directive.`);
 			// Suicide any fillers so they don't get in the way
 			const overlord = this.overlords.bootstrap as BootstrappingOverlord;
 			for (const filler of overlord.fillers) {

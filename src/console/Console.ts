@@ -1,3 +1,6 @@
+import {getRoomBarriers} from '../game/RoomStructures';
+import {getRoomPositionPrint} from '../game/RoomPosition';
+import {getRoomPrint, isRoomMine} from '../game/Room';
 import {Colony, ColonyMemory, getAllColonies} from '../Colony';
 import {Directive} from '../directives/Directive';
 import {RoomIntel} from '../intel/RoomIntel';
@@ -10,6 +13,7 @@ import {color, printRoomName, toColumns} from '../utilities/utils';
 import {asciiLogoRL, asciiLogoSmall} from '../visuals/logos';
 import {DEFAULT_OVERMIND_SIGNATURE, MY_USERNAME, USE_SCREEPS_PROFILER} from '../~settings';
 import {log} from './log';
+import {max, isEmpty} from '../utilities/native';
 
 type RecursiveObject = { [key: string]: number | RecursiveObject };
 
@@ -112,8 +116,8 @@ export class OvermindConsole {
 
 		// Console list
 		const descrMsg = toColumns(descr, {justify: true, padChar: '.'});
-		const maxLineLength = _.max(_.map(descrMsg, line => line.length)) + 2;
-		msg += 'Console Commands: '.padRight(maxLineLength, '=') + '\n' + descrMsg.join('\n');
+		const maxLineLength = max(descrMsg, line => line.length) + 2;
+		msg += 'Console Commands: '.padEnd(maxLineLength, '=') + '\n' + descrMsg.join('\n');
 
 		msg += '\n\nRefer to the repository for more information\n';
 
@@ -144,7 +148,7 @@ export class OvermindConsole {
 
 	static notifications(): string {
 		const notifications = Overmind.overseer.notifier.generateNotificationsList(true);
-		return _.map(notifications, msg => bullet + msg).join('\n');
+		return notifications.map(msg => bullet + msg).join('\n');
 	}
 
 	static setMode(mode: operationMode): string {
@@ -345,10 +349,10 @@ export class OvermindConsole {
 	}
 
 	static listActiveRoomPlanners(): string {
-		const coloniesWithActiveRoomPlanners: Colony[] = _.filter(
-			_.map(_.keys(Overmind.colonies), colonyName => Overmind.colonies[colonyName]),
-			(colony: Colony) => colony.roomPlanner.active);
-		const names: string[] = _.map(coloniesWithActiveRoomPlanners, colony => colony.room.print);
+		const coloniesWithActiveRoomPlanners: Colony[] = Object.keys(Overmind.colonies ?? {})
+			.map(colonyName => Overmind.colonies[colonyName])
+			.filter((colony: Colony) => colony.roomPlanner.active);
+		const names: string[] = coloniesWithActiveRoomPlanners.map(colony => getRoomPrint(colony.room));
 		if (names.length > 0) {
 			console.log('Colonies with active room planners: ' + names);
 			return '';
@@ -358,12 +362,12 @@ export class OvermindConsole {
 	}
 
 	static listConstructionSites(filter?: (site: ConstructionSite) => any): string {
-		let msg = `${_.keys(Game.constructionSites).length} construction sites currently present: \n`;
+		let msg = `${Object.keys(Game.constructionSites ?? {}).length} construction sites currently present: \n`;
 		for (const id in Game.constructionSites) {
 			const site = Game.constructionSites[id];
 			if (!filter || filter(site)) {
-				msg += `${bullet}Type: ${site.structureType}`.padRight(20) +
-					   `Pos: ${site.pos.print}`.padRight(65) +
+				msg += `${bullet}Type: ${site.structureType}`.padEnd(20) +
+					   `Pos: ${getRoomPositionPrint(site.pos)}`.padEnd(65) +
 					   `Progress: ${site.progress} / ${site.progressTotal} \n`;
 			}
 		}
@@ -377,16 +381,16 @@ export class OvermindConsole {
 		for (const i in Overmind.directives) {
 			const dir = Overmind.directives[i];
 			if (!filter || filter(dir)) {
-				msg += `${bullet}Name: ${dir.print}`.padRight(70) +
-					   `Colony: ${dir.colony.print}`.padRight(55) +
-					   `Pos: ${dir.pos.print}\n`;
+				msg += `${bullet}Name: ${dir.print}`.padEnd(70) +
+					   `Colony: ${dir.colony.print}`.padEnd(55) +
+					   `Pos: ${getRoomPositionPrint(dir.pos)}\n`;
 			}
 		}
 		return msg;
 	}
 
 	static removeAllLogisticsDirectives(): string {
-		const logisticsFlags = _.filter(Game.flags, flag => flag.color == COLOR_YELLOW &&
+		const logisticsFlags = Object.values(Game.flags ?? {}).filter(flag => flag.color == COLOR_YELLOW &&
 															flag.secondaryColor == COLOR_YELLOW);
 		for (const dir of logisticsFlags) {
 			dir.remove();
@@ -399,16 +403,17 @@ export class OvermindConsole {
 		for (const i in Overmind.directives) {
 			const dir = Overmind.directives[i];
 			if (dir.memory.persistent) {
-				msg += `Type: ${dir.directiveName}`.padRight(20) +
-					   `Name: ${dir.name}`.padRight(15) +
-					   `Pos: ${dir.pos.print}\n`;
+				msg += `Type: ${dir.directiveName}`.padEnd(20) +
+					   `Name: ${dir.name}`.padEnd(15) +
+					   `Pos: ${getRoomPositionPrint(dir.pos)}\n`;
 			}
 		}
 		return msg;
 	}
 
 	static removeFlagsByColor(color: ColorConstant, secondaryColor: ColorConstant): string {
-		const removeFlags = _.filter(Game.flags, flag => flag.color == color && flag.secondaryColor == secondaryColor);
+		const removeFlags = Object.values(Game.flags ?? {})
+			.filter(flag => flag.color == color && flag.secondaryColor == secondaryColor);
 		for (const flag of removeFlags) {
 			flag.remove();
 		}
@@ -454,7 +459,7 @@ export class OvermindConsole {
 	static destroyAllHostileStructures(roomName: string): string {
 		const room = Game.rooms[roomName];
 		if (!room) return `${roomName} is undefined! (No vision?)`;
-		if (!room.my) return `${roomName} is not owned by you!`;
+		if (!isRoomMine(room)) return `${roomName} is not owned by you!`;
 		const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
 		for (const structure of hostileStructures) {
 			structure.destroy();
@@ -465,11 +470,11 @@ export class OvermindConsole {
 	static destroyAllBarriers(roomName: string): string {
 		const room = Game.rooms[roomName];
 		if (!room) return `${roomName} is undefined! (No vision?)`;
-		if (!room.my) return `${roomName} is not owned by you!`;
-		for (const barrier of room.barriers) {
+		if (!isRoomMine(room)) return `${roomName} is not owned by you!`;
+		for (const barrier of getRoomBarriers(room)) {
 			barrier.destroy();
 		}
-		return `Destroyed ${room.barriers.length} barriers.`;
+		return `Destroyed ${getRoomBarriers(room).length} barriers.`;
 	}
 
 	static removeUnbuiltConstructionSites(): string {
@@ -479,7 +484,7 @@ export class OvermindConsole {
 			if (csite.progress == 0) {
 				const ret = csite.remove();
 				msg += `Removing construction site for ${csite.structureType} with 0% progress at ` +
-					   `${csite.pos.print}; response: ${ret}\n`;
+					   `${getRoomPositionPrint(csite.pos)}; response: ${ret}\n`;
 			}
 		}
 		return msg;
@@ -509,11 +514,11 @@ export class OvermindConsole {
 		let ret = `Empire Portal Census \n`;
 		for (const colonyId in allPortals) {
 			const portals = allPortals[colonyId];
-			if (_.keys(portals).length > 0) {
+			if (Object.keys(portals ?? {}).length > 0) {
 				ret += `Colony ${colonies[colonyId].print}: \n`;
 			}
-			for (const portalRoomName of _.keys(portals)) {
-				const samplePortal = _.first(portals[portalRoomName]); // don't need to list all 8 in a room
+			for (const portalRoomName of Object.keys(portals ?? {})) {
+				const samplePortal = portals[portalRoomName][0]; // don't need to list all 8 in a room
 				ret += `\t\t Room ${printRoomName(portalRoomName)} Destination ${samplePortal.dest} ` +
 					   `Expiration ${samplePortal[MEM.EXPIRATION] - Game.time}] \n`;
 			}
@@ -531,7 +536,7 @@ export class OvermindConsole {
 				colony.outposts.forEach(outpost => {
 					const res = ExpansionEvaluator.computeTheoreticalMiningEfficiency(colony.bunker!.anchor, outpost.name);
 					if (typeof res === 'boolean') {
-						log.error(`Failed on outpost ${outpost.print}`);
+						log.error(`Failed on outpost ${getRoomPrint(outpost)}`);
 					} else {
 						outpostEfficiencies[outpost.name] = res;
 						avgEnergyPerCPU += res;
@@ -602,7 +607,7 @@ export class OvermindConsole {
 		}
 		// Suicide any creeps which have no memory
 		for (const i in Game.creeps) {
-			if (_.isEmpty(Game.creeps[i].memory)) {
+			if (isEmpty(Game.creeps[i].memory)) {
 				Game.creeps[i].suicide();
 			}
 		}
@@ -627,11 +632,14 @@ export class OvermindConsole {
 
 	private static recursiveMemoryProfile(memoryObject: any, sizes: RecursiveObject, currentDepth: number): void {
 		for (const key in memoryObject) {
-			if (currentDepth == 0 || !_.keys(memoryObject[key]) || _.keys(memoryObject[key]).length == 0) {
-				sizes[key] = JSON.stringify(memoryObject[key]).length;
+			const value = memoryObject[key];
+			const hasChildren = currentDepth != 0
+				&& ((Array.isArray(value) && value.length > 0) || Object.keys(value ?? {}).length > 0);
+			if (!hasChildren) {
+				sizes[key] = JSON.stringify(value).length;
 			} else {
 				sizes[key] = {};
-				OvermindConsole.recursiveMemoryProfile(memoryObject[key], sizes[key] as RecursiveObject,
+				OvermindConsole.recursiveMemoryProfile(value, sizes[key] as RecursiveObject,
 													   currentDepth - 1);
 			}
 		}
@@ -647,9 +655,17 @@ export class OvermindConsole {
 	}
 
 	static cancelMarketOrders(filter?: (order: Order) => any): string {
-		const ordersToCancel = !!filter ? _.filter(Game.market.orders, order => filter(order)) : Game.market.orders;
-		_.forEach(_.values(ordersToCancel), (order: Order) => Game.market.cancelOrder(order.id));
-		return `Canceled ${_.values(ordersToCancel).length} orders.`;
+		const orderIds: string[] = [];
+		for (const id of Object.keys(Game.market.orders)) {
+			const order = Game.market.orders[id];
+			if (!filter || filter(order)) {
+				orderIds.push(order.id);
+			}
+		}
+		for (const id of orderIds) {
+			Game.market.cancelOrder(id);
+		}
+		return `Canceled ${orderIds.length} orders.`;
 	}
 
 }

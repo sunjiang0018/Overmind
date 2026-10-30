@@ -1,3 +1,25 @@
+import {getCreepBoosts} from '../game/Creep';
+import {
+	getRoomDangerousHostiles,
+	getRoomDangerousPlayerHostiles,
+	getRoomHostiles,
+	getRoomInvaders,
+	getRoomOwner,
+	isOutpostRoom,
+	isRoomMine,
+} from '../game/Room';
+import {getRoomPositionNeighbors, roomPositionFindClosestByLimitedRange} from '../game/RoomPosition';
+import {
+	getRoomContainers,
+	getRoomKeeperLairs,
+	getRoomMineral,
+	getRoomPortals,
+	getRoomRamparts,
+	getRoomSources,
+	getRoomSpawns,
+	getRoomTowers,
+	getRoomWalls,
+} from '../game/RoomStructures';
 // Room intel - provides information related to room structure and occupation
 
 import {profile} from '../profiler/decorator';
@@ -15,6 +37,7 @@ import {
 import {ema, getCacheExpiration} from '../utilities/utils';
 import {isRoomTick} from '../utilities/scheduler';
 import {CombatIntel} from './CombatIntel';
+import {defaultsDeep, compact, uniqueBy, pull} from '../utilities/native';
 
 const RECACHE_TIME = 5000;
 const OWNED_RECACHE_TIME = 1000;
@@ -102,7 +125,7 @@ const defaultRoomIntelMemory: RoomIntelMemory = {
 export class RoomIntel {
 
 	constructor() {
-		_.defaultsDeep(Memory.roomIntel, defaultRoomIntelMemory);
+		defaultsDeep(Memory.roomIntel, defaultRoomIntelMemory);
 	}
 
 	// Making this a static getter prevents us from having to call Overmind.roomIntel.whatever() all the time
@@ -185,10 +208,10 @@ export class RoomIntel {
 		if (!Memory.rooms[roomName] || !Memory.rooms[roomName][RMEM.PORTALS]) {
 			return [];
 		}
-		const localPortals = _.filter(Memory.rooms[roomName][RMEM.PORTALS]!,
+		const localPortals = (Memory.rooms[roomName][RMEM.PORTALS]! || []).filter(
 									  savedPortal => typeof savedPortal.dest == 'string');
-		const nonExpiredPortals = _.filter(localPortals, portal => Game.time < portal[MEM.EXPIRATION]);
-		return _.map(nonExpiredPortals, savedPortal => {
+		const nonExpiredPortals = localPortals.filter(portal => Game.time < portal[MEM.EXPIRATION]);
+		return nonExpiredPortals.map(savedPortal => {
 			const pos = unpackCoordAsPos(savedPortal.c, roomName);
 			const destinationPos = unpackPos(<string>savedPortal.dest)!;
 			const expiration = savedPortal[MEM.EXPIRATION];
@@ -203,7 +226,7 @@ export class RoomIntel {
 		if (!Memory.rooms[roomName] || !Memory.rooms[roomName][RMEM.SOURCES]) {
 			return;
 		}
-		return _.map(Memory.rooms[roomName][RMEM.SOURCES]!, savedSource => ({
+		return (Memory.rooms[roomName][RMEM.SOURCES]! || []).map(savedSource => ({
 			pos         : unpackCoordAsPos(savedSource.c, roomName),
 			containerPos: savedSource.cn ? unpackCoordAsPos(savedSource.cn, roomName) : undefined
 		}));
@@ -216,7 +239,7 @@ export class RoomIntel {
 		if (!Memory.rooms[roomName] || !Memory.rooms[roomName][RMEM.SKLAIRS]) {
 			return;
 		}
-		return _.map(Memory.rooms[roomName][RMEM.SKLAIRS]!, savedLair => ({
+		return (Memory.rooms[roomName][RMEM.SKLAIRS]! || []).map(savedLair => ({
 			pos     : unpackCoordAsPos(savedLair.c, roomName),
 			chillPos: savedLair.cp ? unpackCoordAsPos(savedLair.cp, roomName) : undefined
 		}));
@@ -279,7 +302,7 @@ export class RoomIntel {
 			const returnObject: RoomInfo = {
 				controller         : this.getControllerInfo(roomName),
 				portals            : this.getPortalInfo(roomName),
-				sources            : _.map(savedSources, src =>
+				sources            : savedSources.map(src =>
 					src.cn ? {pos: unpackCoordAsPos(src.c, roomName), containerPos: unpackCoordAsPos(src.cn, roomName)}
 						   : {pos: unpackCoordAsPos(src.c, roomName)}),
 				mineral            : savedMineral ? {
@@ -287,7 +310,7 @@ export class RoomIntel {
 					mineralType: savedMineral[RMEM_MNRL.MINERALTYPE],
 					density    : savedMineral[RMEM_MNRL.DENSITY],
 				} : undefined,
-				skLairs            : _.map(savedSkLairs, lair => ({pos: unpackCoordAsPos(lair.c, roomName)})),
+				skLairs            : savedSkLairs.map(lair => ({pos: unpackCoordAsPos(lair.c, roomName)})),
 				importantStructures: this.getImportantStructureInfo(roomName)
 			};
 
@@ -301,10 +324,10 @@ export class RoomIntel {
 	 */
 	private static recordPermanentObjects(room: Room): void {
 		room.memory[MEM.TICK] = Game.time;
-		if (room.sources.length > 0) {
-			room.memory[RMEM.SOURCES] = _.map(room.sources, source => {
+		if (getRoomSources(room).length > 0) {
+			room.memory[RMEM.SOURCES] = getRoomSources(room).map(source => {
 				const coord = packCoord(source.pos);
-				const container = source.pos.findClosestByLimitedRange(room.containers, 2);
+				const container = roomPositionFindClosestByLimitedRange(source.pos, getRoomContainers(room), 2);
 				return container ? {c: coord, cn: packCoord(container.pos)} : {c: coord};
 			});
 		} else {
@@ -329,24 +352,25 @@ export class RoomIntel {
 		} else {
 			delete room.memory[RMEM.CONTROLLER];
 		}
-		if (room.mineral) {
+		const mineral = getRoomMineral(room);
+		if (mineral) {
 			room.memory[RMEM.MINERAL] = {
-				c                      : packCoord(room.mineral.pos),
-				[RMEM_MNRL.DENSITY]    : room.mineral.density,
-				[RMEM_MNRL.MINERALTYPE]: room.mineral.mineralType
+				c                      : packCoord(mineral.pos),
+				[RMEM_MNRL.DENSITY]    : mineral.density,
+				[RMEM_MNRL.MINERALTYPE]: mineral.mineralType
 			};
 		} else {
 			delete room.memory[RMEM.MINERAL];
 		}
-		if (room.keeperLairs.length > 0) {
-			room.memory[RMEM.SKLAIRS] = _.map(room.keeperLairs, lair => {
+		if (getRoomKeeperLairs(room).length > 0) {
+			room.memory[RMEM.SKLAIRS] = getRoomKeeperLairs(room).map(lair => {
 				// Keeper logic is to just move to the first _.find([...sources, mineral], range <=5); see
 				// https://github.com/screeps/engine/blob/master/src/processor/intents/creeps/keepers/pretick.js
-				const keeperTarget = _.find(_.compact([...room.sources, room.mineral]),
+				const keeperTarget = compact([...getRoomSources(room), getRoomMineral(room)]).find(
 											thing => thing!.pos.getRangeTo(lair.pos) <= 5);
 				let chillPos: RoomPosition | undefined;
 				if (keeperTarget) { // should always be true
-					chillPos = lair.pos.findClosestByPath(keeperTarget.pos.neighbors) || undefined;
+					chillPos = lair.pos.findClosestByPath(getRoomPositionNeighbors(keeperTarget.pos)) || undefined;
 				}
 				return chillPos ? {c: packCoord(lair.pos), cp: packCoord(chillPos)} : {c: packCoord(lair.pos)};
 			});
@@ -360,10 +384,10 @@ export class RoomIntel {
 	private static recordOwnedRoomStructures(room: Room) {
 		if (room.controller && room.controller.owner) {
 			room.memory[RMEM.IMPORTANT_STRUCTURES] = {
-				[RMEM_STRUCTS.TOWERS]  : packCoordList(_.map(room.towers, t => t.pos)),
-				[RMEM_STRUCTS.SPAWNS]  : packCoordList(_.map(room.spawns, s => s.pos)),
-				[RMEM_STRUCTS.WALLS]   : packCoordList(_.map(room.walls, w => w.pos)),
-				[RMEM_STRUCTS.RAMPARTS]: packCoordList(_.map(room.ramparts, r => r.pos)),
+				[RMEM_STRUCTS.TOWERS]  : packCoordList(getRoomTowers(room).map(t => t.pos)),
+				[RMEM_STRUCTS.SPAWNS]  : packCoordList(getRoomSpawns(room).map(s => s.pos)),
+				[RMEM_STRUCTS.WALLS]   : packCoordList(getRoomWalls(room).map(w => w.pos)),
+				[RMEM_STRUCTS.RAMPARTS]: packCoordList(getRoomRamparts(room).map(r => r.pos)),
 				[RMEM_STRUCTS.STORAGE] : room.storage ? packCoord(room.storage.pos) : undefined,
 				[RMEM_STRUCTS.TERMINAL]: room.terminal ? packCoord(room.terminal.pos) : undefined,
 			};
@@ -373,15 +397,15 @@ export class RoomIntel {
 	}
 
 	private static recordPortalInfo(room: Room) {
-		if (room.portals.length > 0) {
-			room.memory[RMEM.PORTALS] = _.map(room.portals, portal => {
+		if (getRoomPortals(room).length > 0) {
+			room.memory[RMEM.PORTALS] = getRoomPortals(room).map(portal => {
 				const dest = portal.destination instanceof RoomPosition ? packPos(portal.destination)
 																		: portal.destination;
 				const expiration = portal.ticksToDecay != undefined ? Game.time + portal.ticksToDecay
 																	: Game.time + 1000000;
 				return {c: packCoord(portal.pos), dest: dest, [MEM.EXPIRATION]: expiration};
 			});
-			const uniquePortals = _.unique(room.portals, portal =>
+			const uniquePortals = uniqueBy(getRoomPortals(room), portal =>
 				portal.destination instanceof RoomPosition ? packPos(portal.destination)
 														   : portal.destination);
 			if (!this.memory.portalRooms.includes(room.name)) {
@@ -389,7 +413,7 @@ export class RoomIntel {
 			}
 		} else {
 			delete room.memory[RMEM.PORTALS];
-			_.pull(this.memory.portalRooms, room.name);
+			pull(this.memory.portalRooms, room.name);
 		}
 	}
 
@@ -452,14 +476,14 @@ export class RoomIntel {
 				[RMEM_INVASION.LAST_SEEN]: 0,
 			};
 		}
-		const sources = room.sources;
+		const sources = getRoomSources(room);
 		const invasionData = room.memory[RMEM.INVASION_DATA]!;
 		for (const source of sources) {
 			if (source.ticksToRegeneration == 1) {
 				invasionData[RMEM_INVASION.HARVESTED] += source.energyCapacity - source.energy;
 			}
 		}
-		if (room.invaders.length > 0) {
+		if (getRoomInvaders(room).length > 0) {
 			invasionData[RMEM_INVASION.HARVESTED] = 0;
 			invasionData[RMEM_INVASION.LAST_SEEN] = Game.time;
 		}
@@ -605,16 +629,16 @@ export class RoomIntel {
 
 		if (room) {
 			safetyData[RMEM_SAFETY.INVISIBLE_FOR] = 0;
-			if (room.dangerousHostiles.length > 0) {
+			if (getRoomDangerousHostiles(room).length > 0) {
 				safetyData[RMEM_SAFETY.SAFE_FOR] = 0;
 				safetyData[RMEM_SAFETY.UNSAFE_FOR] += 1;
 			} else {
 				safetyData[RMEM_SAFETY.SAFE_FOR] += 1;
 				safetyData[RMEM_SAFETY.UNSAFE_FOR] = 0;
 			}
-			if (room.my || room.isOutpost) {
+			if (isRoomMine(room) || isOutpostRoom(room)) {
 				// Record combat potentials of creeps in room
-				const potentials = CombatIntel.getCombatPotentials(room.dangerousPlayerHostiles);
+				const potentials = CombatIntel.getCombatPotentials(getRoomDangerousPlayerHostiles(room));
 				safetyData[RMEM_SAFETY.COMBAT_POTENTIALS] = {
 					[COMBAT_POTENTIALS.ATTACK]: potentials.attack,
 					[COMBAT_POTENTIALS.RANGED]: potentials.ranged,
@@ -625,9 +649,9 @@ export class RoomIntel {
 				}
 
 				// Record hostile counts
-				safetyData[RMEM_SAFETY.NUM_HOSTILES] = room.hostiles.length; // this records ALL hostiles!
-				safetyData[RMEM_SAFETY.NUM_BOOSTED_HOSTILES] = _.filter(room.hostiles,
-																		hostile => hostile.boosts.length > 0).length;
+				safetyData[RMEM_SAFETY.NUM_HOSTILES] = getRoomHostiles(room).length; // this records ALL hostiles!
+				safetyData[RMEM_SAFETY.NUM_BOOSTED_HOSTILES] = getRoomHostiles(room).filter(
+																		hostile => getCreepBoosts(hostile).length > 0).length;
 
 			} else {
 				delete safetyData[RMEM_SAFETY.COMBAT_POTENTIALS];
@@ -647,9 +671,9 @@ export class RoomIntel {
 			if (room.controller && room.controller.safeMode) {
 				instantaneousThreatLevel = 0;
 			} else {
-				if (room.dangerousPlayerHostiles.length > 0) {
+				if (getRoomDangerousPlayerHostiles(room).length > 0) {
 					instantaneousThreatLevel = 1;
-				} else if (room.dangerousHostiles.length > 0) {
+				} else if (getRoomDangerousHostiles(room).length > 0) {
 					instantaneousThreatLevel = 0.5;
 				} else {
 					instantaneousThreatLevel = 0;
@@ -717,7 +741,7 @@ export class RoomIntel {
 		if (lastSeen > 20000) { // maybe room is surrounded by owned/reserved rooms and invasions aren't possible
 			return false;
 		}
-		switch (room.sources.length) {
+		switch (getRoomSources(room).length) {
 			case 1:
 				return harvested > 90000;
 			case 2:
@@ -847,7 +871,7 @@ export class RoomIntel {
 	 * Returns the type of zone that your empire is in
 	 */
 	static getMyZoneStatus(): 'normal' | 'novice' | 'respawn' {
-		const oneOfMyColonies = _.first(_.values(Overmind.colonies)) as any;
+		const oneOfMyColonies = Object.values(Overmind.colonies ?? {})[0] as any;
 		return RoomIntel.getRoomStatus(oneOfMyColonies.name).status as 'normal' | 'novice' | 'respawn';
 	}
 
@@ -907,7 +931,7 @@ export class RoomIntel {
 					alreadyComputedScore = this.recomputeScoreIfNecessary(room);
 				}
 				// Refresh cache
-				const recacheTime = room.owner ? OWNED_RECACHE_TIME : RECACHE_TIME;
+				const recacheTime = getRoomOwner(room) ? OWNED_RECACHE_TIME : RECACHE_TIME;
 				room.memory[MEM.EXPIRATION] = getCacheExpiration(recacheTime, 250);
 			}
 

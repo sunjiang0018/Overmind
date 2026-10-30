@@ -1,3 +1,5 @@
+import {isPositionOnEdge} from '../../game/RoomPosition';
+import {getRoomPrint} from '../../game/Room';
 import {log} from '../../console/log';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
 import {DirectivePowerMine} from '../../directives/resource/powerMine';
@@ -67,7 +69,7 @@ export class PowerDrillOverlord extends CombatOverlord {
 			} else {
 				// If power bank is dead
 				if (this.directive.powerBank == undefined && this.directive.memory.state < 2) {
-					Game.notify(`Power bank in ${this.room.print} is dead.`);
+					Game.notify(`Power bank in ${getRoomPrint(this.room)} is dead.`);
 					drill.say('💀 RIP 💀');
 					const result = drill.retire();
 					if (result == ERR_BUSY) {
@@ -81,7 +83,7 @@ export class PowerDrillOverlord extends CombatOverlord {
 		}
 
 		// Go to power room
-		if (!this.room || drill.room != this.room || drill.pos.isEdge || !this.directive.powerBank) {
+		if (!this.room || drill.room != this.room || isPositionOnEdge(drill.pos) || !this.directive.powerBank) {
 			// log.debugCreep(drill, `Going to room!`);
 			// log.notify("Drill is moving to power site in " + this.pos.roomName + ".");
 			drill.goTo(this.pos);
@@ -106,7 +108,7 @@ export class PowerDrillOverlord extends CombatOverlord {
 			return;
 		}
 		// Go to powerbank room
-		if (!this.room || coolant.room != this.room || coolant.pos.isEdge) {
+		if (!this.room || coolant.room != this.room || isPositionOnEdge(coolant.pos)) {
 			// log.debugCreep(coolant, `Going to room!`);
 			coolant.healSelfIfPossible();
 			coolant.goTo(this.pos);
@@ -121,7 +123,7 @@ export class PowerDrillOverlord extends CombatOverlord {
 		if (coolant.pos.getRangeTo(this.directive.powerBank) > 3) {
 			coolant.goTo(this.directive.powerBank);
 		} else {
-			const activeDrills = this.pos.findInRange(FIND_MY_CREEPS, 1).filter(creep => _.contains(creep.name, 'drill'));
+			const activeDrills = this.pos.findInRange(FIND_MY_CREEPS, 1).filter(creep => creep.name.includes('drill'));
 			if (activeDrills.length > 0) {
 				const drill = activeDrills[0];
 				coolant.heal(drill);

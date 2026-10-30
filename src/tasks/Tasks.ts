@@ -27,6 +27,7 @@ import {TaskUpgrade, upgradeTargetType} from './instances/upgrade';
 import {TaskWithdraw, withdrawTargetType} from './instances/withdraw';
 import {TaskWithdrawAll, withdrawAllTargetType} from './instances/withdrawAll';
 import {Task} from './Task';
+import {last} from '../utilities/native';
 
 /**
  * Tasks class provides conveient wrappers for dispensing new Task instances
@@ -45,8 +46,8 @@ export class Tasks {
 			}
 		}
 		// Make the accumulator task from the end and iteratively fork it
-		let task = _.last(tasks); // start with last task
-		tasks = _.dropRight(tasks); // remove it from the list
+		let task = last(tasks); // start with last task
+		tasks = tasks.slice(0, -1); // remove it from the list
 		for (let i = (tasks.length - 1); i >= 0; i--) { // iterate over the remaining tasks
 			task = task.fork(tasks[i]);
 		}

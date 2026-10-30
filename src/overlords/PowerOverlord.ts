@@ -8,6 +8,8 @@ import {PowerZerg} from '../zerg/PowerZerg';
 import {PowerZergOperator} from '../zerg/PowerZergOperator';
 import {Zerg} from '../zerg/Zerg';
 import {MAX_SPAWN_REQUESTS, Overlord, OverlordInitializer, OverlordMemory, ZergOptions} from './Overlord';
+import {getNameLookup} from '../utilities/creepUtils';
+import {mapValues, remove} from '../utilities/native';
 
 
 export interface PowerOverlordMemory extends OverlordMemory {
@@ -86,8 +88,8 @@ export abstract class PowerOverlord extends Overlord {
 
 	protected recalculatePowerCreeps(): void {
 		// Recalculate the sets of creeps for each role in this overlord
-		this._powerCreeps = _.mapValues(Overmind.cache.overlords[this.ref],
-										creepsOfRole => _.map(creepsOfRole, creepName => Game.powerCreeps[creepName]));
+		this._powerCreeps = mapValues(Overmind.cache.overlords[this.ref],
+										creepsOfRole => (creepsOfRole || []).map(creepName => Game.powerCreeps[creepName]));
 		// Update zerg and combatZerg records
 		for (const role in this._powerZerg) {
 			this.synchronizePowerZerg(role);
@@ -96,10 +98,8 @@ export abstract class PowerOverlord extends Overlord {
 
 	private synchronizePowerZerg(role: string, notifyWhenAttacked?: boolean): void {
 		// Synchronize the corresponding sets of Zerg
-		const zergNames = _.zipObject(_.map(this._powerZerg[role] || [],
-											zerg => [zerg.name, true])) as { [name: string]: boolean };
-		const creepNames = _.zipObject(_.map(this._powerCreeps[role] || [],
-											 creep => [creep.name, true])) as { [name: string]: boolean };
+		const zergNames = getNameLookup(this._powerZerg[role]);
+		const creepNames = getNameLookup(this._powerCreeps[role]);
 		// Add new creeps which aren't in the _zerg record
 		for (const creep of this._powerCreeps[role] || []) {
 			if (!zergNames[creep.name]) {
@@ -124,7 +124,7 @@ export abstract class PowerOverlord extends Overlord {
 				removeZergNames.push(powerZerg.name);
 			}
 		}
-		_.remove(this._powerZerg[role], deadZerg => removeZergNames.includes(deadZerg.name));
+		remove(this._powerZerg[role], deadZerg => removeZergNames.includes(deadZerg.name));
 	}
 
 

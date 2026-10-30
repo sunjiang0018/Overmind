@@ -1,3 +1,5 @@
+
+import {defaults, remove} from '../utilities/native';
 export class Vertex {
 	id: number | undefined;
 	value?: any;
@@ -46,7 +48,7 @@ export class Graph {
 		simple?: boolean,
 		connected?: boolean
 	} = {}) {
-		_.defaults(initializer, {
+		defaults(initializer, {
 			V        : [],
 			E        : [],
 			directed : false,
@@ -70,12 +72,12 @@ export class Graph {
 	removeVertex(vertex: Vertex) {
 		// Remove vertex from all of its neighbors
 		for (const neighbor of vertex.neighbors) {
-			_.remove(neighbor.neighbors, vertex);
+			remove(neighbor.neighbors, neighbor => neighbor === vertex);
 		}
 		// Remove all edges that touch the vertex
-		_.remove(this.edges, edge => _.includes(edge.vertices, vertex));
+		remove(this.edges, edge => edge.vertices.includes(vertex));
 		// Remove the vertex from the list
-		_.remove(this.vertices, vertex);
+		remove(this.vertices, v => v === vertex);
 	}
 
 	addEdge(edge: Edge) {
@@ -97,13 +99,13 @@ export class Graph {
 	removeEdge(edge: Edge) {
 		// Remove neighbors connected by this edge
 		const [vertex1, vertex2] = edge.vertices;
-		_.remove(vertex1.neighbors, vertex2);
+		remove(vertex1.neighbors, v => v === vertex2);
 		if (!edge.directional) {
-			_.remove(vertex2.neighbors, vertex1);
+			remove(vertex2.neighbors, v => v === vertex1);
 		}
-		_.remove(vertex1.edges, edge);
-		_.remove(vertex2.edges, edge);
-		_.remove(this.edges, edge);
+		remove(vertex1.edges, e => e === edge);
+		remove(vertex2.edges, e => e === edge);
+		remove(this.edges, e => e === edge);
 	}
 
 	connect(vertex1: Vertex, vertex2: Vertex, weight?: number, directional?: boolean) {
@@ -112,9 +114,9 @@ export class Graph {
 	}
 
 	disconnect(vertex1: Vertex, vertex2: Vertex) {
-		let edge = _.find(vertex1.edges, edge => _.includes(edge.vertices, vertex2));
+		let edge = vertex1.edges.find(edge => edge.vertices.includes(vertex2));
 		if (!edge) {
-			edge = _.find(vertex2.edges, edge => _.includes(edge.vertices, vertex1));
+			edge = vertex2.edges.find(edge => edge.vertices.includes(vertex1));
 		}
 		if (!edge) {
 			throw new Error(`Could not find edge connecting vertices ${vertex1.id} and ${vertex2.id}!`);

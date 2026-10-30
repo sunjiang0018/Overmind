@@ -1,3 +1,20 @@
+import {getStoreContents} from '../game/Structures';
+import {isCreepInRampart} from '../game/Creep';
+import {getRoomContainers, getRoomKeeperLairs, getRoomStorageUnits} from '../game/RoomStructures';
+import {
+	getRoomDangerousHostiles,
+	getRoomDangerousPlayerHostiles,
+	getRoomFleeDefaults,
+	getRoomHostiles,
+	getRoomInvaders,
+} from '../game/Room';
+import {
+	isPositionOnEdge,
+	roomPositionGetPositionAtDirection,
+	roomPositionGetRangeToXY,
+	roomPositionInRangeToPos,
+} from '../game/RoomPosition';
+import {getRoomObjectRef} from '../game/RoomObject';
 import {Colony, getAllColonies} from '../Colony';
 import {log} from '../console/log';
 import {isAnyZerg, isPowerCreep} from '../declarations/typeGuards';
@@ -8,6 +25,7 @@ import {profile} from '../profiler/decorator';
 import {Cartographer, ROOMTYPE_SOURCEKEEPER} from '../utilities/Cartographer';
 import {minBy} from '../utilities/utils';
 import {NEW_OVERMIND_INTERVAL} from '../~settings';
+import {remove, defaults} from '../utilities/native';
 
 export function getOverlord(creep: AnyZerg | AnyCreep): Overlord | null {
 	if (creep.memory[MEM.OVERLORD]) {
@@ -23,7 +41,7 @@ export function setOverlord(creep: AnyZerg | AnyCreep, newOverlord: Overlord | n
 	const ref = creep.memory[MEM.OVERLORD];
 	const oldOverlord: Overlord | null = ref ? Overmind.overlords[ref] : null;
 	if (ref && Overmind.cache.overlords[ref] && Overmind.cache.overlords[ref][roleName]) {
-		_.remove(Overmind.cache.overlords[ref][roleName], name => name == creep.name);
+		remove(Overmind.cache.overlords[ref][roleName], name => name == creep.name);
 	}
 	if (newOverlord) {
 		// Change to the new overlord's colony
@@ -120,7 +138,7 @@ export abstract class AnyZerg {
 		this.name = creep.name;
 		this.pos = creep.pos;
 		this.nextPos = creep.pos;
-		this.ref = creep.ref;
+		this.ref = getRoomObjectRef(creep);
 		// this.roleName = creep.memory.role;
 		this.room = creep.room!; // only wrap actively spawned PowerCreeps
 		this.saying = creep.saying;
@@ -130,7 +148,7 @@ export abstract class AnyZerg {
 		if (isPowerCreep(creep)) {
 			this.lifetime = POWER_CREEP_LIFE_TIME;
 		} else {
-			this.lifetime = _.filter(creep.body, part => part.type == CLAIM).length > 0
+			this.lifetime = creep.body.filter(part => part.type == CLAIM).length > 0
 							? CREEP_CLAIM_LIFE_TIME : CREEP_LIFE_TIME;
 		}
 		this.actionLog = {};
@@ -201,7 +219,7 @@ export abstract class AnyZerg {
 	}
 
 	goDrop(pos: RoomPosition, resourceType: ResourceConstant, amount?: number) {
-		if (this.pos.inRangeToPos(pos, RANGES.DROP)) {
+		if (roomPositionInRangeToPos(this.pos, pos, RANGES.DROP)) {
 			return this.drop(resourceType, amount);
 		} else {
 			return this.goTo(pos);
@@ -213,7 +231,7 @@ export abstract class AnyZerg {
 			const result = this.creep.move(direction);
 			if (result == OK) {
 				if (!this.actionLog.move) this.actionLog.move = true;
-				this.nextPos = this.pos.getPositionAtDirection(direction);
+				this.nextPos = roomPositionGetPositionAtDirection(this.pos, direction);
 			}
 			return result;
 		} else {
@@ -252,7 +270,7 @@ export abstract class AnyZerg {
 	}
 
 	transferAll(target: AnyCreep | AnyZerg | Structure, amount?: number) {
-		for (const [resourceType, amount] of this.creep.store.contents) {
+		for (const [resourceType, amount] of getStoreContents(this.creep.store)) {
 			if (amount > 0) {
 				return this.transfer(target, resourceType);
 			}
@@ -284,7 +302,7 @@ export abstract class AnyZerg {
 	// Carry methods
 
 	get hasMineralsInCarry(): boolean {
-		for (const [resourceType, amount] of this.carry.contents) {
+		for (const [resourceType, amount] of getStoreContents(this.carry)) {
 			if (resourceType != RESOURCE_ENERGY && amount > 0) {
 				return true;
 			}
@@ -345,11 +363,11 @@ export abstract class AnyZerg {
 	}
 
 	safelyInRoom(roomName: string): boolean {
-		return this.room.name == roomName && !this.pos.isEdge;
+		return this.room.name == roomName && !isPositionOnEdge(this.pos);
 	}
 
 	get inRampart(): boolean {
-		return this.creep.inRampart;
+		return isCreepInRampart(this.creep);
 	}
 
 	get isMoving(): boolean {
@@ -360,8 +378,8 @@ export abstract class AnyZerg {
 	/**
 	 * Kite around hostiles in the room
 	 */
-	kite(avoidGoals: (RoomPosition | HasPos)[] = this.room.hostiles, options: MoveOptions = {}): number | undefined {
-		_.defaults(options, {
+	kite(avoidGoals: (RoomPosition | HasPos)[] = getRoomHostiles(this.room), options: MoveOptions = {}): number | undefined {
+		defaults(options, {
 			fleeRange: 5
 		});
 		return Movement.kite(this, avoidGoals, options);
@@ -369,19 +387,19 @@ export abstract class AnyZerg {
 
 	private defaultFleeGoals() {
 		let fleeGoals: (RoomPosition | HasPos)[] = [];
-		fleeGoals = fleeGoals.concat(this.room.hostiles)
-							 .concat(_.filter(this.room.keeperLairs, lair => (lair.ticksToSpawn || Infinity) < 10));
+		fleeGoals = fleeGoals.concat(getRoomHostiles(this.room))
+							 .concat(getRoomKeeperLairs(this.room).filter(lair => (lair.ticksToSpawn || Infinity) < 10));
 		return fleeGoals;
 	}
 
 	/**
 	 * Flee from hostiles in the room, while not repathing every tick // TODO: take a look at this
 	 */
-	flee(avoidGoals: (RoomPosition | HasPos)[] = this.room.fleeDefaults,
+	flee(avoidGoals: (RoomPosition | HasPos)[] = getRoomFleeDefaults(this.room),
 		 fleeOptions: FleeOptions              = {},
 		 moveOptions: MoveOptions              = {}): boolean {
-		if (avoidGoals.length == 0 || this.room.dangerousHostiles.find(
-			creep => creep.pos.getRangeToXY(this.pos.x, this.pos.y) < 6) == undefined) {
+		if (avoidGoals.length == 0 || getRoomDangerousHostiles(this.room).find(
+			creep => roomPositionGetRangeToXY(creep.pos, this.pos.x, this.pos.y) < 6) == undefined) {
 			return false;
 		} else if (this.room.controller && this.room.controller.my && this.room.controller.safeMode) {
 			return false;
@@ -390,9 +408,9 @@ export abstract class AnyZerg {
 			if (fleeing) {
 				// Drop energy if needed
 				if (fleeOptions.dropEnergy && this.carry.energy > 0) {
-					const nearbyContainers = this.pos.findInRange(this.room.storageUnits, 1);
+					const nearbyContainers = this.pos.findInRange(getRoomStorageUnits(this.room), 1);
 					if (nearbyContainers.length > 0) {
-						this.transfer(_.first(nearbyContainers), RESOURCE_ENERGY);
+						this.transfer(nearbyContainers[0], RESOURCE_ENERGY);
 					} else {
 						this.drop(RESOURCE_ENERGY);
 					}
@@ -414,7 +432,7 @@ export abstract class AnyZerg {
 			return false; // I just wanna die!!
 		}
 
-		_.defaults(opts, {timer: 10, dropEnergy: true});
+		defaults(opts, {timer: 10, dropEnergy: true});
 
 		// If you previously determined you are in danger, wait for timer to expire
 		if (this.memory.avoidDanger) {
@@ -436,9 +454,9 @@ export abstract class AnyZerg {
 				// If you're in an SK room, you can skip the danger avoidance as long as you have max hp, there are no
 				// player hostiles, no invaders, and you're not in range to any of the sourceKeepers or spawning lairs
 				if (this.hits == this.hitsMax &&
-					this.room.dangerousPlayerHostiles.length == 0 &&
-					this.room.invaders.length == 0 &&
-					!_.any(this.room.fleeDefaults, fleeThing => this.pos.inRangeTo(fleeThing, 5))) {
+					getRoomDangerousPlayerHostiles(this.room).length == 0 &&
+					getRoomInvaders(this.room).length == 0 &&
+					!getRoomFleeDefaults(this.room).some(fleeThing => this.pos.inRangeTo(fleeThing, 5))) {
 					// Not actually in danger
 					return false;
 				}
@@ -452,7 +470,7 @@ export abstract class AnyZerg {
 			}
 			// But this could happen if the creep was working remotely through a portal
 			else {
-				const nearbyColonies = _.filter(getAllColonies(), colony =>
+				const nearbyColonies = getAllColonies().filter(colony =>
 					Game.map.getRoomLinearDistance(this.room.name, colony.name) <= maxLinearRange);
 				const closestColony = minBy(nearbyColonies, colony => {
 					const route = Pathing.findRoute(this.room.name, colony.room.name);
@@ -476,8 +494,8 @@ export abstract class AnyZerg {
 			};
 
 			if (opts.dropEnergy && this.carry.energy > 0) {
-				const containersInRange = this.pos.findInRange(this.room.containers, 1);
-				const adjacentContainer = _.first(containersInRange);
+				const containersInRange = this.pos.findInRange(getRoomContainers(this.room), 1);
+				const adjacentContainer = containersInRange[0];
 				if (adjacentContainer) {
 					this.transfer(adjacentContainer, RESOURCE_ENERGY);
 				}

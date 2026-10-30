@@ -1,3 +1,8 @@
+import {
+	getRoomPositionPrint,
+	roomPositionGetPositionsInRange,
+	roomPositionLookForStructure,
+} from '../../game/RoomPosition';
 import {Colony} from '../../Colony';
 import {log} from '../../console/log';
 import {profile} from '../../profiler/decorator';
@@ -52,7 +57,7 @@ export class DirectiveNukeResponse extends Directive {
 		if (colony && colony.assets.energy < 200000) {
 			dontReinforce.push(STRUCTURE_EXTENSION);
 		}
-		return _.filter(pos.lookFor(LOOK_STRUCTURES), s => !_.contains(dontReinforce, s.structureType)).length > 0;
+		return pos.lookFor(LOOK_STRUCTURES).filter(s => !dontReinforce.includes(s.structureType)).length > 0;
 	}
 
 	run(): void {
@@ -60,15 +65,15 @@ export class DirectiveNukeResponse extends Directive {
 		if (Game.time % 50 == 0) {
 			if (this.nukes.length > 0) {
 				for (const nuke of this.nukes) {
-					const rampartPositions = _.filter(nuke.pos.getPositionsInRange(2),
+					const rampartPositions = roomPositionGetPositionsInRange(nuke.pos, 2).filter(
 													  pos => DirectiveNukeResponse.shouldReinforceLocation(pos));
 					for (const pos of rampartPositions) {
 						// Build a rampart if there isn't one already
-						if (!pos.lookForStructure(STRUCTURE_RAMPART)) {
+						if (!roomPositionLookForStructure(pos, STRUCTURE_RAMPART)) {
 							pos.createConstructionSite(STRUCTURE_RAMPART);
 						}
 					}
-					log.alert(`Incoming nuke at ${nuke.pos.print}! Time until impact: ${nuke.timeToLand}`);
+					log.alert(`Incoming nuke at ${getRoomPositionPrint(nuke.pos)}! Time until impact: ${nuke.timeToLand}`);
 				}
 			} else {
 				// Remove once nuke is gone

@@ -1,3 +1,5 @@
+import {getRoomObjectRef} from '../../game/RoomObject';
+import {roomPositionFindClosestByMultiRoomRange} from '../../game/RoomPosition';
 import {Colony} from '../../Colony';
 import {log} from '../../console/log';
 import {Roles, Setups} from '../../creepSetups/setups';
@@ -9,6 +11,7 @@ import {profile} from '../../profiler/decorator';
 import {Tasks} from '../../tasks/Tasks';
 import {Zerg} from '../../zerg/Zerg';
 import {Overlord, OverlordMemory} from '../Overlord';
+import {sum, sortBy, last, compact} from '../../utilities/native';
 
 export interface TransportOverlordMemory extends OverlordMemory {
 	transporterSaturation: number;
@@ -82,7 +85,7 @@ export class TransportOverlord extends Overlord {
 		const transportPowerEach = setup.getBodyPotential(CARRY, this.colony);
 		const neededTransportPower = this.neededTransportPower();
 
-		const currentTransportPower = _.sum(this.transporters, t => t.bodypartCounts[CARRY]);
+		const currentTransportPower = sum(this.transporters, t => t.bodypartCounts[CARRY]);
 		this.memory.transporterSaturation = currentTransportPower / neededTransportPower;
 
 		const numTransporters = Math.ceil(1.2 * neededTransportPower / transportPowerEach + 0.1); // div by zero error
@@ -97,7 +100,7 @@ export class TransportOverlord extends Overlord {
 	private handleTransporter(transporter: Zerg, request: LogisticsRequest | undefined) {
 		if (request) {
 			const choices = this.colony.logisticsNetwork.bufferChoices(transporter, request);
-			const bestChoice = _.last(_.sortBy(choices, choice => request.multiplier * choice.dQ
+			const bestChoice = last(sortBy(choices, choice => request.multiplier * choice.dQ
 																  / Math.max(choice.dt, 0.5)));
 			let task = null;
 			const amount = this.colony.logisticsNetwork.predictedRequestAmount(transporter, request);
@@ -116,11 +119,11 @@ export class TransportOverlord extends Overlord {
 				} else {
 					task = Tasks.transfer(request.target, request.resourceType);
 				}
-				if (bestChoice.targetRef != request.target.ref) {
+				if (bestChoice.targetRef != getRoomObjectRef(request.target)) {
 					// If we need to go to a buffer first to get more stuff
 					const buffer = deref(bestChoice.targetRef) as BufferTarget;
 					const withdrawAmount = Math.min(buffer.store[request.resourceType] || 0,
-													transporter.carryCapacity - _.sum(transporter.carry), amount);
+													transporter.carryCapacity - sum(transporter.carry), amount);
 					task = task.fork(Tasks.withdraw(buffer, request.resourceType, withdrawAmount));
 					if (transporter.hasMineralsInCarry && request.resourceType == RESOURCE_ENERGY) {
 						task = task.fork(Tasks.transferAll(buffer));
@@ -148,7 +151,7 @@ export class TransportOverlord extends Overlord {
 						}
 					}
 				}
-				if (task && bestChoice.targetRef != request.target.ref) {
+				if (task && bestChoice.targetRef != getRoomObjectRef(request.target)) {
 					// If we need to go to a buffer first to deposit stuff
 					const buffer = deref(bestChoice.targetRef) as BufferTarget;
 					task = task.fork(Tasks.transferAll(buffer));
@@ -162,14 +165,14 @@ export class TransportOverlord extends Overlord {
 			this.colony.logisticsNetwork.invalidateCache(transporter, request);
 		} else {
 			// If nothing to do, put everything in a store structure
-			if (_.sum(transporter.carry) > 0) {
+			if (sum(transporter.carry) > 0) {
 				if (transporter.hasMineralsInCarry) {
 					const target = this.colony.terminal || this.colony.storage;
 					if (target) {
 						transporter.task = Tasks.transferAll(target);
 					}
 				} else {
-					const dropoffPoints: (StructureLink | StructureStorage)[] = _.compact([this.colony.storage!]);
+					const dropoffPoints: (StructureLink | StructureStorage)[] = compact([this.colony.storage!]);
 					// , ...this.colony.dropoffLinks]);
 
 					// let bestDropoffPoint = minBy(dropoffPoints, function(dropoff: StructureLink | StructureStorage) {
@@ -181,7 +184,7 @@ export class TransportOverlord extends Overlord {
 					// 	}
 					// });
 
-					const bestDropoffPoint = transporter.pos.findClosestByMultiRoomRange(dropoffPoints);
+					const bestDropoffPoint = roomPositionFindClosestByMultiRoomRange(transporter.pos, dropoffPoints);
 
 					if (bestDropoffPoint) transporter.task = Tasks.transfer(bestDropoffPoint);
 				}
@@ -206,7 +209,7 @@ export class TransportOverlord extends Overlord {
 	/* Handles small transporters, which don't do well with the logisticsNetwork's stable matching system */
 	private handleSmolTransporter(smolTransporter: Zerg) {
 		// Just perform a single-sided greedy selection of all requests
-		const bestRequestViaGreedy = _.first(this.colony.logisticsNetwork.transporterPreferences(smolTransporter));
+		const bestRequestViaGreedy = this.colony.logisticsNetwork.transporterPreferences(smolTransporter)[0];
 		this.handleTransporter(smolTransporter, bestRequestViaGreedy);
 	}
 
@@ -218,7 +221,7 @@ export class TransportOverlord extends Overlord {
 		}
 		const tombstone = transporter.pos.lookFor(LOOK_TOMBSTONES)[0];
 		if (tombstone) {
-			const resourceType = _.last(_.sortBy(_.keys(tombstone.store),
+			const resourceType = last(sortBy(Object.keys(tombstone.store ?? {}),
 												 resourceType => (tombstone.store[<ResourceConstant>resourceType] || 0)));
 			transporter.withdraw(tombstone, <ResourceConstant>resourceType);
 		}

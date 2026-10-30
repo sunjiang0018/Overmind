@@ -1,3 +1,6 @@
+import {getRoomPositionPrint, isPositionOnEdge} from '../../game/RoomPosition';
+import {isStructureWalkable} from '../../game/Structures';
+import {getRoomConstructionSites, getRoomStructures, isRoomMine} from '../../game/Room';
 import {log} from '../../console/log';
 import {Roles, Setups} from '../../creepSetups/setups';
 import {DirectiveColonize} from '../../directives/colony/colonize';
@@ -22,13 +25,13 @@ export class PioneerOverlord extends Overlord {
 		super(directive, 'pioneer', priority);
 		this.directive = directive;
 		this.pioneers = this.zerg(Roles.pioneer);
-		this.spawnSite = this.room ? _.filter(this.room.constructionSites,
+		this.spawnSite = this.room ? getRoomConstructionSites(this.room).filter(
 											  s => s.structureType == STRUCTURE_SPAWN)[0] : undefined;
 	}
 
 	refresh() {
 		super.refresh();
-		this.spawnSite = this.room ? _.filter(this.room.constructionSites,
+		this.spawnSite = this.room ? getRoomConstructionSites(this.room).filter(
 											  s => s.structureType == STRUCTURE_SPAWN)[0] : undefined;
 	}
 
@@ -38,18 +41,18 @@ export class PioneerOverlord extends Overlord {
 
 	private findStructureBlockingController(pioneer: Zerg): Structure | undefined {
 		const blockingPos = Pathing.findBlockingPos(pioneer.pos, pioneer.room.controller!.pos,
-													_.filter(pioneer.room.structures, s => !s.isWalkable));
+													getRoomStructures(pioneer.room).filter(s => !isStructureWalkable(s)));
 		if (blockingPos) {
 			const structure = blockingPos.lookFor(LOOK_STRUCTURES)[0];
-			return structure || log.error(`${this.print}: no structure at blocking pos ${blockingPos.print}!`);
+			return structure || log.error(`${this.print}: no structure at blocking pos ${getRoomPositionPrint(blockingPos)}!`);
 		}
 	}
 
 	private handlePioneer(pioneer: Zerg): void {
 		// Ensure you are in the assigned room
-		if (pioneer.room == this.room && !pioneer.pos.isEdge) {
+		if (pioneer.room == this.room && !isPositionOnEdge(pioneer.pos)) {
 			// Remove any blocking structures preventing claimer from reaching controller
-			if (!this.room.my && this.room.structures.length > 0) {
+			if (!isRoomMine(this.room) && getRoomStructures(this.room).length > 0) {
 				const dismantleTarget = this.findStructureBlockingController(pioneer);
 				if (dismantleTarget) {
 					pioneer.task = Tasks.dismantle(dismantleTarget);

@@ -1,3 +1,5 @@
+import {getRoomPrint} from '../game/Room';
+import {hasTerminalReceived, isTerminalReady, sendTerminalResources} from '../game/Structures';
 import {assimilationLocked} from '../assimilation/decorator';
 import {Colony} from '../Colony';
 import {log} from '../console/log';
@@ -15,6 +17,7 @@ import {
 import {alignedNewline, bullet, leftArrow, rightArrow} from '../utilities/stringConstants';
 import {ema, maxBy, mergeSum, minBy, printRoomName} from '../utilities/utils';
 import {TraderJoe} from './TradeNetwork';
+import {zipObject, isEmpty, sum, shuffle, defaults, sortBy, flatten} from '../utilities/native';
 
 interface TerminalNetworkMemory {
 	debug?: boolean;
@@ -190,7 +193,7 @@ function getThresholds(resource: _ResourceConstantSansEnergy): Thresholds {
 
 // Contains threshold values to use for all non-execeptional colonies so we don't recompute this every time
 const ALL_THRESHOLDS: { [resourceType: string]: Thresholds } =
-		  _.object(RESOURCES_ALL_EXCEPT_ENERGY, _.map(RESOURCES_ALL_EXCEPT_ENERGY, res => getThresholds(res)));
+		  zipObject(RESOURCES_ALL_EXCEPT_ENERGY, RESOURCES_ALL_EXCEPT_ENERGY.map(res => getThresholds(res)));
 
 // The order in which resources are handled within the network
 const _resourcePrioritiesOrdered = [
@@ -203,17 +206,17 @@ const _resourcePrioritiesOrdered = [
 	RESOURCE_POWER,
 	RESOURCE_ENERGY
 ];
-const _resourcePrioritiesEverythingElse = _.filter(RESOURCES_ALL, res => !_resourcePrioritiesOrdered.includes(res));
+const _resourcePrioritiesEverythingElse = RESOURCES_ALL.filter(res => !_resourcePrioritiesOrdered.includes(res));
 
 export const RESOURCE_EXCHANGE_ORDER: ResourceConstant[] = [..._resourcePrioritiesOrdered,
 															..._resourcePrioritiesEverythingElse];
 
 const _resourceExchangePrioritiesLookup: { [resource: string]: number } =
-		  _.zipObject(RESOURCE_EXCHANGE_ORDER,
-					  _.map(RESOURCE_EXCHANGE_ORDER, res => _.indexOf(RESOURCE_EXCHANGE_ORDER, res)));
+		  zipObject(RESOURCE_EXCHANGE_ORDER,
+					  RESOURCE_EXCHANGE_ORDER.map(res => RESOURCE_EXCHANGE_ORDER.indexOf(res)));
 
 const EMPTY_COLONY_TIER: { [resourceType: string]: Colony[] } =
-		  _.zipObject(RESOURCES_ALL, _.map(RESOURCES_ALL, i => []));
+		  zipObject(RESOURCES_ALL, RESOURCES_ALL.map(i => []));
 
 
 interface RequestOpts {
@@ -368,8 +371,8 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 	}
 
 	getAssets(): { [resourceType: string]: number } {
-		if (_.isEmpty(this.assets)) {
-			this.assets = mergeSum(_.map(this.colonies, colony => colony.assets));
+		if (isEmpty(this.assets)) {
+			this.assets = mergeSum(this.colonies.map(colony => colony.assets));
 		}
 		return this.assets;
 	}
@@ -384,7 +387,7 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 	private transfer(sender: StructureTerminal, receiver: StructureTerminal, resourceType: ResourceConstant,
 					 amount: number, description: string): ScreepsReturnCode {
 		const cost = Game.market.calcTransactionCost(amount, sender.room.name, receiver.room.name);
-		const response = sender.send(resourceType, amount, receiver.room.name, description);
+		const response = sendTerminalResources(sender, resourceType, amount, receiver.room.name, description);
 		if (response == OK) {
 			let msg;
 			const floorAmt = Math.floor(amount);
@@ -405,8 +408,8 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 			this.notify(msg);
 			// this.logTransfer(resourceType, amount, sender.room.name, receiver.room.name);
 		} else {
-			log.warning(`Could not send ${amount} ${resourceType} from ${sender.room.print} to ` +
-						`${receiver.room.print}! Response: ${response}`);
+			log.warning(`Could not send ${amount} ${resourceType} from ${getRoomPrint(sender.room)} to ` +
+						`${getRoomPrint(receiver.room)}! Response: ${response}`);
 			if (response == ERR_NOT_ENOUGH_RESOURCES || response == ERR_TIRED) {
 				this.terminalOverload[sender.room.name] = true;
 			}
@@ -420,10 +423,10 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 	 * colony would be near capacity if additionalAssets amount of resources were added.
 	 */
 	private getRemainingSpace(colony: Colony, includeFactoryCapacity = false): number {
-		let totalAssets = _.sum(colony.assets);
+		let totalAssets = sum(colony.assets);
 		// Overfilled storage gets counted as just 100% full
-		if (colony.storage && _.sum(colony.storage.store) > STORAGE_CAPACITY) {
-			totalAssets -= (_.sum(colony.storage.store) - STORAGE_CAPACITY);
+		if (colony.storage && sum(colony.storage.store) > STORAGE_CAPACITY) {
+			totalAssets -= (sum(colony.storage.store) - STORAGE_CAPACITY);
 		}
 
 		const roomCapacity = (colony.terminal ? TERMINAL_CAPACITY : 0) +
@@ -438,10 +441,10 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 	 */
 	private getEnergyThresholds(): Thresholds {
 		if (!this._energyThresholds) {
-			const nonExceptionalColonies = _.filter(this.colonies, colony =>
+			const nonExceptionalColonies = this.colonies.filter(colony =>
 				colony.storage
 				&& !(this.colonyThresholds[colony.name] && this.colonyThresholds[colony.name][RESOURCE_ENERGY]));
-			const avgEnergy = _.sum(nonExceptionalColonies, colony => colony.assets.energy) /
+			const avgEnergy = sum(nonExceptionalColonies, colony => colony.assets.energy) /
 							  nonExceptionalColonies.length;
 			this._energyThresholds = {
 				target   : avgEnergy,
@@ -613,7 +616,7 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 									 this.passiveProviders,
 									 this.equilibriumNodes,
 									 this.passiveRequestors];
-		const partnerSets: Colony[][] = _.map(prioritizedPartners, partners => partners[resource] || []);
+		const partnerSets: Colony[][] = prioritizedPartners.map(partners => partners[resource] || []);
 
 		// Do a dry run of handling the request instance
 		const success = this.handleRequestInstance(requestor, resource, requestAmount, partnerSets, opts);
@@ -678,11 +681,21 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 			}
 		}
 		// Shuffle all the colony orders in each tier - this helps prevent jams
-		_.forEach(this.activeRequestors, (cols, resource) => this.activeRequestors[resource!] = _.shuffle(cols));
-		_.forEach(this.passiveRequestors, (cols, resource) => this.passiveRequestors[resource!] = _.shuffle(cols));
-		_.forEach(this.equilibriumNodes, (cols, resource) => this.equilibriumNodes[resource!] = _.shuffle(cols));
-		_.forEach(this.passiveProviders, (cols, resource) => this.passiveProviders[resource!] = _.shuffle(cols));
-		_.forEach(this.activeProviders, (cols, resource) => this.activeProviders[resource!] = _.shuffle(cols));
+		for (const resource of Object.keys(this.activeRequestors)) {
+			this.activeRequestors[resource] = shuffle(this.activeRequestors[resource]);
+		}
+		for (const resource of Object.keys(this.passiveRequestors)) {
+			this.passiveRequestors[resource] = shuffle(this.passiveRequestors[resource]);
+		}
+		for (const resource of Object.keys(this.equilibriumNodes)) {
+			this.equilibriumNodes[resource] = shuffle(this.equilibriumNodes[resource]);
+		}
+		for (const resource of Object.keys(this.passiveProviders)) {
+			this.passiveProviders[resource] = shuffle(this.passiveProviders[resource]);
+		}
+		for (const resource of Object.keys(this.activeProviders)) {
+			this.activeProviders[resource] = shuffle(this.activeProviders[resource]);
+		}
 		// Mark the states as being assigned
 		this._colonyStatesAssigned = true;
 	}
@@ -724,18 +737,18 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 		// Try to find the best single colony to obtain resources from
 		for (const partners of partnerSets) {
 			// First try to find a partner that has more free resources than (target + request)
-			let validPartners: Colony[] = _.filter(partners, partner =>
+			let validPartners: Colony[] = partners.filter(partner =>
 				partner.assets[resource] - requestAmount - this.lockedAmount(partner, resource)
 				>= this.thresholds(partner, resource).target);
 			// If that doesn't work, try to find a partner where assets - request - locked > target - tolerance
 			if (validPartners.length == 0) {
-				validPartners = _.filter(partners, partner =>
+				validPartners = partners.filter(partner =>
 					partner.assets[resource] - requestAmount - this.lockedAmount(partner, resource) >=
 					this.thresholds(partner, resource).target - this.thresholds(colony, resource).tolerance);
 			}
 			// If that doesn't work, try to find a partner where assets - request - locked > 0
 			if (validPartners.length == 0 && opts.takeFromColoniesBelowTarget) {
-				validPartners = _.filter(partners, partner =>
+				validPartners = partners.filter(partner =>
 					partner.assets[resource] - requestAmount - this.lockedAmount(partner, resource) > 0);
 			}
 			if (validPartners.length > 0) {
@@ -758,7 +771,7 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 				}
 				// Send the resources or mark the terminal as overloaded for this tick
 				if (!opts.dryRun) {
-					if (sendTerm.isReady) {
+					if (isTerminalReady(sendTerm)) {
 						this.transfer(sendTerm, recvTerm, resource, sendAmount, `request`);
 					} else {
 						this.terminalOverload[sendTerm.room.name] = true;
@@ -771,22 +784,21 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 		// If no colony is sufficient to send you the resources, try to divvy it up among several colonies
 		if (opts.allowDivvying) {
 			const MAX_SEND_REQUESTS = 3;
-			const allPartners = _.flatten(partnerSets) as Colony[];
+			const allPartners = flatten(partnerSets) as Colony[];
 			// find all colonies that have more than target amt of resource and pick 3 with the most amt
-			let validPartners: Colony[] = _(allPartners)
-				.filter(partner => partner.assets[resource] - this.lockedAmount(partner, resource)
-								   > this.thresholds(partner, resource).target)
-				.sortBy(partner => partner.assets[resource]
-								   - this.lockedAmount(partner, resource)
-								   - this.thresholds(partner, resource).target)
-				.take(MAX_SEND_REQUESTS).run();
+			let validPartners: Colony[] = sortBy(
+				allPartners.filter(partner => partner.assets[resource] - this.lockedAmount(partner, resource)
+											  > this.thresholds(partner, resource).target),
+				partner => partner.assets[resource]
+						   - this.lockedAmount(partner, resource)
+						   - this.thresholds(partner, resource).target).slice(0, MAX_SEND_REQUESTS);
 
 			// If still no partners and this is a super urgent request, steal from colonies that have below target amt
 			if (validPartners.length == 0 && opts.takeFromColoniesBelowTarget) {
-				validPartners = _(allPartners)
-					.filter(partner => partner.assets[resource] - this.lockedAmount(partner, resource) > 0)
-					.sortBy(partner => partner.assets[resource] - this.lockedAmount(partner, resource))
-					.take(MAX_SEND_REQUESTS).run();
+				validPartners = sortBy(
+					allPartners.filter(partner => partner.assets[resource] - this.lockedAmount(partner, resource) > 0),
+					partner => partner.assets[resource] - this.lockedAmount(partner, resource)
+				).slice(0, MAX_SEND_REQUESTS);
 			}
 
 			// request bits of the amount until you have enough
@@ -811,7 +823,7 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 				if (opts.dryRun) {
 					remainingAmount -= sendAmount;
 				} else {
-					if (sendTerm.isReady) {
+					if (isTerminalReady(sendTerm)) {
 						const ret = this.transfer(sendTerm, recvTerm, resource, sendAmount, `request`);
 						if (ret == OK) {
 							remainingAmount -= sendAmount;
@@ -900,19 +912,19 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 			// Try to find the best single colony to send resources to
 			for (const partners of partnerSets) {
 				// First try to find a partner that has less resources than target - sendAmount and can hold more stuff
-				let validPartners: Colony[] = _.filter(partners, partner =>
+				let validPartners: Colony[] = partners.filter(partner =>
 					partner.assets[resource] + sendAmount <= this.thresholds(partner, resource).target &&
 					this.getRemainingSpace(partner) - sendAmount >= TerminalNetworkV2.settings.minColonySpace);
 				// If that doesn't work, tfind partner where assets + sendAmount < target + tolerance and has space
 				if (validPartners.length == 0) {
-					validPartners = _.filter(partners, partner =>
+					validPartners = partners.filter(partner =>
 						partner.assets[resource] + sendAmount <=
 						this.thresholds(partner, resource).target + this.thresholds(colony, resource).tolerance &&
 						this.getRemainingSpace(partner) - sendAmount >= TerminalNetworkV2.settings.minColonySpace);
 				}
 				// If that doesn't work, just try to find any room with space that won't become an activeProvider
 				if (validPartners.length == 0) {
-					validPartners = _.filter(partners, partner => {
+					validPartners = partners.filter(partner => {
 						if (this.getRemainingSpace(partner) - sendAmount
 							< TerminalNetworkV2.settings.minColonySpace) {
 							return false;
@@ -941,7 +953,7 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 					}
 					// Send the resources or mark the terminal as overloaded for this tick
 					if (!opts.dryRun) {
-						if (sendTerm.isReady) {
+						if (isTerminalReady(sendTerm)) {
 							this.transfer(sendTerm, recvTerm, resource, sendAmount, `provide`);
 						} else {
 							this.terminalOverload[sendTerm.room.name] = true;
@@ -976,7 +988,7 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 	private handleRequestors(requestors: { [resource: string]: Colony[] },
 							 prioritizedPartners: { [resource: string]: Colony[] }[],
 							 opts: RequestOpts = {}): void {
-		_.defaults(opts, {
+		defaults(opts, {
 			allowDivvying              : false,
 			takeFromColoniesBelowTarget: false,
 			// sendTargetPlusTolerance    : false,
@@ -988,7 +1000,7 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 		for (const resource of RESOURCE_EXCHANGE_ORDER) {
 			for (const colony of (requestors[resource] || [])) {
 				// Skip if the terminal if it has received in this tick if option is specified
-				if (opts.receiveOnlyOncePerTick && colony.terminal && colony.terminal.hasReceived) {
+				if (opts.receiveOnlyOncePerTick && colony.terminal && hasTerminalReceived(colony.terminal)) {
 					continue;
 				}
 
@@ -1001,7 +1013,7 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 				if (requestAmount <= 0) continue;
 
 				// Generate a list of partner sets by picking the appropriate resource from the prioritizedPartners
-				const partnerSets: Colony[][] = _.map(prioritizedPartners, partners => partners[resource] || []);
+				const partnerSets: Colony[][] = prioritizedPartners.map(partners => partners[resource] || []);
 
 				const success = this.handleRequestInstance(colony, resource, requestAmount, partnerSets, opts);
 				if (!success && opts.complainIfUnfulfilled &&
@@ -1016,7 +1028,7 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 	private handleProviders(providers: { [resource: string]: Colony[] },
 							prioritizedPartners: { [resource: string]: Colony[] }[],
 							opts: ProvideOpts = {}): void {
-		_.defaults(opts, {
+		defaults(opts, {
 			allowPushToOtherRooms: true,
 			allowMarketSell      : true,
 			complainIfUnfulfilled: true,
@@ -1025,13 +1037,13 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 		for (const resource of RESOURCE_EXCHANGE_ORDER) {
 			for (const colony of (providers[resource] || [])) {
 				// Skip if the terminal is not ready -  prevents trying to send twice in a single tick
-				if (colony.terminal && !colony.terminal.isReady) {
+				if (colony.terminal && !isTerminalReady(colony.terminal)) {
 					continue;
 				}
 				const provideAmount = colony.assets[resource] - this.thresholds(colony, resource).target;
 				if (provideAmount <= 0) continue;
 				// Generate a list of partner sets by picking the appropriate resource from the prioritizedPartners
-				const partnerSets: Colony[][] = _.map(prioritizedPartners, partners => partners[resource] || []);
+				const partnerSets: Colony[][] = prioritizedPartners.map(partners => partners[resource] || []);
 
 				const success = this.handleProvideInstance(colony, resource, provideAmount, partnerSets, opts);
 				if (!success && opts.complainIfUnfulfilled &&
@@ -1137,7 +1149,7 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 				}
 			}
 			for (const colName in statsTier) { // sort the resources by the priority of exchange for consistency
-				statsTier[colName] = _.sortBy(<string[]>statsTier[colName],
+				statsTier[colName] = sortBy(<string[]>statsTier[colName],
 											  resource => _resourceExchangePrioritiesLookup[resource]);
 			}
 		}
@@ -1208,19 +1220,19 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 			const resource = resourceOrColony || undefined;
 			if (resource) {
 				info += `Active providers for ${resource} -----------------------------------------------------\n` +
-						`${bullet}${_.map(this.activeProviders[resource], col =>
+						`${bullet}${(this.activeProviders[resource] || []).map(col =>
 							col.printAligned + ` (${col.assets[resource]}), `) || '(None)'}\n` +
 						`Passive providers for ${resource} ----------------------------------------------------\n` +
-						`${bullet}${_.map(this.passiveProviders[resource], col =>
+						`${bullet}${(this.passiveProviders[resource] || []).map(col =>
 							col.printAligned + ` (${col.assets[resource]}), `) || '(None)'}\n` +
 						`Equilibrium nodes for ${resource} ----------------------------------------------------\n` +
-						`${bullet}${_.map(this.equilibriumNodes[resource], col =>
+						`${bullet}${(this.equilibriumNodes[resource] || []).map(col =>
 							col.printAligned + ` (${col.assets[resource]}), `) || '(None)'}\n` +
 						`Passive requestors for ${resource} ----------------------------------------------------\n` +
-						`${bullet}${_.map(this.passiveRequestors[resource], col =>
+						`${bullet}${(this.passiveRequestors[resource] || []).map(col =>
 							col.printAligned + ` (${col.assets[resource]}), `) || '(None)'}\n` +
 						`Active requestors for ${resource} -----------------------------------------------------\n` +
-						`${bullet}${_.map(this.activeRequestors[resource], col =>
+						`${bullet}${(this.activeRequestors[resource] || []).map(col =>
 							col.printAligned + ` (${col.assets[resource]}), `) || '(None)'}\n`;
 			} else {
 				info += 'Active providers ---------------------------------------------------------------------\n';

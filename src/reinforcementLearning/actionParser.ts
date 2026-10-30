@@ -11,6 +11,7 @@ import {SEGMENTS} from '../memory/Segmenter';
 import {NeuralZerg} from '../zerg/NeuralZerg';
 import {RL_TRAINING_VERBOSITY} from '../~settings';
 import {TrainingOpponents} from './trainingOpponents';
+import {mapValues, size} from '../utilities/native';
 
 export type RLAction =
 	['move', DirectionConstant]
@@ -85,8 +86,8 @@ export class ActionParser {
 			case 'maneuver':
 				const approachNames: string[] = predicate[0];
 				const avoidNames: string[] = predicate[1];
-				const approachTargs = _.map(approachNames, name => Game.creeps[name]);
-				const avoidTargs = _.map(avoidNames, name => Game.creeps[name]);
+				const approachTargs = approachNames.map(name => Game.creeps[name]);
+				const avoidTargs = avoidNames.map(name => Game.creeps[name]);
 				actor.maneuver(approachTargs, avoidTargs);
 				break;
 			case 'noop':
@@ -107,7 +108,7 @@ export class ActionParser {
 	private static parseActions(actors: { [creepName: string]: NeuralZerg },
 								serializedActions: { [creepName: string]: RLAction[] }) {
 
-		const receivedOrders: { [creepName: string]: boolean } = _.mapValues(actors, actor => false);
+		const receivedOrders: { [creepName: string]: boolean } = mapValues(actors, actor => false);
 
 		// Deserialize the actions for each actor
 		for (const creepName in serializedActions) {
@@ -141,7 +142,7 @@ export class ActionParser {
 	 * Periodic logging functions that are used to describe state of training map and identify bugs
 	 */
 	private static logState(contents: string) {
-		console.log(`[${Game.time}] My creeps: `, _.map(Game.creeps, creep => creep.name + ' ' + creep.pos));
+		console.log(`[${Game.time}] My creeps: `, Object.values(Game.creeps).map(creep => creep.name + ' ' + creep.pos));
 		if (Memory.reinforcementLearning) {
 			console.log(`[${Game.time}] RL Segment: ${contents}`);
 		}
@@ -151,7 +152,7 @@ export class ActionParser {
 	 * Wraps all creeps as Zerg
 	 */
 	private static getAllActors(): { [creepName: string]: NeuralZerg } {
-		return _.mapValues(Game.creeps, creep => new NeuralZerg(creep));
+		return mapValues(Game.creeps, creep => new NeuralZerg(creep));
 	}
 
 	/**
@@ -180,7 +181,7 @@ export class ActionParser {
 			const actions = JSON.parse(raw);
 			ActionParser.parseActions(controllableActors, actions);
 		} else {
-			if (_.size(controllableActors) > 0) {
+			if (size(controllableActors) > 0) {
 				console.log(`[${Game.time}]: No actions received!`);
 			}
 		}

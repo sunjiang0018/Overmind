@@ -1,0 +1,115 @@
+{
+  "node": "v24.11.1",
+  "lodash": "3.10.1",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpu": "Apple M4",
+  "unit": "median nanoseconds per operation",
+  "samples": 7,
+  "fixtures": "k-prefixed own enumerable dictionary keys; membership matches every other request by identity",
+  "rows": [
+    {
+      "operation": "mapValues",
+      "size": 4,
+      "nsPerOp": {
+        "lodash": 60,
+        "entriesMapFromEntries": 155,
+        "keysLoop": 46
+      }
+    },
+    {
+      "operation": "values",
+      "size": 4,
+      "nsPerOp": {
+        "lodash": 25,
+        "native": 11
+      }
+    },
+    {
+      "operation": "filter values",
+      "size": 4,
+      "nsPerOp": {
+        "entriesFilterMap": 36,
+        "valuesFilter": 23
+      }
+    },
+    {
+      "operation": "mapValues",
+      "size": 20,
+      "nsPerOp": {
+        "lodash": 326,
+        "entriesMapFromEntries": 730,
+        "keysLoop": 274
+      }
+    },
+    {
+      "operation": "values",
+      "size": 20,
+      "nsPerOp": {
+        "lodash": 140,
+        "native": 33
+      }
+    },
+    {
+      "operation": "filter values",
+      "size": 20,
+      "nsPerOp": {
+        "entriesFilterMap": 143,
+        "valuesFilter": 63
+      }
+    },
+    {
+      "operation": "mapValues",
+      "size": 200,
+      "nsPerOp": {
+        "lodash": 6768,
+        "entriesMapFromEntries": 9121,
+        "keysLoop": 6512
+      }
+    },
+    {
+      "operation": "values",
+      "size": 200,
+      "nsPerOp": {
+        "lodash": 2908,
+        "native": 300
+      }
+    },
+    {
+      "operation": "filter values",
+      "size": 200,
+      "nsPerOp": {
+        "entriesFilterMap": 1272,
+        "valuesFilter": 545
+      }
+    },
+    {
+      "operation": "unmatched request membership",
+      "size": 20,
+      "nsPerOp": {
+        "repeatedLodashValues": 1457,
+        "repeatedNativeValues": 445,
+        "setOnce": 221
+      }
+    },
+    {
+      "operation": "unmatched request membership",
+      "size": 100,
+      "nsPerOp": {
+        "repeatedLodashValues": 58709,
+        "repeatedNativeValues": 8818,
+        "setOnce": 1188
+      }
+    },
+    {
+      "operation": "unmatched request membership",
+      "size": 500,
+      "nsPerOp": {
+        "repeatedLodashValues": 1797399,
+        "repeatedNativeValues": 204320,
+        "setOnce": 6500
+      }
+    }
+  ],
+  "checksum": 0
+}

@@ -1,6 +1,7 @@
 import {log} from '../console/log';
 import {printRoomName} from '../utilities/utils';
 import {Visualizer} from '../visuals/Visualizer';
+import {sortBy} from '../utilities/native';
 
 export enum NotifierPriority {
 	SystemUpdate = -1,
@@ -66,8 +67,8 @@ export class Notifier {
 	// }
 
 	generateNotificationsList(links = false): string[] {
-		const sortedAlerts = _.sortBy(this.alerts, alert => alert.priority);
-		return _.map(sortedAlerts, alert => {
+		const sortedAlerts = sortBy(this.alerts, alert => alert.priority);
+		return sortedAlerts.map(alert => {
 			if (alert.roomName) {
 				return (links ? printRoomName(alert.roomName) : alert.roomName) + ': ' + alert.message;
 			} else {

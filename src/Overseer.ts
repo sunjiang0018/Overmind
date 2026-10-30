@@ -1,3 +1,6 @@
+import {getRoomPositionPrint} from './game/RoomPosition';
+import {getRoomBarriers, getRoomInvaderCore, getRoomPowerBanks, getRoomSources} from './game/RoomStructures';
+import {getRoomDangerousPlayerHostiles, getRoomDrops, getRoomFlags, getRoomInvaders, getRoomPrint} from './game/Room';
 import {Colony, ColonyStage, getAllColonies, OutpostDisableReason} from './Colony';
 import {log} from './console/log';
 import {bodyCost} from './creepSetups/CreepSetup';
@@ -33,6 +36,7 @@ import {
 import {isRoomTick} from './utilities/scheduler';
 import {canClaimAnotherRoom, getAllRooms, hasJustSpawned, minBy, onPublicServer} from './utilities/utils';
 import {MUON, MY_USERNAME, SHOW_ROOM_HUD, USE_TRY_CATCH} from './~settings';
+import {groupBy, remove, sum, compact} from './utilities/native';
 
 
 // export const DIRECTIVE_CHECK_FREQUENCY = 2;
@@ -113,7 +117,7 @@ export class Overseer implements IOverseer {
 	}
 
 	removeDirective(directive: Directive): void {
-		_.remove(this.directives, dir => dir.name == directive.name);
+		remove(this.directives, dir => dir.name == directive.name);
 		for (const name in directive.overlords) {
 			this.removeOverlord(directive.overlords[name]);
 		}
@@ -122,9 +126,9 @@ export class Overseer implements IOverseer {
 
 	private ensureDirectivesCached(): void {
 		if (!this._directiveCached) {
-			this.directivesByType = _.groupBy(this.directives, directive => directive.directiveName);
-			this.directivesByRoom = _.groupBy(this.directives, directive => directive.pos.roomName);
-			this.directivesByColony = _.groupBy(this.directives, directive => directive.colony.name || 'none');
+			this.directivesByType = groupBy(this.directives, directive => directive.directiveName);
+			this.directivesByRoom = groupBy(this.directives, directive => directive.pos.roomName);
+			this.directivesByColony = groupBy(this.directives, directive => directive.colony.name || 'none');
 			this._directiveCached = true;
 		}
 	}
@@ -150,14 +154,14 @@ export class Overseer implements IOverseer {
 	}
 
 	private removeOverlord(overlord: Overlord): void {
-		_.remove(this.overlords, o => o.ref == overlord.ref);
+		remove(this.overlords, o => o.ref == overlord.ref);
 		this._overlordsCached = false;
 	}
 
 	private ensureOverlordsCached(): void {
 		if (!this._overlordsCached) {
 			this.overlords.sort((o1, o2) => o1.priority - o2.priority);
-			this.overlordsByColony = _.groupBy(this.overlords, overlord => overlord.colony.name);
+			this.overlordsByColony = groupBy(this.overlords, overlord => overlord.colony.name);
 			for (const colName in this.overlordsByColony) {
 				this.overlordsByColony[colName].sort((o1, o2) => o1.priority - o2.priority);
 			}
@@ -175,9 +179,9 @@ export class Overseer implements IOverseer {
 		// Register logistics requests for all dropped resources and tombstones
 		for (const room of colony.rooms) {
 			// Pick up all nontrivial dropped resources
-			for (const resourceType in room.drops) {
-				for (const drop of room.drops[resourceType]) {
-					const inputRequest = _.find(colony.logisticsNetwork.requests, request => request.amount > 0);
+			for (const resourceType in getRoomDrops(room)) {
+				for (const drop of getRoomDrops(room)[resourceType]) {
+					const inputRequest = colony.logisticsNetwork.requests.find(request => request.amount > 0);
 					if (inputRequest) continue; // early levels may request transporters to drop off at a resource
 					if (drop.amount > LogisticsNetwork.settings.droppedEnergyThreshold
 						|| drop.resourceType != RESOURCE_ENERGY) {
@@ -188,8 +192,8 @@ export class Overseer implements IOverseer {
 		}
 		// Place a logistics request directive for every tombstone with non-empty store that isn't on a container
 		for (const tombstone of colony.tombstones) {
-			if (_.sum(tombstone.store) > LogisticsNetwork.settings.droppedEnergyThreshold
-				|| _.sum(tombstone.store) > tombstone.store.energy) {
+			if (sum(tombstone.store) > LogisticsNetwork.settings.droppedEnergyThreshold
+				|| sum(tombstone.store) > tombstone.store.energy) {
 				if (colony.bunker && tombstone.pos.isEqualTo(colony.bunker.anchor)) continue;
 				colony.logisticsNetwork.requestOutput(tombstone, {resourceType: 'all'});
 			}
@@ -235,7 +239,7 @@ export class Overseer implements IOverseer {
 			DirectiveHarvest.createIfNotPresent(source.pos, 'pos');
 		}
 		if (colony.controller.level >= 6 && colony.terminal) {
-			_.forEach(colony.extractors, extractor => DirectiveExtract.createIfNotPresent(extractor.pos, 'pos'));
+			colony.extractors.forEach(extractor => DirectiveExtract.createIfNotPresent(extractor.pos, 'pos'));
 		}
 	}
 
@@ -265,16 +269,16 @@ export class Overseer implements IOverseer {
 				continue;
 			}
 			// Handle player defense
-			if (room.dangerousPlayerHostiles.length > 0) {
+			if (getRoomDangerousPlayerHostiles(room).length > 0) {
 				DirectiveOutpostDefense.createIfNotPresent(Pathing.findPathablePosition(room.name), 'room');
 			}
 			// Handle NPC invasion directives
 			else if (Cartographer.roomType(room.name) != ROOMTYPE_SOURCEKEEPER) { // SK rooms can fend for themselves
-				if (room.invaders.length > 0 || (room.invaderCore && room.invaderCore.level == 0)) {
-					const defenseDirectives = [...DirectiveGuard.find(room.flags),
-											   ...DirectiveOutpostDefense.find(room.flags)];
+				if (getRoomInvaders(room).length > 0 || (getRoomInvaderCore(room)?.level == 0)) {
+					const defenseDirectives = [...DirectiveGuard.find(getRoomFlags(room)),
+											   ...DirectiveOutpostDefense.find(getRoomFlags(room))];
 					if (defenseDirectives.length == 0) {
-						const placePos = (room.invaders[0] || room.invaderCore).pos;
+						const placePos = (getRoomInvaders(room)[0] || getRoomInvaderCore(room)).pos;
 						DirectiveGuard.create(placePos);
 					}
 				}
@@ -337,14 +341,14 @@ export class Overseer implements IOverseer {
 
 		if (powerSetting.enabled && (roomType == ROOMTYPE_ALLEY || roomType == ROOMTYPE_CROSSROAD)) {
 
-			const powerBank = _.first(room.powerBanks);
+			const powerBank = getRoomPowerBanks(room)[0];
 			if (powerBank && powerBank.ticksToDecay > 4000 && powerBank.power >= powerSetting.minPower) {
 
 				if (DirectivePowerMine.isPresent(powerBank.pos)) {
 					return;
 				}
 
-				const validColonies = _.filter(getAllColonies(),
+				const validColonies = getAllColonies().filter(
 											   colony => colony.level >= DirectivePowerMine.requiredRCL
 														 && Game.map.getRoomLinearDistance(colony.name, room.name)
 														 <= powerSetting.maxRange);
@@ -363,11 +367,11 @@ export class Overseer implements IOverseer {
 	}
 
 	private computePossibleOutposts(colony: Colony, depth = 3): string[] {
-		return _.filter(Cartographer.findRoomsInRange(colony.room.name, depth), roomName => {
+		return Cartographer.findRoomsInRange(colony.room.name, depth).filter(roomName => {
 			if (Cartographer.roomType(roomName) != ROOMTYPE_CONTROLLER) {
 				return false;
 			}
-			const alreadyAnOutpost = _.any(Overmind.cache.outpostFlags,
+			const alreadyAnOutpost = Overmind.cache.outpostFlags.some(
 										   flag => (flag.memory.setPos || flag.pos).roomName == roomName);
 			const alreadyAColony = !!Overmind.colonies[roomName];
 			if (alreadyAColony || alreadyAnOutpost) {
@@ -383,18 +387,18 @@ export class Overseer implements IOverseer {
 			if (alreadyOwned || (alreadyReserved && !disregardReservations) || isBlocked) {
 				return false;
 			}
-			const neighboringRooms = _.values(Game.map.describeExits(roomName)) as string[];
-			const isReachableFromColony = _.any(neighboringRooms, r => colony.roomNames.includes(r));
+			const neighboringRooms = Object.values(Game.map.describeExits(roomName) ?? {}) as string[];
+			const isReachableFromColony = neighboringRooms.some(r => colony.roomNames.includes(r));
 			return isReachableFromColony && RoomIntel.isRoomAccessible(roomName);
 		});
 	}
 
 	private handleNewOutposts(colony: Colony) {
-		const numSources = _.sum(colony.roomNames, // TODO: rewrite to include suspension?
+		const numSources = sum(colony.roomNames, // TODO: rewrite to include suspension?
 								 roomName => Memory.rooms[roomName] && Memory.rooms[roomName][RMEM.SOURCES]
 											 ? Memory.rooms[roomName][RMEM.SOURCES]!.length
 											 : 0);
-		const numRemotes = numSources - colony.room.sources.length;
+		const numRemotes = numSources - getRoomSources(colony.room).length;
 		let neededRemotes = Colony.settings.remoteSourcesByLevel[colony.level];
 		if (getAllColonies().length <= 2) {
 			neededRemotes = Math.floor(neededRemotes * 1.5);
@@ -407,16 +411,16 @@ export class Overseer implements IOverseer {
 			const bestOutpost = minBy(possibleOutposts, function(outpostName) {
 				const sourceInfo = RoomIntel.getSourceInfo(outpostName);
 				if (!sourceInfo) return false;
-				const sourceDistances = _.map(sourceInfo, src => Pathing.distance(origin, src.pos));
-				if (_.any(sourceDistances, dist => dist == undefined || dist > Colony.settings.maxSourceDistance)) {
+				const sourceDistances = sourceInfo.map(src => Pathing.distance(origin, src.pos));
+				if (sourceDistances.some(dist => dist == undefined || dist > Colony.settings.maxSourceDistance)) {
 					return false;
 				}
-				return _.sum(sourceDistances) / sourceDistances.length;
+				return sum(sourceDistances) / sourceDistances.length;
 			});
 
 			if (bestOutpost) {
 				const pos = Pathing.findPathablePosition(bestOutpost);
-				log.info(`Colony ${colony.room.print} now remote mining from ${pos.print}`);
+				log.info(`Colony ${getRoomPrint(colony.room)} now remote mining from ${getRoomPositionPrint(pos)}`);
 				DirectiveOutpost.createIfNotPresent(pos, 'room', {memory: {[MEM.COLONY]: colony.name}});
 			}
 		}
@@ -442,7 +446,7 @@ export class Overseer implements IOverseer {
 					for (const colony of colonies) {
 						const route = Game.map.findRoute(colony.room, room);
 						if (route != ERR_NO_PATH && route.length <= maxRange) {
-							log.notify(`Poisoning room ${room.print}`);
+							log.notify(`Poisoning room ${getRoomPrint(room)}`);
 							DirectivePoisonRoom.create(controller.pos);
 							return;
 						}
@@ -460,16 +464,16 @@ export class Overseer implements IOverseer {
 		const allColonies = getAllColonies();
 
 		if (LATEST_BUILD_TICK == Game.time) {
-			_.forEach(allColonies, colony => this.placeHarvestingDirectives(colony));
+			allColonies.forEach(colony => this.placeHarvestingDirectives(colony));
 		}
 
-		_.forEach(allColonies, colony => this.handleBootstrapping(colony));
+		allColonies.forEach(colony => this.handleBootstrapping(colony));
 
-		_.forEach(allColonies, colony => this.handleOutpostDefense(colony));
+		allColonies.forEach(colony => this.handleOutpostDefense(colony));
 
 		// _.forEach(allColonies, colony => this.handleStrongholds(colony));
 
-		_.forEach(allColonies, colony => this.handleColonyInvasions(colony));
+		allColonies.forEach(colony => this.handleColonyInvasions(colony));
 
 		for (const colony of allColonies) {
 			if (isRoomTick(colony.name, Overseer.settings.nukeCheckFrequency, 1)) {
@@ -491,7 +495,7 @@ export class Overseer implements IOverseer {
 		}
 
 		if (getAutonomyLevel() > Autonomy.Manual) {
-			_.forEach(allColonies, colony => {
+			allColonies.forEach(colony => {
 				if (isRoomTick(colony.name, Overseer.settings.outpostCheckFrequency, 5)) {
 					this.handleNewOutposts(colony);
 				}
@@ -515,10 +519,11 @@ export class Overseer implements IOverseer {
 
 		for (const room of colony.outposts) {
 
+			const invaderCore = getRoomInvaderCore(room);
 			if (Cartographer.roomType(room.name) == ROOMTYPE_SOURCEKEEPER &&
-				room.invaderCore && room.invaderCore.level > 3) {
+				invaderCore && invaderCore.level > 3) {
 
-				const roomDirectives = Directive.find(room.flags);
+				const roomDirectives = Directive.find(getRoomFlags(room));
 
 				for (const directive of roomDirectives) {
 					for (const name in directive.overlords) {
@@ -526,7 +531,7 @@ export class Overseer implements IOverseer {
 					}
 				}
 				if (colony.isRoomActive(room.name)) {
-					log.notify(`Disabling outpost ${room.print} due to Stronghold presence`);
+					log.notify(`Disabling outpost ${getRoomPrint(room)} due to Stronghold presence`);
 				}
 				colony.suspendOutpost(room.name, OutpostDisableReason.inactiveStronghold, suspensionDuration);
 			}
@@ -541,12 +546,12 @@ export class Overseer implements IOverseer {
 			return;
 		}
 		// Safe mode activates when there are dangerous player hostiles that can reach the spawn
-		const criticalStructures = _.compact([...colony.spawns,
+		const criticalStructures = compact([...colony.spawns,
 											  colony.storage,
 											  colony.terminal]) as Structure[];
 		for (const structure of criticalStructures) {
 			if (structure.hits < structure.hitsMax &&
-				structure.pos.findInRange(colony.room.dangerousPlayerHostiles, 2).length > 0) {
+				structure.pos.findInRange(getRoomDangerousPlayerHostiles(colony.room), 2).length > 0) {
 				const ret = colony.controller.activateSafeMode();
 				if (ret != OK && !colony.controller.safeMode) {
 					if (colony.terminal) {
@@ -557,9 +562,9 @@ export class Overseer implements IOverseer {
 				}
 			}
 		}
-		const firstHostile = _.first(colony.room.dangerousPlayerHostiles);
+		const firstHostile = getRoomDangerousPlayerHostiles(colony.room)[0];
 		if (firstHostile && colony.spawns[0]) {
-			const barriers = _.map(colony.room.barriers, barrier => barrier.pos);
+			const barriers = getRoomBarriers(colony.room).map(barrier => barrier.pos);
 			if (Pathing.isReachable(firstHostile.pos, colony.spawns[0].pos, barriers)) {
 				const ret = colony.controller.activateSafeMode();
 				if (ret != OK && !colony.controller.safeMode) {

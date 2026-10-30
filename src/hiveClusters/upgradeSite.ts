@@ -1,3 +1,13 @@
+import {getStoredEnergy, isStructureEmpty} from '../game/Structures';
+import {getRoomConstructionSites} from '../game/Room';
+import {
+	getRoomPositionPrint,
+	roomPositionAvailableNeighbors,
+	roomPositionFindClosestByLimitedRange,
+	roomPositionGetPositionsAtRange,
+	roomPositionIsWalkable,
+} from '../game/RoomPosition';
+import {getRoomContainers} from '../game/RoomStructures';
 import {$} from '../caching/GlobalCache';
 import {Colony, ColonyStage} from '../Colony';
 import {log} from '../console/log';
@@ -8,6 +18,7 @@ import {prioritizesRCL6, RCL6_RUSH} from '../roomPlanner/roomOverrides';
 import {Stats} from '../stats/stats';
 import {hasMinerals} from '../utilities/utils';
 import {HiveCluster} from './_HiveCluster';
+import {sum, max, defaults as nativeDefaults} from '../utilities/native';
 
 interface UpgradeSiteMemory {
 	stats: { downtime: number };
@@ -32,7 +43,9 @@ export class UpgradeSite extends HiveCluster {
 
 	static settings = {
 		energyBuffer     : 100000,	// Number of upgrader parts scales with energy minus this value
-		energyPerBodyUnit: 20000,	// Scaling factor: this much excess energy adds one extra body repetition // TODO: scaling needs to increase with new storage/terminal system
+		// This much excess energy adds one extra body repetition.
+		// TODO: scaling needs to increase with the new storage/terminal system.
+		energyPerBodyUnit: 20000,
 		minLinkDistance  : 10,		// Required distance to build link
 		linksRequestBelow: 200,		// Links request energy when less than this amount
 	};
@@ -44,9 +57,9 @@ export class UpgradeSite extends HiveCluster {
 		this.upgradePowerNeeded = this.getUpgradePowerNeeded();
 		// Register bettery
 		$.set(this, 'battery', () => {
-			const allowableContainers = _.filter(this.room.containers, container =>
+			const allowableContainers = getRoomContainers(this.room).filter(container =>
 				container.pos.findInRange(FIND_SOURCES, 1).length == 0); // only count containers that aren't near sources
-			return this.pos.findClosestByLimitedRange(allowableContainers, 3);
+			return roomPositionFindClosestByLimitedRange(this.pos, allowableContainers, 3);
 		});
 		this.batteryPos = $.pos(this, 'batteryPos', () => {
 			if (this.battery) {
@@ -56,11 +69,11 @@ export class UpgradeSite extends HiveCluster {
 			if (inputSite) {
 				return inputSite.pos;
 			}
-			return this.calculateBatteryPos() || log.alert(`Upgrade site at ${this.pos.print}: no batteryPos!`);
+			return this.calculateBatteryPos() || log.alert(`Upgrade site at ${getRoomPositionPrint(this.pos)}: no batteryPos!`);
 		});
 		if (this.batteryPos) this.colony.destinations.push({pos: this.batteryPos, order: 0});
 		// Register link
-		$.set(this, 'link', () => this.pos.findClosestByLimitedRange(colony.availableLinks, 3));
+		$.set(this, 'link', () => roomPositionFindClosestByLimitedRange(this.pos, colony.availableLinks, 3));
 		this.colony.linkNetwork.claimLink(this.link);
 		// // Energy per tick is sum of upgrader body parts and nearby worker body parts
 		// this.energyPerTick = $.number(this, 'energyPerTick', () =>
@@ -84,11 +97,11 @@ export class UpgradeSite extends HiveCluster {
 	}
 
 	findInputConstructionSite(): ConstructionSite | undefined {
-		const nearbyInputSites = this.pos.findInRange(this.room.constructionSites, 4, {
+		const nearbyInputSites = this.pos.findInRange(getRoomConstructionSites(this.room), 4, {
 			filter: (s: ConstructionSite) => s.structureType == STRUCTURE_CONTAINER ||
 											 s.structureType == STRUCTURE_LINK,
 		});
-		return _.first(nearbyInputSites);
+		return nearbyInputSites[0];
 	}
 
 	private getUpgradePowerNeeded(): number {
@@ -128,13 +141,13 @@ export class UpgradeSite extends HiveCluster {
 		const inThreshold = rush ? 0.9 : (this.colony.stage == ColonyStage.Larva ? 0.75 : 0.5);
 		if (this.battery) {
 			if (this.colony.stage == ColonyStage.Larva) {
-				if (this.battery.energy < inThreshold * this.battery.storeCapacity) {
+				if (getStoredEnergy(this.battery) < inThreshold * this.battery.storeCapacity) {
 					const workers = this.colony.overlords.work.workers;
-					const energyPerTick = UPGRADE_CONTROLLER_POWER * _.sum(workers, worker => worker.getBodyparts(WORK));
+					const energyPerTick = UPGRADE_CONTROLLER_POWER * sum(workers, worker => worker.getBodyparts(WORK));
 					this.colony.logisticsNetwork.requestInput(this.battery, {dAmountdt: energyPerTick, multiplier: rush ? 2 : 1});
 				}
 			} else {
-				if (this.battery.energy < inThreshold * this.battery.storeCapacity) {
+				if (getStoredEnergy(this.battery) < inThreshold * this.battery.storeCapacity) {
 					const energyPerTick = UPGRADE_CONTROLLER_POWER * this.upgradePowerNeeded;
 					this.colony.logisticsNetwork.requestInput(this.battery, {dAmountdt: energyPerTick, multiplier: rush ? 2 : 1});
 				}
@@ -159,15 +172,15 @@ export class UpgradeSite extends HiveCluster {
 		}
 		// Find all positions at range 2 from controller
 		let inputLocations: RoomPosition[] = [];
-		for (const pos of this.pos.getPositionsAtRange(2)) {
-			if (pos.isWalkable(true)) {
+		for (const pos of roomPositionGetPositionsAtRange(this.pos, 2)) {
+			if (roomPositionIsWalkable(pos, true)) {
 				inputLocations.push(pos);
 			}
 		}
 		// Try to find locations where there is maximal standing room
-		const maxNeighbors = _.max(_.map(inputLocations, pos => pos.availableNeighbors(true).length));
-		inputLocations = _.filter(inputLocations,
-								  pos => pos.availableNeighbors(true).length >= maxNeighbors);
+		const maxNeighbors = max(inputLocations, pos => roomPositionAvailableNeighbors(pos, true).length);
+		inputLocations = inputLocations.filter(
+								  pos => roomPositionAvailableNeighbors(pos, true).length >= maxNeighbors);
 		// Return location closest to storage by path
 		const inputPos = originPos.findClosestByPath(inputLocations);
 		if (inputPos) {
@@ -186,7 +199,7 @@ export class UpgradeSite extends HiveCluster {
 				if (result == OK) {
 					return;
 				} else {
-					log.warning(`Upgrade site at ${this.pos.print}: cannot build battery! Result: ${result}`);
+					log.warning(`Upgrade site at ${getRoomPositionPrint(this.pos)}: cannot build battery! Result: ${result}`);
 				}
 			}
 		}
@@ -197,10 +210,10 @@ export class UpgradeSite extends HiveCluster {
 			downtime: 0,
 		};
 		if (!this.memory.stats) this.memory.stats = defaults;
-		_.defaults(this.memory.stats, defaults);
+		nativeDefaults(this.memory.stats, defaults);
 		// Compute downtime
 		this.memory.stats.downtime = (this.memory.stats.downtime * (CREEP_LIFE_TIME - 1) +
-									  (this.battery ? +this.battery.isEmpty : 0)) / CREEP_LIFE_TIME;
+									  (this.battery ? +isStructureEmpty(this.battery) : 0)) / CREEP_LIFE_TIME;
 		Stats.log(`colonies.${this.colony.name}.upgradeSite.downtime`, this.memory.stats.downtime);
 	}
 

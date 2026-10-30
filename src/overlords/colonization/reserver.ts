@@ -1,3 +1,11 @@
+import {isRoomMine} from '../../game/Room';
+import {isPositionOnEdge, roomPositionAvailableNeighbors} from '../../game/RoomPosition';
+import {
+	isControllerReservedByMe,
+	isControllerSignedByMe,
+	isControllerSignedByScreeps,
+	structureControllerNeedsReserving,
+} from '../../game/Structures';
 import {Roles, Setups} from '../../creepSetups/setups';
 import {DirectiveOutpost} from '../../directives/colony/outpost';
 import {RoomIntel} from '../../intel/RoomIntel';
@@ -28,10 +36,10 @@ export class ReservingOverlord extends Overlord {
 	init() {
 		let amount = 0;
 		if (this.room) {
-			if (this.room.controller!.needsReserving(this.reserveBuffer)) {
+			if (structureControllerNeedsReserving(this.room.controller!, this.reserveBuffer)) {
 				amount = 1;
-			} else if (this.room.controller!.reservation && !this.room.controller!.reservedByMe) {
-				amount = Math.min(this.room.controller!.pos.availableNeighbors(true).length, 2);
+			} else if (this.room.controller!.reservation && !isControllerReservedByMe(this.room.controller!)) {
+				amount = Math.min(roomPositionAvailableNeighbors(this.room.controller!.pos, true).length, 2);
 			}
 		} else if (RoomIntel.roomReservedBy(this.pos.roomName) == MY_USERNAME &&
 				   RoomIntel.roomReservationRemaining(this.pos.roomName) < 1000) {
@@ -42,11 +50,11 @@ export class ReservingOverlord extends Overlord {
 
 	private handleReserver(reserver: Zerg): void {
 		if (reserver.avoidDanger()) return;
-		if (reserver.room == this.room && !reserver.pos.isEdge) {
+		if (reserver.room == this.room && !isPositionOnEdge(reserver.pos)) {
 			// If reserver is in the room and not on exit tile
-			if (!this.room.controller!.signedByMe) {
+			if (!isControllerSignedByMe(this.room.controller!)) {
 				// Takes care of an edge case where planned newbie zone signs prevents signing until room is reserved
-				if (!this.room.my && this.room.controller!.signedByScreeps) {
+				if (!isRoomMine(this.room) && isControllerSignedByScreeps(this.room.controller!)) {
 					reserver.task = Tasks.reserve(this.room.controller!);
 				} else {
 					reserver.task = Tasks.signController(this.room.controller!);

@@ -1,5 +1,6 @@
 import {profile} from '../../profiler/decorator';
 import {Task} from '../Task';
+import {sum} from '../../utilities/native';
 
 export type pickupTargetType = Resource;
 export const pickupTaskName = 'pickup';
@@ -13,7 +14,7 @@ export class TaskPickup extends Task<pickupTargetType> {
 	}
 
 	isValidTask() {
-		return _.sum(this.creep.carry) < this.creep.carryCapacity;
+		return sum(this.creep.carry) < this.creep.carryCapacity;
 	}
 
 	isValidTarget() {

@@ -1,7 +1,10 @@
+import {getRoomObjectRef} from '../game/RoomObject';
+import {roomPositionFindClosestByRangeThenPath} from '../game/RoomPosition';
 // A stripped-down version of the logistics network intended for local deliveries
 
 import {blankPriorityQueue, Priority} from '../priorities/priorities';
 import {profile} from '../profiler/decorator';
+import {defaults} from '../utilities/native';
 
 // export type TransportRequestTarget =
 // 	StructureContainer
@@ -83,16 +86,16 @@ export class TransportRequestGroup {
 								 filter?: ((requst: TransportRequest) => boolean)): TransportRequest | undefined {
 		const requests = type == 'withdraw' ? this.withdraw : this.supply;
 		for (const priority in requests) {
-			const targets = _.map(requests[priority], request => request.target);
-			const target = pos.findClosestByRangeThenPath(targets);
+			const targets = (requests[priority] || []).map(request => request.target);
+			const target = roomPositionFindClosestByRangeThenPath(pos, targets);
 			if (target) {
 				let searchRequests;
 				if (filter) {
-					searchRequests = _.filter(requests[priority], req => filter(req));
+					searchRequests = (requests[priority] || []).filter(req => filter(req));
 				} else {
 					searchRequests = requests[priority];
 				}
-				return _.find(searchRequests, request => request.target.ref == target!.ref);
+				return searchRequests.find(request => getRoomObjectRef(request.target) == getRoomObjectRef(target!));
 			}
 		}
 	}
@@ -101,7 +104,7 @@ export class TransportRequestGroup {
 	 * Request for resources to be deposited into this target
 	 */
 	requestInput(target: TransportRequestTarget, priority = Priority.Normal, opts = {} as TransportRequestOptions): void {
-		_.defaults(opts, {
+		defaults(opts, {
 			resourceType: RESOURCE_ENERGY,
 		});
 		if (opts.amount == undefined) {
@@ -124,7 +127,7 @@ export class TransportRequestGroup {
 	 * Request for resources to be withdrawn from this target
 	 */
 	requestOutput(target: TransportRequestTarget, priority = Priority.Normal, opts = {} as TransportRequestOptions): void {
-		_.defaults(opts, {
+		defaults(opts, {
 			resourceType: RESOURCE_ENERGY,
 		});
 		if (opts.amount == undefined) {
@@ -232,7 +235,7 @@ export class TransportRequestGroup {
 			}
 			for (const request of this.supply[priority]) {
 				if (ignoreEnergy && request.resourceType == RESOURCE_ENERGY) continue;
-				console.log(`    targetID: ${request.target.ref}  amount: ${request.amount}  ` +
+				console.log(`    targetID: ${getRoomObjectRef(request.target)}  amount: ${request.amount}  ` +
 							`resourceType: ${request.resourceType}`);
 			}
 		}
@@ -243,7 +246,7 @@ export class TransportRequestGroup {
 			}
 			for (const request of this.withdraw[priority]) {
 				if (ignoreEnergy && request.resourceType == RESOURCE_ENERGY) continue;
-				console.log(`    targetID: ${request.target.ref}  amount: ${request.amount}  ` +
+				console.log(`    targetID: ${getRoomObjectRef(request.target)}  amount: ${request.amount}  ` +
 							`resourceType: ${request.resourceType}`);
 			}
 		}

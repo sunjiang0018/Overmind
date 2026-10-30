@@ -2,6 +2,7 @@ import {Colony} from '../Colony';
 import {profile} from '../profiler/decorator';
 import {BoostType, BoostTypeBodyparts} from '../resources/map_resources';
 import {BodyGeneratorReturn} from './CombatCreepSetup';
+import {defaults, countBy, max, compactMap} from '../utilities/native';
 
 export interface BodySetup {
 	pattern: BodyPartConstant[];			// body pattern to be repeated
@@ -14,7 +15,12 @@ export interface BodySetup {
 
 /* Return the cost of an entire array of body parts */
 export function bodyCost(bodyparts: BodyPartConstant[]): number {
-	return _.sum(bodyparts, part => BODYPART_COST[part]);
+	let cost = 0;
+	// Lodash 3 sums a single-argument iteratee from the end of the array.
+	for (let i = (bodyparts || []).length - 1; i >= 0; i--) {
+		cost += +BODYPART_COST[bodyparts[i]] || 0;
+	}
+	return cost;
 }
 
 export function patternCost(setup: CreepSetup): number {
@@ -35,7 +41,7 @@ export class CreepSetup {
 	constructor(roleName: string, bodySetup = {}, boosts?: BoostType[]) {
 		this.role = roleName;
 		// Defaults for a creep setup
-		_.defaults(bodySetup, {
+		defaults(bodySetup, {
 			pattern                 : [],
 			sizeLimit               : Infinity,
 			prefix                  : [],
@@ -67,7 +73,7 @@ export class CreepSetup {
 
 		// Otherwise recompute
 		const body = this.generateBody(colony.room.energyCapacityAvailable);
-		const bodyCounts = _.countBy(body);
+		const bodyCounts = countBy(body);
 
 		const boosts: ResourceConstant[] = [];
 
@@ -161,12 +167,11 @@ export class CreepSetup {
 		// 							  colony.incubator ? colony.incubator.room.energyCapacityAvailable : 0);
 		let energyCapacity = colony.room.energyCapacityAvailable;
 		if (colony.spawnGroup) {
-			const colonies = _.compact(_.map(colony.spawnGroup.memory.colonies,
-											 name => Overmind.colonies[name])) as Colony[];
-			energyCapacity = _.max(_.map(colonies, colony => colony.room.energyCapacityAvailable));
+			const colonies = compactMap((colony.spawnGroup.memory.colonies || []), name => Overmind.colonies[name]) as Colony[];
+			energyCapacity = max(colonies, colony => colony.room.energyCapacityAvailable);
 		}
 		const body = this.generateBody(energyCapacity);
-		return _.filter(body, (part: BodyPartConstant) => part == partType).length;
+		return body.filter((part: BodyPartConstant) => part == partType).length;
 	}
 
 }

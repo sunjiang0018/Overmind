@@ -1,0 +1,8 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src"],
+  "entryPointStrategy": "expand",
+  "out": "dist/docs",
+  "exclude": ["**/Assimilator.ts", "**/Overmind.ts"],
+  "readme": "none"
+}

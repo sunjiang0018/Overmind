@@ -12,7 +12,7 @@ export class TaskGetRenewed extends Task<getRenewedTargetType> {
 	}
 
 	isValidTask() {
-		const hasClaimPart = _.filter(this.creep.body, (part: BodyPartDefinition) => part.type == CLAIM).length > 0;
+		const hasClaimPart = this.creep.body.filter((part: BodyPartDefinition) => part.type == CLAIM).length > 0;
 		const lifetime = hasClaimPart ? CREEP_CLAIM_LIFE_TIME : CREEP_LIFE_TIME;
 		return this.creep.ticksToLive != undefined && this.creep.ticksToLive < 0.9 * lifetime;
 	}

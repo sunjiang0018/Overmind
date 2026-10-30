@@ -1,3 +1,5 @@
+import {getRoomPositionPrint} from './game/RoomPosition';
+import {getRoomFlags, isRoomMine} from './game/Room';
 import { GameCache } from './caching/GameCache';
 import { Colony, getAllColonies } from './Colony';
 import { log } from './console/log';
@@ -30,6 +32,7 @@ import {
 	USE_SCREEPS_PROFILER,
 	USE_TRY_CATCH
 } from './~settings';
+import {groupBy, sample} from './utilities/native';
 
 declare global {
 	interface IOvermindMemory {
@@ -42,8 +45,8 @@ if (USE_SCREEPS_PROFILER) {
 	for (const name of PROFILER_INCLUDE_COLONIES) {
 		profilerRooms[name] = true;
 	}
-	const myRoomNames = _.filter(_.keys(Game.rooms), roomName => Game.rooms[roomName] && Game.rooms[roomName].my);
-	for (const name of _.sample(myRoomNames, PROFILER_COLONY_LIMIT - PROFILER_INCLUDE_COLONIES.length)) {
+	const myRoomNames = Object.keys(Game.rooms ?? {}).filter(roomName => Game.rooms[roomName] && isRoomMine(Game.rooms[roomName]));
+	for (const name of sample(myRoomNames, PROFILER_COLONY_LIMIT - PROFILER_INCLUDE_COLONIES.length)) {
 		profilerRooms[name] = true;
 	}
 }
@@ -103,8 +106,8 @@ export default class Overmind implements IOvermind {
 		this.cache.build();
 		this.registerColonies();
 		this.registerDirectives();
-		_.forEach(this.colonies, colony => colony.spawnMoarOverlords());
-		_.forEach(this.directives, directive => directive.spawnMoarOverlords());
+		Object.values(this.colonies).forEach(colony => colony.spawnMoarOverlords());
+		Object.values(this.directives).forEach(directive => directive.spawnMoarOverlords());
 		this.shouldBuild = false;
 	}
 
@@ -154,13 +157,13 @@ export default class Overmind implements IOvermind {
 			this.shouldBuild = true;
 			this.expiration = Game.time;
 			if (this.exceptions.length == 1) {
-				throw _.first(this.exceptions);
+				throw this.exceptions[0];
 			} else {
 				for (const error of this.exceptions) {
 					log.throw(error);
 				}
 				const error = new Error('Multiple exceptions caught this tick!');
-				error.stack = _.map(this.exceptions, e => e.name).join('\n');
+				error.stack = this.exceptions.map(e => e.name).join('\n');
 				throw error;
 			}
 		}
@@ -169,23 +172,24 @@ export default class Overmind implements IOvermind {
 	private registerColonies(): void {
 		const colonyOutposts: { [colonyName: string]: string[] } = {};
 		this.colonyMap = {};
-		const outpostFlagsByColony = _.groupBy(this.cache.outpostFlags, flag => flag.memory[MEM.COLONY]);
+		const outpostFlagsByColony = groupBy(this.cache.outpostFlags, flag => flag.memory[MEM.COLONY]);
 
 		for (const name in Game.rooms) {
 			const room = Game.rooms[name];
-			if (room.my) {
+			if (isRoomMine(room)) {
 				const colonyMemory = Memory.colonies[name];
 				if (colonyMemory && colonyMemory.suspend) {
 					this.suspendedColonies.push(name);
 					continue;
 				}
-				if (room.flags) {
-					const clearOrPoisonFlags = _.filter(room.flags, flag => DirectiveClearRoom.filter(flag) || DirectivePoisonRoom.filter(flag));
+				if (getRoomFlags(room)) {
+					const clearOrPoisonFlags = getRoomFlags(room).filter(flag =>
+						DirectiveClearRoom.filter(flag) || DirectivePoisonRoom.filter(flag));
 					if (clearOrPoisonFlags.length > 0) {
 						this.suppressedColonies.push(name);
 						continue;
 					}
-					colonyOutposts[name] = _.map(outpostFlagsByColony[name], flag => (flag.memory.setPos || flag.pos).roomName);
+					colonyOutposts[name] = (outpostFlagsByColony[name] || []).map(flag => (flag.memory.setPos || flag.pos).roomName);
 				}
 				this.colonyMap[name] = name;
 			}
@@ -247,7 +251,7 @@ export default class Overmind implements IOvermind {
 				directive.spawnMoarOverlords();
 			}
 			if (!directive && !SUPPRESS_INVALID_DIRECTIVE_ALERTS && Game.time % 10 == 0) {
-				log.alert(`Flag [${name} @ ${Game.flags[name].pos.print}] does not match a valid directive color code! (Refer to /src/directives/initializer.ts)` + alignedNewline + 'Use removeErrantFlags() to remove flags which do not match a directive.');
+				log.alert(`Flag [${name} @ ${getRoomPositionPrint(Game.flags[name].pos)}] does not match a valid directive color code! (Refer to /src/directives/initializer.ts)` + alignedNewline + 'Use removeErrantFlags() to remove flags which do not match a directive.');
 			}
 		}
 	}

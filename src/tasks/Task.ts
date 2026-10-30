@@ -1,3 +1,5 @@
+import {getRoomObjectRef} from '../game/RoomObject';
+import {getRoomPositionPrint, isPositionOnEdge, roomPositionInRangeToPos} from '../game/RoomPosition';
 /**
  * Creep tasks setup instructions
  *
@@ -17,7 +19,7 @@ import {profile} from '../profiler/decorator';
 import {Zerg} from '../zerg/Zerg';
 import {initializeTask} from './initializer';
 
-type targetType = { ref: string, pos: ProtoPos }; // overwrite this variable to specify more precise typing
+type targetType = { id?: string, name?: string, ref?: string, pos: ProtoPos }; // overwrite this variable to specify more precise typing
 
 /**
  * An abstract class for encapsulating creep actions. This generalizes the concept of "do action X to thing Y until
@@ -54,7 +56,7 @@ export abstract class Task<TargetType extends targetType> {
 		};
 		if (target) { // Handles edge cases like when you're done building something and target disappears
 			this._target = {
-				ref : target.ref,
+				ref : getRoomObjectRef(target),
 				_pos: target.pos,
 			};
 		} else {
@@ -86,7 +88,7 @@ export abstract class Task<TargetType extends targetType> {
 	get print(): string {
 		let descriptor: string = this.name;
 		if (this.targetPos) {
-			descriptor += ' targetPos: ' + this.targetPos.print;
+			descriptor += ' targetPos: ' + getRoomPositionPrint(this.targetPos);
 		}
 		if (this.target) {
 			const targetId = (<any>this.target).id;
@@ -213,7 +215,7 @@ export abstract class Task<TargetType extends targetType> {
 			targetRefs.push(parent._target.ref);
 			parent = parent._parent;
 		}
-		return _.map(targetRefs, ref => deref(ref));
+		return targetRefs.map(ref => deref(ref));
 	}
 
 	/**
@@ -226,7 +228,7 @@ export abstract class Task<TargetType extends targetType> {
 			targetPositions.push(parent._target._pos);
 			parent = parent._parent;
 		}
-		return _.map(targetPositions, protoPos => derefRoomPosition(protoPos));
+		return targetPositions.map(protoPos => derefRoomPosition(protoPos));
 	}
 
 	/**
@@ -327,7 +329,7 @@ export abstract class Task<TargetType extends targetType> {
 	 * Return whether the creep is currently performing its task action near the target
 	 */
 	get isWorking(): boolean {
-		return this.creep.pos.inRangeToPos(this.targetPos, this.settings.targetRange) && !this.creep.pos.isEdge;
+		return roomPositionInRangeToPos(this.creep.pos, this.targetPos, this.settings.targetRange) && !isPositionOnEdge(this.creep.pos);
 	}
 
 	/**

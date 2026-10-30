@@ -1,3 +1,21 @@
+import {isConstructionSiteWalkable} from '../game/Miscellaneous';
+import {isStructureWalkable} from '../game/Structures';
+import {
+	getRoomKeeperLairs,
+	getRoomPortals,
+	getRoomRamparts,
+	getRoomRoads,
+	getRoomWalkableRamparts,
+} from '../game/RoomStructures';
+import {
+	getRoomConstructionSites,
+	getRoomCreeps,
+	getRoomFriendlies,
+	getRoomHostileConstructionSites,
+	getRoomHostiles,
+	getRoomSourceKeepers,
+	getRoomStructures,
+} from '../game/Room';
 /* tslint:disable:no-bitwise prefer-for-of */
 
 import {log} from '../console/log';
@@ -9,6 +27,7 @@ import {Cartographer, ROOMTYPE_SOURCEKEEPER} from '../utilities/Cartographer';
 import {unpackPosList} from '../utilities/packrat';
 import {color, isAlly, rgbToHex} from '../utilities/utils';
 import {Visualizer} from '../visuals/Visualizer';
+import {cloneDeep, defaults, isEmpty, max, compactMap} from '../utilities/native';
 
 // Properties and sub-properties here shouldn't be undefined
 export interface MatrixOptions {			// Listed in the order they are processed in
@@ -77,8 +96,8 @@ export class MatrixLib {
 	static getMatrix(roomName: string, opts: Partial<MatrixOptions>,
 					 volatileOpts: VolatileMatrixOptions = {}): CostMatrix {
 		// Copy the opts objects because we don't want to back-modify it
-		opts = _.defaults(_.cloneDeep(opts), getDefaultMatrixOptions());
-		volatileOpts = _.cloneDeep(volatileOpts);
+		opts = defaults(cloneDeep(opts), getDefaultMatrixOptions());
+		volatileOpts = cloneDeep(volatileOpts);
 
 		// Populate roomName and roomVisible properties
 		const room = Game.rooms[roomName] as Room | undefined;
@@ -89,7 +108,7 @@ export class MatrixLib {
 		const hash = MatrixLib.generateMatrixOptionsHash(<MatrixOptions>opts);
 
 		// Volatile hash gets added to hash; if no volatile options are specified; use empty string to not change hash
-		const volatileHash = _.isEmpty(volatileOpts) ? '' : MatrixLib.generateMatrixOptionsHash(volatileOpts);
+		const volatileHash = isEmpty(volatileOpts) ? '' : MatrixLib.generateMatrixOptionsHash(volatileOpts);
 
 		// If you have previously cached this matrix with volatile properties and it's still valid, return that
 		// If no volatile opts are specified; the method will usually return from this block of code
@@ -135,9 +154,9 @@ export class MatrixLib {
 					invalidateCondition = () => false;
 				} else {
 					// Invalidate the path if the number of structures in the room changes
-					const numStructures = room.structures.length;
+					const numStructures = getRoomStructures(room).length;
 					invalidateCondition =
-						() => Game.rooms[roomName] && Game.rooms[roomName].structures.length != numStructures;
+						() => Game.rooms[roomName] && getRoomStructures(Game.rooms[roomName]).length != numStructures;
 				}
 			} else {
 				matrix = MatrixLib.generateCostMatrixForInvisibleRoom(roomName, <MatrixOptions>opts);
@@ -160,7 +179,7 @@ export class MatrixLib {
 		}
 
 		// If there's no modifications we need to make, we're done, so return the matrix
-		if (_.isEmpty(volatileOpts)) {
+		if (isEmpty(volatileOpts)) {
 			return MatrixCache[hash].matrix;
 		}
 
@@ -231,7 +250,7 @@ export class MatrixLib {
 			if (opts.roadCost == 'auto') {
 				opts.roadCost = Math.ceil(opts.terrainCosts.plainCost / 2);
 			}
-			for (const road of room.roads) {
+			for (const road of getRoomRoads(room)) {
 				matrix.set(road.pos.x, road.pos.y, opts.roadCost);
 			}
 		}
@@ -244,16 +263,16 @@ export class MatrixLib {
 		// Avoid source keepers
 		if (opts.avoidSK && Cartographer.roomType(room.name) == ROOMTYPE_SOURCEKEEPER) {
 			// Skip this step if we've been harvesting from the room for a while
-			const skDirective = _.find(Overmind.overseer.getDirectivesInRoom(room.name), dir =>
+			const skDirective = Overmind.overseer.getDirectivesInRoom(room.name).find(dir =>
 				dir.directiveName == 'outpostSK'); // had to do this ungly thing due to circular dependency problems :(
 			// const skDirective = _.first(DirectiveSKOutpost.findInRoom(roomName));
 
 			if (!(skDirective && skDirective.age > 2500)) {
 				const keeperLairInfo = RoomIntel.getKeeperLairInfo(room.name);
-				const chillPositions = _.compact(_.map(keeperLairInfo || [], info => info.chillPos)) as RoomPosition[];
+				const chillPositions = compactMap((keeperLairInfo || []), info => info.chillPos) as RoomPosition[];
 				const blockPositions: RoomPosition[] = [
-					..._.map(room.sourceKeepers, keeper => keeper.pos),
-					..._.map(room.keeperLairs.filter(lair => (lair.ticksToSpawn || Infinity) < 100), lair => lair.pos),
+					...getRoomSourceKeepers(room).map(keeper => keeper.pos),
+					...getRoomKeeperLairs(room).filter(lair => (lair.ticksToSpawn || Infinity) < 100).map(lair => lair.pos),
 					...chillPositions];
 				MatrixLib.blockWithinRange(matrix, blockPositions, 3);
 			}
@@ -261,25 +280,25 @@ export class MatrixLib {
 
 		// Block or soft-block portals
 		if (opts.allowPortals) {
-			MatrixLib.softBlock(matrix, room.portals, room.name, MatrixLib.settings.portalCost);
+			MatrixLib.softBlock(matrix, getRoomPortals(room), room.name, MatrixLib.settings.portalCost);
 		} else {
-			MatrixLib.block(matrix, room.portals);
+			MatrixLib.block(matrix, getRoomPortals(room));
 		}
 
 		// Block structure positions
 		if (!opts.ignoreStructures) {
-			const impassibleStructures = _.filter(room.structures, s => !s.isWalkable);
-			const impassibleConstructionSites = _.filter(room.constructionSites, c => !c.isWalkable);
-			const alliedConstructionSites = _.filter(room.hostileConstructionSites, c => isAlly(c.owner.username));
-			const blockPositions = _.map([...impassibleStructures,
+			const impassibleStructures = getRoomStructures(room).filter(s => !isStructureWalkable(s));
+			const impassibleConstructionSites = getRoomConstructionSites(room).filter(c => !isConstructionSiteWalkable(c));
+			const alliedConstructionSites = getRoomHostileConstructionSites(room).filter(c => isAlly(c.owner.username));
+			const blockPositions = [...impassibleStructures,
 										  ...impassibleConstructionSites,
-										  ...alliedConstructionSites], s => s.pos) as RoomPosition[];
+										  ...alliedConstructionSites].map(s => s.pos) as RoomPosition[];
 			MatrixLib.block(matrix, blockPositions);
 		}
 
 		// Block any other obstacles that might be specified
 		if (opts.obstacles.length > 0) {
-			const obstacles = _.filter(unpackPosList(opts.obstacles), pos => pos.roomName == room.name);
+			const obstacles = unpackPosList(opts.obstacles).filter(pos => pos.roomName == room.name);
 			MatrixLib.block(matrix, obstacles);
 		}
 
@@ -321,19 +340,19 @@ export class MatrixLib {
 		// Avoid source keepers
 		if (opts.avoidSK && Cartographer.roomType(roomName) == ROOMTYPE_SOURCEKEEPER) {
 			// Skip this step if we've been harvesting from the room for a while
-			const skDirective = _.find(Overmind.overseer.getDirectivesInRoom(roomName), dir =>
+			const skDirective = Overmind.overseer.getDirectivesInRoom(roomName).find(dir =>
 				dir.directiveName == 'outpostSK'); // had to do this ungly thing due to circular dependency problems :(
 			// const skDirective = _.first(DirectiveSKOutpost.findInRoom(roomName));
 
 			if (!(skDirective && skDirective.age > 2500)) {
 				const keeperLairInfo = RoomIntel.getKeeperLairInfo(roomName);
-				const chillPositions = _.compact(_.map(keeperLairInfo || [], info => info.chillPos)) as RoomPosition[];
+				const chillPositions = compactMap((keeperLairInfo || []), info => info.chillPos) as RoomPosition[];
 				MatrixLib.blockWithinRange(matrix, chillPositions, 3);
 			}
 		}
 
 		// Block or soft-block portals
-		const portalPositions = _.map(RoomIntel.getPortalInfo(roomName), portalInfo => portalInfo.pos);
+		const portalPositions = RoomIntel.getPortalInfo(roomName).map(portalInfo => portalInfo.pos);
 		if (opts.allowPortals) {
 			MatrixLib.softBlock(matrix, portalPositions, roomName, MatrixLib.settings.portalCost);
 		} else {
@@ -356,7 +375,7 @@ export class MatrixLib {
 
 		// Block any other obstacles that might be specified
 		if (opts.obstacles.length > 0) {
-			const obstacles = _.filter(unpackPosList(opts.obstacles), pos => pos.roomName == roomName);
+			const obstacles = unpackPosList(opts.obstacles).filter(pos => pos.roomName == roomName);
 			MatrixLib.block(matrix, obstacles);
 		}
 
@@ -451,8 +470,8 @@ export class MatrixLib {
 	 * Sets impassible structure positions to 0xff
 	 */
 	static blockImpassibleStructures(matrix: CostMatrix, room: Room): CostMatrix {
-		const impassibleStuctures = _.filter(room.find(FIND_STRUCTURES), (s: Structure) => !s.isWalkable);
-		const blockPositions = _.map(impassibleStuctures, s => s.pos);
+		const impassibleStuctures = room.find(FIND_STRUCTURES).filter((s: Structure) => !isStructureWalkable(s));
+		const blockPositions = impassibleStuctures.map(s => s.pos);
 		MatrixLib.block(matrix, blockPositions);
 		return matrix;
 	}
@@ -809,7 +828,7 @@ export class MatrixLib {
 	 * Sets all creep positions to impassible
 	 */
 	static blockMyCreeps(matrix: CostMatrix, room: Room) {
-		_.forEach(room.creeps, creep => {
+		getRoomCreeps(room).forEach(creep => {
 			matrix.set(creep.pos.x, creep.pos.y, 0xff);
 		});
 	}
@@ -818,7 +837,7 @@ export class MatrixLib {
 	 * Sets hostile creep positions to impassible
 	 */
 	static blockHostileCreeps(matrix: CostMatrix, room: Room) {
-		_.forEach(room.hostiles, hostile => {
+		getRoomHostiles(room).forEach(hostile => {
 			matrix.set(hostile.pos.x, hostile.pos.y, 0xff);
 		});
 	}
@@ -827,7 +846,7 @@ export class MatrixLib {
 	 * Sets allied creep positions to impassible
 	 */
 	static blockAlliedCreeps(matrix: CostMatrix, room: Room) {
-		_.forEach(room.friendlies, hostile => {
+		getRoomFriendlies(room).forEach(hostile => {
 			matrix.set(hostile.pos.x, hostile.pos.y, 0xff);
 		});
 	}
@@ -836,7 +855,7 @@ export class MatrixLib {
 	 * Sets all creep positions to impassible
 	 */
 	static blockAllCreeps(matrix: CostMatrix, room: Room) {
-		_.forEach(room.find(FIND_CREEPS), creep => {
+		room.find(FIND_CREEPS).forEach(creep => {
 			matrix.set(creep.pos.x, creep.pos.y, 0xff);
 		});
 	}
@@ -845,7 +864,7 @@ export class MatrixLib {
 	 * Sets road positions to 1 if cost is less than 0xfe
 	 */
 	static preferRoads(matrix: CostMatrix, room: Room) {
-		_.forEach(room.roads, road => {
+		getRoomRoads(room).forEach(road => {
 			if (matrix.get(road.pos.x, road.pos.y) < 0xfe) {
 				matrix.set(road.pos.x, road.pos.y, 1);
 			}
@@ -878,18 +897,18 @@ export class MatrixLib {
 		if (!matrix) {
 			matrix = new PathFinder.CostMatrix();
 			MatrixLib.fillMatrix(matrix, 0xff);
-			const ramparts = onlyMy ? _.filter(room.ramparts, rampart => rampart.my) : room.ramparts;
+			const ramparts = onlyMy ? getRoomRamparts(room).filter(rampart => rampart.my) : getRoomRamparts(room);
 			for (const rampart of ramparts) {
 				matrix.set(rampart.pos.x, rampart.pos.y, 0);
 			}
 		}
 
-		const numRamparts = room.ramparts.length; // this doesn't account for onlyMy option but I think this is okay
+		const numRamparts = getRoomRamparts(room).length; // this doesn't account for onlyMy option but I think this is okay
 		MatrixCache[key] = {
 			matrix             : matrix,
 			generated          : Game.time,
 			expiration         : Game.time + 100,
-			invalidateCondition: () => Game.rooms[room.name] && Game.rooms[room.name].ramparts.length != numRamparts,
+			invalidateCondition: () => Game.rooms[room.name] && getRoomRamparts(Game.rooms[room.name]).length != numRamparts,
 		};
 
 		return MatrixCache[key].matrix;
@@ -900,7 +919,7 @@ export class MatrixLib {
 	 * TODO: maybe increasing cost elsewhere would be better than decreasing cost in ramparts
 	 */
 	static setWalkableRampartCostToOne(matrix: CostMatrix, room: Room) {
-		_.forEach(room.walkableRamparts, rampart => {
+		getRoomWalkableRamparts(room).forEach(rampart => {
 			if (matrix.get(rampart.pos.x, rampart.pos.y) < 0xfe) {
 				matrix.set(rampart.pos.x, rampart.pos.y, 1);
 			}
@@ -947,7 +966,7 @@ export class MatrixLib {
 	 * Returns the maximum value of any matrix element
 	 */
 	static getMaxValue(matrix: CostMatrix): number {
-		return _.max(matrix._bits);
+		return max(matrix._bits);
 	}
 
 	/**
@@ -955,10 +974,10 @@ export class MatrixLib {
 	 */
 	static print(matrix: CostMatrix, opts = {equalSpacing: true, useColorMap: true}): void {
 		// Figure out how big the largest value in a column is so we can align them right
-		const longestNumPerColumn: number[] = _.map(MatrixLib.getColumns(matrix),
-													column => _.max(_.map(column, n => n.toString().length)));
+		const longestNumPerColumn: number[] = MatrixLib.getColumns(matrix).map(
+													column => max(column.map(n => n.toString().length)));
 		if (opts.equalSpacing) {
-			const longestNum = _.max(longestNumPerColumn);
+			const longestNum = max(longestNumPerColumn);
 			for (let i = 0; i < longestNumPerColumn.length; ++i) {
 				longestNumPerColumn[i] = longestNum;
 			}

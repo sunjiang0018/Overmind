@@ -1,3 +1,12 @@
+import {getRoomContainers} from '../../game/RoomStructures';
+import {
+	getRoomPositionPrint,
+	isPositionOnEdge,
+	roomPositionAvailableNeighbors,
+	roomPositionFindClosestByLimitedRange,
+	roomPositionInRangeToPos,
+	roomPositionLookForStructure,
+} from '../../game/RoomPosition';
 import {$} from '../../caching/GlobalCache';
 import {log} from '../../console/log';
 import {Roles, Setups} from '../../creepSetups/setups';
@@ -43,9 +52,9 @@ export class ExtractorOverlord extends Overlord {
 
 	private populateStructures() {
 		if (Game.rooms[this.pos.roomName]) {
-			this.extractor = this.pos.lookForStructure(STRUCTURE_EXTRACTOR) as StructureExtractor | undefined;
+			this.extractor = roomPositionLookForStructure(this.pos, STRUCTURE_EXTRACTOR) as StructureExtractor | undefined;
 			this.mineral = this.pos.lookFor(LOOK_MINERALS)[0];
-			this.container = this.pos.findClosestByLimitedRange(Game.rooms[this.pos.roomName].containers, 1);
+			this.container = roomPositionFindClosestByLimitedRange(this.pos, getRoomContainers(Game.rooms[this.pos.roomName]), 1);
 		}
 	}
 
@@ -77,25 +86,25 @@ export class ExtractorOverlord extends Overlord {
 		}
 		if (originPos) {
 			const path = Pathing.findShortestPath(this.pos, originPos).path;
-			const pos = _.find(path, pos => pos.getRangeTo(this) == 1);
+			const pos = path.find(pos => pos.getRangeTo(this) == 1);
 			if (pos) return pos;
 		}
 		// Shouldn't ever get here
 		log.warning(`Last resort container position calculation for ${this.print}!`);
-		return _.first(this.pos.availableNeighbors(true));
+		return roomPositionAvailableNeighbors(this.pos, true)[0];
 	}
 
 	private buildOutputIfNeeded(): void {
 		// Create container if there is not already one being built
 		if (!this.container && this.shouldHaveContainer()) {
-			const containerSite = _.first(_.filter(this.pos.findInRange(FIND_MY_CONSTRUCTION_SITES, 2),
-												   site => site.structureType == STRUCTURE_CONTAINER));
+			const containerSite = this.pos.findInRange(FIND_MY_CONSTRUCTION_SITES, 2).filter(
+												   site => site.structureType == STRUCTURE_CONTAINER)[0];
 			if (!containerSite) {
 				const containerPos = this.calculateContainerPos();
-				log.info(`${this.print}: building container at ${containerPos.print}`);
+				log.info(`${this.print}: building container at ${getRoomPositionPrint(containerPos)}`);
 				const result = containerPos.createConstructionSite(STRUCTURE_CONTAINER);
 				if (result != OK) {
-					log.error(`${this.print}: cannot build container at ${containerPos.print}! Result: ${result}`);
+					log.error(`${this.print}: cannot build container at ${getRoomPositionPrint(containerPos)}! Result: ${result}`);
 				}
 				return;
 			}
@@ -106,7 +115,7 @@ export class ExtractorOverlord extends Overlord {
 		this.registerOutputRequests();
 
 		const amount = this.mineral && this.mineral.mineralAmount > 0 && this.extractor && this.container
-					   ? Math.min(this.mineral.pos.availableNeighbors().length, ExtractorOverlord.settings.maxDrones)
+					   ? Math.min(roomPositionAvailableNeighbors(this.mineral.pos).length, ExtractorOverlord.settings.maxDrones)
 					   : 0;
 		this.wishlist(amount, Setups.drones.extractor);
 	}
@@ -117,8 +126,8 @@ export class ExtractorOverlord extends Overlord {
 			return;
 		}
 		// Ensure you are in the assigned room
-		if (drone.room == this.room && !drone.pos.isEdge) {
-			if (this.mineral && !drone.pos.inRangeToPos(this.mineral.pos, 1)) {
+		if (drone.room == this.room && !isPositionOnEdge(drone.pos)) {
+			if (this.mineral && !roomPositionInRangeToPos(drone.pos, this.mineral.pos, 1)) {
 				return drone.goTo(this.mineral.pos);
 			}
 			if (this.mineral) {
@@ -149,7 +158,7 @@ export class ExtractorOverlord extends Overlord {
 	}
 
 	run() {
-		_.forEach(this.drones, drone => this.handleDrone(drone));
+		this.drones.forEach(drone => this.handleDrone(drone));
 		if (this.room && Game.time % BUILD_OUTPUT_FREQUENCY == 2) {
 			this.buildOutputIfNeeded();
 		}

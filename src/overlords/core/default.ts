@@ -21,8 +21,8 @@ export class DefaultOverlord extends Overlord {
 
 	init() {
 		// Zergs are collected at end of init phase; by now anything needing to be claimed already has been
-		const idleCreeps = _.filter(this.colony.creeps, creep => !getOverlord(creep));
-		this.idleZerg = _.map(idleCreeps, creep => Overmind.zerg[creep.name] || new Zerg(creep));
+		const idleCreeps = this.colony.creeps.filter(creep => !getOverlord(creep));
+		this.idleZerg = idleCreeps.map(creep => Overmind.zerg[creep.name] || new Zerg(creep));
 		for (const zerg of this.idleZerg) {
 			zerg.refresh();
 		}

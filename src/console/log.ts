@@ -1,5 +1,7 @@
+import {getRoomPositionPrint} from '../game/RoomPosition';
 import {profile} from '../profiler/decorator';
 import {color} from '../utilities/utils';
+import {defaultsDeep} from '../utilities/native';
 
 export enum LogLevels {
 	ERROR,		// log.level = 0
@@ -63,7 +65,7 @@ interface SourcePos {
 }
 
 export function resolve(fileLine: string): SourcePos {
-	const split = _.trim(fileLine).match(stackLineRe);
+	const split = fileLine.trim().match(stackLineRe);
 	if (!split || !Log.sourceMap) {
 		return {compiled: fileLine, final: fileLine} as SourcePos;
 	}
@@ -110,7 +112,7 @@ function time(): string {
 
 export function debug(thing: { name: string, memory: any, pos: RoomPosition }, ...args: any[]) {
 	if (thing.memory && thing.memory.debug) {
-		this.debug(`${thing.name} @ ${thing.pos.print}: `, args);
+		this.debug(`${thing.name} @ ${getRoomPositionPrint(thing.pos)}: `, args);
 	}
 }
 
@@ -121,7 +123,7 @@ export function debug(thing: { name: string, memory: any, pos: RoomPosition }, .
 export class Log {
 
 	constructor() {
-		_.defaultsDeep(Memory, {
+		defaultsDeep(Memory, {
 			settings: {
 				log: {
 					level     : LOG_LEVEL,
@@ -251,7 +253,7 @@ export class Log {
 
 	debugCreep(creep: { name: string, memory: any, pos: RoomPosition }, ...args: any[]) {
 		if (creep.memory && creep.memory.debug) {
-			this.debug(`${creep.name} @ ${creep.pos.print}: `, args);
+			this.debug(`${creep.name} @ ${getRoomPositionPrint(creep.pos)}: `, args);
 		}
 	}
 
@@ -266,8 +268,8 @@ export class Log {
 			const lines = stack.split('\n');
 
 			if (lines.length > upStack) {
-				const originalLines = _.drop(lines, upStack).map(resolve);
-				const hoverText = _.map(originalLines, 'final').join('&#10;');
+				const originalLines = lines.slice(upStack).map(resolve);
+				const hoverText = originalLines.map(line => line.final).join('&#10;');
 				return this.adjustFileLine(
 					originalLines[0].final,
 					tooltip(makeVSCLink(originalLines[0]), hoverText)
@@ -315,14 +317,14 @@ export class Log {
 			return stack;
 		}
 
-		return _.map(stack.split('\n').map(resolve), 'final').join('\n');
+		return stack.split('\n').map(resolve).map(line => line.final).join('\n');
 	}
 
 	private adjustFileLine(visibleText: string, line: string): string {
 		const newPad = Math.max(visibleText.length, this._maxFileString);
 		this._maxFileString = Math.min(newPad, LOG_MAX_PAD);
 
-		return `|${_.padRight(line, line.length + this._maxFileString - visibleText.length, ' ')}|`;
+		return `|${line.padEnd(line.length + this._maxFileString - visibleText.length, ' ')}|`;
 	}
 }
 

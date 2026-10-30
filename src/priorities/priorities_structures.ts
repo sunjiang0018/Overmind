@@ -1,3 +1,5 @@
+
+import {zipObject} from '../utilities/native';
 /**
  * Prioritized list of what order structures should be built in
  */
@@ -53,8 +55,8 @@ export const AttackStructurePriorities: BuildableStructureConstant[] = [
 	STRUCTURE_WALL,
 ];
 
-export const AttackStructureScores = _.zipObject(_.map(AttackStructurePriorities, type =>
-	[type, AttackStructurePriorities.length - _.indexOf(AttackStructurePriorities, type)])) as { [t: string]: number };
+export const AttackStructureScores = zipObject(AttackStructurePriorities.map(type =>
+	[type, AttackStructurePriorities.length - AttackStructurePriorities.indexOf(type)])) as { [t: string]: number };
 
 /**
  * Prioritized list of what order owned structures should be demolished (and then moved) in

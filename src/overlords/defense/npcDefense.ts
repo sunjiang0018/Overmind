@@ -1,3 +1,5 @@
+import {getRoomPositionRangeToEdge, isPositionOnEdge} from '../../game/RoomPosition';
+import {getRoomFlags, getRoomHostileStructures, getRoomHostiles, getRoomInvaders} from '../../game/Room';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
 import {DirectiveGuard} from '../../directives/defense/guard';
 import {DirectiveHaul} from '../../directives/resource/haul';
@@ -7,6 +9,7 @@ import {OverlordPriority} from '../../priorities/priorities_overlords';
 import {profile} from '../../profiler/decorator';
 import {CombatZerg} from '../../zerg/CombatZerg';
 import {Overlord} from '../Overlord';
+import {compactMap} from '../../utilities/native';
 
 /**
  * NPC defense overlord: spawns specially-optimized guards as needed to deal with standard NPC invasions
@@ -35,20 +38,19 @@ export class DefenseNPCOverlord extends Overlord {
 	// }
 
 	private findAttackTarget(guard: CombatZerg): Creep | Structure | undefined | null {
-		const targetingDirectives = DirectiveTargetSiege.find(guard.room.flags) as DirectiveTargetSiege[];
-		const targetedStructures = _.compact(_.map(targetingDirectives,
-												   directive => directive.getTarget())) as Structure[];
+		const targetingDirectives = DirectiveTargetSiege.find(getRoomFlags(guard.room)) as DirectiveTargetSiege[];
+		const targetedStructures = compactMap(targetingDirectives, directive => directive.getTarget()) as Structure[];
 		if (targetedStructures.length > 0) {
 			return guard.pos.findClosestByRange(targetedStructures);
 		}
-		if (guard.room.hostiles.length > 0) {
-			const targets = _.filter(guard.room.hostiles, hostile => hostile.pos.rangeToEdge > 0);
+		if (getRoomHostiles(guard.room).length > 0) {
+			const targets = getRoomHostiles(guard.room).filter(hostile => getRoomPositionRangeToEdge(hostile.pos) > 0);
 			return guard.pos.findClosestByRange(targets);
 		}
-		if (guard.room.hostileStructures.length > 0) {
-			const haulFlags = DirectiveHaul.find(guard.room.flags);
+		if (getRoomHostileStructures(guard.room).length > 0) {
+			const haulFlags = DirectiveHaul.find(getRoomFlags(guard.room));
 			if (haulFlags.length == 0) {
-				return guard.pos.findClosestByRange(guard.room.hostileStructures);
+				return guard.pos.findClosestByRange(getRoomHostileStructures(guard.room));
 			}
 		}
 	}
@@ -64,7 +66,7 @@ export class DefenseNPCOverlord extends Overlord {
 	}
 
 	private handleGuard(guard: CombatZerg): void {
-		if (!guard.inSameRoomAs(this) || guard.pos.isEdge) {
+		if (!guard.inSameRoomAs(this) || isPositionOnEdge(guard.pos)) {
 			// Move into the assigned room if there is a guard flag present
 			guard.goToRoom(this.pos.roomName);
 		} else { // If you're in the assigned room or if there is no assignment, try to attack or heal
@@ -78,7 +80,7 @@ export class DefenseNPCOverlord extends Overlord {
 	}
 
 	init() {
-		const amount = this.room && (this.room.invaders.length > 0 || RoomIntel.isInvasionLikely(this.room)) ? 1 : 0;
+		const amount = this.room && (getRoomInvaders(this.room).length > 0 || RoomIntel.isInvasionLikely(this.room)) ? 1 : 0;
 		this.wishlist(amount, CombatSetups.broodlings.default, {reassignIdle: true});
 	}
 

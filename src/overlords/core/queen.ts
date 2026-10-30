@@ -1,3 +1,4 @@
+import {getStoredEnergy, isStructureEmpty, isStructureFull} from '../../game/Structures';
 import {CreepSetup} from '../../creepSetups/CreepSetup';
 import {Roles, Setups} from '../../creepSetups/setups';
 import {Hatchery} from '../../hiveClusters/hatchery';
@@ -53,10 +54,10 @@ export class QueenOverlord extends Overlord {
 	}
 
 	private rechargeActions(queen: Zerg): void {
-		if (this.hatchery.link && !this.hatchery.link.isEmpty) {
+		if (this.hatchery.link && !isStructureEmpty(this.hatchery.link)) {
 			queen.task = Tasks.withdraw(this.hatchery.link);
 		} else if (this.hatchery.batteries.length > 0) {
-			const target = queen.pos.findClosestByRange(_.filter(this.hatchery.batteries, b => b.energy > 0));
+			const target = queen.pos.findClosestByRange(this.hatchery.batteries.filter(b => getStoredEnergy(b) > 0));
 			if (target) {
 				queen.task = Tasks.withdraw(target);
 			} else {
@@ -72,7 +73,7 @@ export class QueenOverlord extends Overlord {
 		const battery = queen.pos.findClosestByRange(this.hatchery.batteries);
 		if (this.hatchery.link) {
 			// Can energy be moved from the link to the battery?
-			if (battery && !battery.isFull && !this.hatchery.link.isEmpty) {
+			if (battery && !isStructureFull(battery) && !isStructureEmpty(this.hatchery.link)) {
 				// Move energy to battery as needed
 				if (queen.carry.energy < queen.carryCapacity) {
 					queen.task = Tasks.withdraw(this.hatchery.link);
@@ -81,9 +82,9 @@ export class QueenOverlord extends Overlord {
 				}
 			} else {
 				if (queen.carry.energy < queen.carryCapacity) { // make sure you're recharged
-					if (!this.hatchery.link.isEmpty) {
+					if (!isStructureEmpty(this.hatchery.link)) {
 						queen.task = Tasks.withdraw(this.hatchery.link);
-					} else if (battery && !battery.isEmpty) {
+					} else if (battery && !isStructureEmpty(battery)) {
 						queen.task = Tasks.withdraw(battery);
 					}
 				}

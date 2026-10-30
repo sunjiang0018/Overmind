@@ -1,3 +1,6 @@
+import {getRoomPositionPrint} from '../../game/RoomPosition';
+import {getRoomCreeps, getRoomFlags, getRoomOwner, getRoomPrint, getRoomStructures, isRoomMine} from '../../game/Room';
+import {isStructureEmpty, isStructureWalkable} from '../../game/Structures';
 import {log} from '../../console/log';
 import {Pathing} from '../../movement/Pathing';
 import {ClaimingOverlord} from '../../overlords/colonization/claimer';
@@ -44,9 +47,9 @@ export class DirectiveClearRoom extends Directive {
 		if (Memory.settings.resourceCollectionMode && Memory.settings.resourceCollectionMode >= 1) {
 			this.memory.keepStorageStructures = true;
 		}
-		this.memory.preexistingFlags = _.filter(Game.flags, testingflag =>
-			testingflag.pos.roomName == flag.pos.roomName && testingflag.name != flag.name)
-										.map(testingFlag => testingFlag.name);
+		this.memory.preexistingFlags = Object.values(Game.flags ?? {})
+			.filter(testingflag => testingflag.pos.roomName == flag.pos.roomName && testingflag.name != flag.name)
+			.map(testingflag => testingflag.name);
 		console.log('Existing flags in clear room are ' + JSON.stringify(this.memory.preexistingFlags));
 	}
 
@@ -74,7 +77,7 @@ export class DirectiveClearRoom extends Directive {
 				}
 				if (keepStorageStructures &&
 					(s.structureType == STRUCTURE_STORAGE || s.structureType == STRUCTURE_TERMINAL) &&
-					!(s as StructureStorage | StructureTerminal).isEmpty) {
+					!isStructureEmpty((s as StructureStorage | StructureTerminal))) {
 					// Create a collection flag
 					DirectiveHaul.createIfNotPresent(s.pos, 'pos');
 					continue;
@@ -93,7 +96,7 @@ export class DirectiveClearRoom extends Directive {
 					i++;
 				}
 			}
-			log.alert(`Destroyed ${i} structures in ${this.room.print}.`);
+			log.alert(`Destroyed ${i} structures in ${getRoomPrint(this.room)}.`);
 			this.memory.completedTime = Game.time;
 			return true;
 		} else {
@@ -104,13 +107,13 @@ export class DirectiveClearRoom extends Directive {
 
 	private findStructureBlockingController(pioneer: Zerg): Structure | undefined {
 		const blockingPos = Pathing.findBlockingPos(pioneer.pos, pioneer.room.controller!.pos,
-													_.filter(pioneer.room.structures, s => !s.isWalkable));
+													getRoomStructures(pioneer.room).filter(s => !isStructureWalkable(s)));
 		if (blockingPos) {
 			const structure = blockingPos.lookFor(LOOK_STRUCTURES)[0];
 			if (structure) {
 				return structure;
 			} else {
-				log.error(`${this.print}: no structure at blocking pos ${blockingPos.print}! (Why?)`);
+				log.error(`${this.print}: no structure at blocking pos ${getRoomPositionPrint(blockingPos)}! (Why?)`);
 			}
 		}
 	}
@@ -119,8 +122,8 @@ export class DirectiveClearRoom extends Directive {
 		if (!this.room) {
 			return false;
 		}
-		for (const flag of this.room.flags) {
-			if (!_.contains(this.memory.preexistingFlags, flag.name) && flag.name != this.flag.name
+		for (const flag of getRoomFlags(this.room)) {
+			if (!(this.memory.preexistingFlags || []).includes(flag.name) && flag.name != this.flag.name
 				&& !DirectiveHaul.filter(flag)) {
 				flag.remove();
 			}
@@ -129,7 +132,7 @@ export class DirectiveClearRoom extends Directive {
 
 	run() {
 		// Remove if structures are done
-		if (this.room && this.room.my) {
+		if (this.room && isRoomMine(this.room)) {
 			const done = this.removeAllStructures();
 			if (done) {
 				const result = this.room.controller!.unclaim();
@@ -142,14 +145,14 @@ export class DirectiveClearRoom extends Directive {
 				}
 			}
 			// Clear path if controller is not reachable
-		} else if (this.room && this.room.creeps.length > 1) {
-			const currentlyDismantlingLocations = DirectiveDismantle.find(this.room.flags);
+		} else if (this.room && getRoomCreeps(this.room).length > 1) {
+			const currentlyDismantlingLocations = DirectiveDismantle.find(getRoomFlags(this.room));
 
 			if (currentlyDismantlingLocations.length == 0) {
-				const pathablePos = this.room.creeps[0] ? this.room.creeps[0].pos
+				const pathablePos = getRoomCreeps(this.room)[0] ? getRoomCreeps(this.room)[0].pos
 														: Pathing.findPathablePosition(this.room.name);
 				const blockingLocation = Pathing.findBlockingPos(pathablePos, this.room.controller!.pos,
-																 _.filter(this.room.structures, s => !s.isWalkable));
+																 getRoomStructures(this.room).filter(s => !isStructureWalkable(s)));
 				if (blockingLocation && !Directive.isPresent(blockingLocation)) {
 					log.notify(`Adding dismantle directive for ${this.pos.roomName} to reach controller.`);
 					DirectiveDismantle.create(blockingLocation);
@@ -158,7 +161,7 @@ export class DirectiveClearRoom extends Directive {
 		}
 
 		// Remove if owned by other player
-		if (Game.time % 10 == 2 && this.room && !!this.room.owner && this.room.owner != MY_USERNAME) {
+		if (Game.time % 10 == 2 && this.room && !!getRoomOwner(this.room) && getRoomOwner(this.room) != MY_USERNAME) {
 			log.notify(`Removing clearRoom directive in ${this.pos.roomName}: room already owned by another player.`);
 			this.remove();
 		}

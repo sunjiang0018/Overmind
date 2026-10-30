@@ -1,3 +1,4 @@
+import {getRoomPositionPrint} from '../../game/RoomPosition';
 import {log} from '../../console/log';
 import {profile} from '../../profiler/decorator';
 import {Directive} from '../Directive';
@@ -53,7 +54,7 @@ export class DirectiveTerminalEvacuateState extends Directive {
 			}
 		}
 		if (Game.time % 25 == 0) {
-			log.alert(`${this.pos.print}: evacuation terminal state active!`);
+			log.alert(`${getRoomPositionPrint(this.pos)}: evacuation terminal state active!`);
 		}
 		this.alert('Evacuation terminal state active!', NotifierPriority.High);
 	}

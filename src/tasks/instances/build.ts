@@ -1,3 +1,4 @@
+import {isConstructionSiteWalkable} from '../../game/Miscellaneous';
 import {profile} from '../../profiler/decorator';
 import {isDeferredTunnel} from '../../roomPlanner/roomOverrides';
 import {Task} from '../Task';
@@ -29,7 +30,7 @@ export class TaskBuild extends Task<buildTargetType> {
 			return ERR_INVALID_TARGET;
 		}
 		// Fixes issue #9 - workers freeze if creep sitting on square
-		if (!this.target.isWalkable) {
+		if (!isConstructionSiteWalkable(this.target)) {
 			const creepOnTarget = this.target.pos.lookFor(LOOK_CREEPS)[0];
 			if (creepOnTarget) {
 				const zerg = Overmind.zerg[creepOnTarget.name];

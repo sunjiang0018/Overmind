@@ -1,3 +1,4 @@
+import {isControllerSignedByScreeps} from '../../game/Structures';
 import {profile} from '../../profiler/decorator';
 import {Task} from '../Task';
 
@@ -19,7 +20,7 @@ export class TaskSignController extends Task<signControllerTargetType> {
 		const controller = this.target;
 		return !!controller &&
 			   (!controller.sign || controller.sign.text != Memory.settings.signature) &&
-			   !controller.signedByScreeps;
+			   !isControllerSignedByScreeps(controller);
 	}
 
 	work() {

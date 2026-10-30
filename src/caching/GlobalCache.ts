@@ -1,5 +1,6 @@
 import {profile} from '../profiler/decorator';
 import {getCacheExpiration} from '../utilities/utils';
+import {isObject, compactMap} from '../utilities/native';
 
 const CACHE_TIMEOUT = 50;
 const SHORT_CACHE_TIMEOUT = 10;
@@ -23,8 +24,8 @@ export class $ { // $ = cash = cache... get it? :D
 		} else {
 			// Refresh structure list by ID if not already done on current tick
 			if ((_cache.accessed[cacheKey] || 0) < Game.time) {
-				_cache.structures[cacheKey] = _.compact(_.map(_cache.structures[cacheKey] || [],
-															  s => Game.getObjectById(s.id))) as Structure[];
+				_cache.structures[cacheKey] = compactMap(_cache.structures[cacheKey] || [],
+															 s => Game.getObjectById(s.id)) as Structure[];
 				_cache.accessed[cacheKey] = Game.time;
 			}
 		}
@@ -108,9 +109,9 @@ export class $ { // $ = cash = cache... get it? :D
 		} else {
 			// Refresh structure list by ID if not already done on current tick
 			if ((_cache.accessed[cacheKey] || 0) < Game.time) {
-				if (_.isArray(_cache.things[cacheKey])) {
-					_cache.things[cacheKey] = _.compact(_.map(_cache.things[cacheKey] as HasID[],
-															  s => Game.getObjectById(s.id))) as HasID[];
+				if (Array.isArray(_cache.things[cacheKey])) {
+					_cache.things[cacheKey] = compactMap(_cache.things[cacheKey] as HasID[],
+														  s => Game.getObjectById(s.id)) as HasID[];
 				} else {
 					_cache.things[cacheKey] = Game.getObjectById((<HasID>_cache.things[cacheKey]).id) as HasID;
 				}
@@ -121,10 +122,10 @@ export class $ { // $ = cash = cache... get it? :D
 	}
 
 	static refresh<T extends Record<K, undefined | HasID | HasID[]>, K extends string>(thing: T, ...keys: K[]): void {
-		_.forEach(keys, function(key) {
+		keys.forEach(function(key) {
 			if (thing[key]) {
-				if (_.isArray(thing[key])) {
-					thing[key] = _.compact(_.map(thing[key] as HasID[], s => Game.getObjectById(s.id))) as T[K];
+				if (Array.isArray(thing[key])) {
+					thing[key] = compactMap((thing[key] as HasID[]), s => Game.getObjectById(s.id)) as T[K];
 				} else {
 					thing[key] = Game.getObjectById((<HasID>thing[key]).id) as T[K];
 				}
@@ -134,13 +135,12 @@ export class $ { // $ = cash = cache... get it? :D
 
 	static refreshObject<T extends Record<K, { [prop: string]: undefined | HasID | HasID[] }>,
 		K extends string>(thing: T, ...keys: K[]): void {
-		_.forEach(keys, function(key) {
-			if (_.isObject(thing[key])) {
+		keys.forEach(function(key) {
+			if (isObject(thing[key])) {
 				for (const prop in thing[key]) {
-					if (_.isArray(thing[key][prop])) {
+					if (Array.isArray(thing[key][prop])) {
 						// @ts-ignore
-						thing[key][prop] = _.compact(_.map(thing[key][prop] as HasID[],
-														   s => Game.getObjectById(s.id))) as HasID[];
+						thing[key][prop] = compactMap((thing[key][prop] as HasID[]), s => Game.getObjectById(s.id)) as HasID[];
 					} else {
 						// @ts-ignore
 						thing[key][prop] = Game.getObjectById((<HasID>thing[key][prop]).id) as undefined | HasID;

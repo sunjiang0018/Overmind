@@ -1,3 +1,7 @@
+import {isCreepInRampart} from '../../game/Creep';
+import {getRoomPositionPrint, isPositionOnEdge, roomPositionFindClosestByLimitedRange} from '../../game/RoomPosition';
+import {getRoomHostiles, getRoomInvaders, getRoomSourceKeepers} from '../../game/Room';
+import {getRoomKeeperLairs} from '../../game/RoomStructures';
 import {debug, log} from '../../console/log';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
 import {DirectiveSKOutpost} from '../../directives/colony/outpostSK';
@@ -44,13 +48,13 @@ export class SourceReaperOverlord extends CombatOverlord {
 		if (!this.targetLair || (this.targetLair.ticksToSpawn || Infinity) >= 299) {
 			if (this.room) {
 				// If any lairs have an active keeper, target that
-				const activeLair = _.find(this.room.keeperLairs,
-										  lair => lair.pos.findInRange(lair.room.sourceKeepers, 5).length > 0);
+				const activeLair = getRoomKeeperLairs(this.room).find(
+										  lair => lair.pos.findInRange(getRoomSourceKeepers(lair.room), 5).length > 0);
 				if (activeLair) {
 					this.targetLair = activeLair;
 				} else {
 					// Otherwise target whatever is closest to spawning
-					this.targetLair = minBy(this.room.keeperLairs, lair => lair.ticksToSpawn || Infinity);
+					this.targetLair = minBy(getRoomKeeperLairs(this.room), lair => lair.ticksToSpawn || Infinity);
 				}
 			}
 		}
@@ -62,7 +66,7 @@ export class SourceReaperOverlord extends CombatOverlord {
 	}
 
 	init() {
-		const defenderAmount = this.room && (this.room.invaders.length > 0
+		const defenderAmount = this.room && (getRoomInvaders(this.room).length > 0
 											 || RoomIntel.isInvasionLikely(this.room)) ? 1 : 0;
 		this.wishlist(1, CombatSetups.zerglings.sourceKeeper);
 		this.wishlist(defenderAmount, CombatSetups.hydralisks.sourceKeeper);
@@ -73,7 +77,7 @@ export class SourceReaperOverlord extends CombatOverlord {
 		const moveOpts: any = {pathOpts: {avoidSK: false}};
 
 		// Go to keeper room
-		if (!this.targetLair || !this.room || reaper.room != this.room || reaper.pos.isEdge) {
+		if (!this.targetLair || !this.room || reaper.room != this.room || isPositionOnEdge(reaper.pos)) {
 			// log.debugCreep(reaper, `Going to room!`);
 			reaper.healSelfIfPossible();
 			reaper.goTo(this.pos, moveOpts);
@@ -83,11 +87,11 @@ export class SourceReaperOverlord extends CombatOverlord {
 		// Once you're safely in the room, block off the exits
 		moveOpts.pathOpts.blockExits = true;
 
-		const nonStrongholdInvaders = this.room.invaders.filter(creep => !creep.inRampart);
+		const nonStrongholdInvaders = getRoomInvaders(this.room).filter(creep => !isCreepInRampart(creep));
 		if (nonStrongholdInvaders.length > 0) {
 			// Handle invader actions
 			if (reaper.hits >= reaper.hitsMax * .5) {
-				const result = reaper.autoMelee(this.room.invaders);
+				const result = reaper.autoMelee(getRoomInvaders(this.room));
 				if (result == undefined) { // didn't attack
 					reaper.autoHeal();
 				}
@@ -95,27 +99,27 @@ export class SourceReaperOverlord extends CombatOverlord {
 				reaper.healSelfIfPossible();
 			}
 			// Kite around ranged invaders until a defender arrives
-			if (this.room.invaders.length > 2 && _.filter(this.defenders, def => def.room == this.room).length == 0) {
-				reaper.kite(_.filter(this.room.hostiles, h => h.getActiveBodyparts(RANGED_ATTACK) > 0), moveOpts);
+			if (getRoomInvaders(this.room).length > 2 && this.defenders.filter(def => def.room == this.room).length == 0) {
+				reaper.kite(getRoomHostiles(this.room).filter(h => h.getActiveBodyparts(RANGED_ATTACK) > 0), moveOpts);
 				reaper.healSelfIfPossible();
 			}
 			// If defender is already here or a small invasion
 			else {
-				const target = CombatTargeting.findTarget(reaper, this.room.invaders);
+				const target = CombatTargeting.findTarget(reaper, getRoomInvaders(this.room));
 				if (target) {
 					Movement.invasionMove(reaper, target);
 				} else {
-					log.warning(`KeeperReaper@${reaper.pos.print}: no invader target!`);
+					log.warning(`KeeperReaper@${getRoomPositionPrint(reaper.pos)}: no invader target!`);
 				}
 			}
 		} else {
 			// Standard keeperReaper actions
-			const nearestHostile = reaper.pos.findClosestByRange(this.room.hostiles) as Creep;
+			const nearestHostile = reaper.pos.findClosestByRange(getRoomHostiles(this.room)) as Creep;
 			if (nearestHostile && reaper.pos.isNearTo(nearestHostile)) {
 				reaper.attack(nearestHostile);
 				reaper.move(reaper.pos.getDirectionTo(nearestHostile));
 			} else {
-				const keeper = this.targetLair.pos.findClosestByLimitedRange(this.room.sourceKeepers, 7);
+				const keeper = roomPositionFindClosestByLimitedRange(this.targetLair.pos, getRoomSourceKeepers(this.room), 7);
 				if (keeper) { // attack the source keeper
 					// stop and heal at range 4 if needed
 					const approachRange = (reaper.hits == reaper.hitsMax || reaper.pos.getRangeTo(keeper) <= 3) ? 1 : 4;
@@ -132,21 +136,21 @@ export class SourceReaperOverlord extends CombatOverlord {
 	private handleDefender(defender: CombatZerg) {
 
 		// Go to keeper room
-		if (!this.targetLair || !this.room || defender.room != this.room || defender.pos.isEdge) {
+		if (!this.targetLair || !this.room || defender.room != this.room || isPositionOnEdge(defender.pos)) {
 			debug(defender, `Going to room!`);
 			defender.healSelfIfPossible();
 			defender.goToRoom(this.pos.roomName, {pathOpts: {avoidSK: false}});
 			return;
 		}
 
-		if (this.room.invaders.length > 0) {
+		if (getRoomInvaders(this.room).length > 0) {
 			// Handle invader actions
 			debug(defender, `AutoCombat`);
 			defender.autoSkirmish(this.room.name);
 		} else {
 			debug(defender, `Standard duty`);
 			const minKeepersToHelp = this.reapers.length == 0 ? 1 : 2;
-			if (this.room.sourceKeepers.length >= minKeepersToHelp) {
+			if (getRoomSourceKeepers(this.room).length >= minKeepersToHelp) {
 				// Help out with keeper reaping
 				defender.autoRanged();
 				defender.autoHeal(false);
@@ -163,12 +167,12 @@ export class SourceReaperOverlord extends CombatOverlord {
 						}
 					});
 				} else {
-					const keeper = this.targetLair.pos.findClosestByLimitedRange(this.room.sourceKeepers, 7);
+					const keeper = roomPositionFindClosestByLimitedRange(this.targetLair.pos, getRoomSourceKeepers(this.room), 7);
 					if (keeper) { // attack the source keeper
 						const range = defender.pos.getRangeTo(keeper);
 						const keepAtRange = defender.hits < defender.hitsMax * .9 ? 4 : 3;
 						if (range < keepAtRange) {
-							defender.kite(this.room.hostiles, {
+							defender.kite(getRoomHostiles(this.room), {
 								range: keepAtRange, pathOpts: {
 									avoidSK   : false,
 									blockExits: true,

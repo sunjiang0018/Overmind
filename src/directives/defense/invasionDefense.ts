@@ -1,3 +1,5 @@
+import {getRoomBarriers} from '../../game/RoomStructures';
+import {getRoomCreeps, getRoomDangerousPlayerHostiles, getRoomHostiles} from '../../game/Room';
 import {CombatIntel} from '../../intel/CombatIntel';
 import {BunkerDefenseOverlord} from '../../overlords/defense/bunkerDefense';
 import {DistractionOverlord} from '../../overlords/defense/distraction';
@@ -37,16 +39,16 @@ export class DirectiveInvasionDefense extends Directive {
 		if (!this.room) {
 			return;
 		}
-		const expectedDamage = CombatIntel.maxDamageByCreeps(this.room.dangerousPlayerHostiles);
-		const expectedHealing = CombatIntel.maxHealingByCreeps(this.room.dangerousPlayerHostiles);
+		const expectedDamage = CombatIntel.maxDamageByCreeps(getRoomDangerousPlayerHostiles(this.room));
+		const expectedHealing = CombatIntel.maxHealingByCreeps(getRoomDangerousPlayerHostiles(this.room));
 		const useBoosts = (expectedDamage > ATTACK_POWER * 50) || (expectedHealing > RANGED_ATTACK_POWER * 100)
 						  && !!this.colony.terminal
 						  && !!this.colony.evolutionChamber;
-		const percentWalls = _.filter(this.room.barriers, s => s.structureType == STRUCTURE_WALL).length /
-							 this.room.barriers.length;
-		const meleeHostiles = _.filter(this.room.hostiles, hostile => hostile.getActiveBodyparts(ATTACK) > 0 ||
+		const percentWalls = getRoomBarriers(this.room).filter(s => s.structureType == STRUCTURE_WALL).length /
+							 getRoomBarriers(this.room).length;
+		const meleeHostiles = getRoomHostiles(this.room).filter(hostile => hostile.getActiveBodyparts(ATTACK) > 0 ||
 																	  hostile.getActiveBodyparts(WORK) > 0);
-		const rangedHostiles = _.filter(this.room.hostiles, hostile => hostile.getActiveBodyparts(RANGED_ATTACK) > 0);
+		const rangedHostiles = getRoomHostiles(this.room).filter(hostile => hostile.getActiveBodyparts(RANGED_ATTACK) > 0);
 
 		this.overlords.rangedDefense = new RangedDefenseOverlord(this);
 
@@ -64,7 +66,7 @@ export class DirectiveInvasionDefense extends Directive {
 	}
 
 	init(): void {
-		const numHostiles: string = this.room ? this.room.hostiles.length.toString() : '???';
+		const numHostiles: string = this.room ? getRoomHostiles(this.room).length.toString() : '???';
 		this.alert(`Invasion (hostiles: ${numHostiles}) ${Game.time - this.memory.safeSince}`, NotifierPriority.Critical);
 	}
 
@@ -74,7 +76,7 @@ export class DirectiveInvasionDefense extends Directive {
 			return;
 		}
 		const mem = Memory.playerCreepTracker;
-		const hostiles = this.room.hostiles;
+		const hostiles = getRoomHostiles(this.room);
 		hostiles.forEach(creep => {
 			if (!mem[creep.owner.username]) {
 				mem[creep.owner.username] = {
@@ -126,9 +128,9 @@ export class DirectiveInvasionDefense extends Directive {
 
 	private cleanUpPlayerMem(): void {
 		const mem = Memory.playerCreepTracker;
-		for (const player of _.keys(mem)) {
+		for (const player of Object.keys(mem ?? {})) {
 			const tracker = mem[player];
-			for (const creep of _.keys(tracker.creeps)) {
+			for (const creep of Object.keys(tracker.creeps ?? {})) {
 				if (tracker.creeps[creep] + 1500 < Game.time) {
 					delete tracker.creeps[creep];
 				}
@@ -137,7 +139,7 @@ export class DirectiveInvasionDefense extends Directive {
 	}
 
 	run(): void {
-		if (!this.room || this.room.hostiles.length > 0) {
+		if (!this.room || getRoomHostiles(this.room).length > 0) {
 			this.memory.safeSince = Game.time;
 			this.recordBaddies();
 		}
@@ -151,9 +153,9 @@ export class DirectiveInvasionDefense extends Directive {
 			// CombatIntel.computeCreepDamagePotentialMatrix(this.room, this.room.dangerousPlayerHostiles);
 		}
 		// If there are no hostiles left in the room and everyone's healed, then remove the flag
-		if (this.room && this.room.hostiles.length == 0 &&
+		if (this.room && getRoomHostiles(this.room).length == 0 &&
 			(Game.time - this.memory.safeSince) > this.safeEndTime) {
-			if (_.filter(this.room.creeps, creep => creep.hits < creep.hitsMax).length == 0) {
+			if (getRoomCreeps(this.room).filter(creep => creep.hits < creep.hitsMax).length == 0) {
 				this.remove();
 			}
 		} else if ((Game.time - this.memory.safeSince) > 3000) {

@@ -1,3 +1,16 @@
+import {getRoomDroppedEnergy, getRoomPrint, getRoomStructures} from '../../game/Room';
+import {isStructureWalkable} from '../../game/Structures';
+import {getRoomContainers, getRoomSources} from '../../game/RoomStructures';
+import {
+	getRoomPositionPrint,
+	roomPositionAvailableNeighbors,
+	roomPositionFindClosestByLimitedRange,
+	roomPositionGetPositionAtDirection,
+	roomPositionGetPositionsInRange,
+	roomPositionInRangeToPos,
+	roomPositionIsWalkable,
+	roomPositionLookForStructure,
+} from '../../game/RoomPosition';
 import {$} from '../../caching/GlobalCache';
 import {ColonyStage} from '../../Colony';
 import {log} from '../../console/log';
@@ -12,6 +25,7 @@ import {Cartographer, ROOMTYPE_SOURCEKEEPER} from '../../utilities/Cartographer'
 import {getCacheExpiration, maxBy, minBy} from '../../utilities/utils';
 import {Zerg} from '../../zerg/Zerg';
 import {Overlord, OverlordMemory} from '../Overlord';
+import {compact, unique, sum} from '../../utilities/native';
 
 export const StandardMinerSetupCost = bodyCost(Setups.drones.miners.standard.generateBody(Infinity));
 
@@ -130,7 +144,7 @@ export class MiningOverlord extends Overlord {
 		// this.minersNeeded = this.isDisabled ? 0 : Math.min(Math.ceil(this.miningPowerNeeded / miningPowerEach),
 		// 							 this.pos.availableNeighbors(true).length);
 		this.minersNeeded = Math.min(Math.ceil(this.miningPowerNeeded / miningPowerEach),
-									 this.pos.availableNeighbors(true).length);
+									 roomPositionAvailableNeighbors(this.pos, true).length);
 		this.minersNeeded = this.isDisabled ? 0 : this.minersNeeded;
 		// Allow drop mining at low levels
 		this.allowDropMining = this.colony.level < MiningOverlord.settings.dropMineUntilRCL;
@@ -138,7 +152,7 @@ export class MiningOverlord extends Overlord {
 			if (this.container) {
 				this.harvestPos = this.container.pos;
 			} else if (this.link) {
-				this.harvestPos = _.find(this.link.pos.availableNeighbors(true),
+				this.harvestPos = roomPositionAvailableNeighbors(this.link.pos, true).find(
 										 pos => pos.getRangeTo(this) == 1)!;
 			} else {
 				this.harvestPos = this.calculateContainerPos();
@@ -156,15 +170,15 @@ export class MiningOverlord extends Overlord {
 		}
 		const room = Game.rooms[this.pos.roomName];
 		if (room) {
-			this.source = this.source || _.first(room.sources);
-			const otherSource = _.find(this.source.pos.findInRange(FIND_SOURCES, 2),
+			this.source = this.source || getRoomSources(room)[0];
+			const otherSource = this.source.pos.findInRange(FIND_SOURCES, 2).find(
 									   source => source.id != (this.source ? this.source.id : ''));
 			if (otherSource) {
 				this.secondSource = otherSource;
 				// If its over 1 spot away, is there spot in between to mine?
 				if (this.source.pos.getRangeTo(this.secondSource) > 1) {
-					const miningPos = this.source.pos.getPositionAtDirection(this.source.pos.getDirectionTo(this.secondSource.pos));
-					if (!miningPos.isWalkable()) {
+					const miningPos = roomPositionGetPositionAtDirection(this.source.pos, this.source.pos.getDirectionTo(this.secondSource.pos));
+					if (!roomPositionIsWalkable(miningPos)) {
 						// console.log(`Double mining found but there is no spot between ${this.secondSource}
 						// ${this.secondSource.pos.print} isWalkable ${miningPos}`);
 						return false;
@@ -187,7 +201,7 @@ export class MiningOverlord extends Overlord {
 	private getDismantlePositions(): RoomPosition[] {
 		const dismantleStructures: Structure[] = [];
 		if (this.room) {
-			const targets = _.compact([...this.room.sources, this.room.controller]) as RoomObject[];
+			const targets = compact([...getRoomSources(this.room), this.room.controller]) as RoomObject[];
 			for (const target of targets) {
 				// Add blocking structures
 				const blockingStructure = this.findBlockingStructure(target);
@@ -195,8 +209,8 @@ export class MiningOverlord extends Overlord {
 					dismantleStructures.push(blockingStructure);
 				}
 				// Add unwalkable structures with low hits in 2 range
-				for (const pos of target.pos.getPositionsInRange(2, false, false)) {
-					const unwalkableStructure = _.find(pos.lookFor(LOOK_STRUCTURES), s => !s.isWalkable);
+				for (const pos of roomPositionGetPositionsInRange(target.pos, 2, false, false)) {
+					const unwalkableStructure = pos.lookFor(LOOK_STRUCTURES).find(s => !isStructureWalkable(s));
 					if (unwalkableStructure && !(<OwnedStructure>unwalkableStructure).my) {
 						dismantleStructures.push(unwalkableStructure);
 					}
@@ -205,7 +219,7 @@ export class MiningOverlord extends Overlord {
 		} else {
 			log.error(`MiningOverlord.getDismantleStructures() called with no vision in room ${this.pos.roomName}!`);
 		}
-		return _.unique(_.map(dismantleStructures, s => s.pos));
+		return unique(dismantleStructures.map(s => s.pos));
 	}
 
 	/**
@@ -214,21 +228,21 @@ export class MiningOverlord extends Overlord {
 	private findBlockingStructure(target: RoomObject): Structure | undefined {
 		if (!this.room) return;
 		const pos = Pathing.findBlockingPos(this.colony.pos, target.pos,
-											_.filter(this.room.structures, s => !s.isWalkable));
+											getRoomStructures(this.room).filter(s => !isStructureWalkable(s)));
 		if (pos) {
-			const structure = _.find(pos.lookFor(LOOK_STRUCTURES), s => !s.isWalkable);
-			return structure || log.error(`${this.print}: no structure at blocking pos ${pos.print}!`);
+			const structure = pos.lookFor(LOOK_STRUCTURES).find(s => !isStructureWalkable(s));
+			return structure || log.error(`${this.print}: no structure at blocking pos ${getRoomPositionPrint(pos)}!`);
 		}
 	}
 
 	private populateStructures() {
 		if (Game.rooms[this.pos.roomName]) {
-			this.source = _.first(this.pos.lookFor(LOOK_SOURCES));
-			this.constructionSite = _.first(_.filter(this.pos.findInRange(FIND_MY_CONSTRUCTION_SITES, 2),
+			this.source = this.pos.lookFor(LOOK_SOURCES)[0];
+			this.constructionSite = this.pos.findInRange(FIND_MY_CONSTRUCTION_SITES, 2).filter(
 													 site => site.structureType == STRUCTURE_CONTAINER ||
-															 site.structureType == STRUCTURE_LINK));
-			this.container = this.pos.findClosestByLimitedRange(Game.rooms[this.pos.roomName].containers, 1);
-			this.link = this.pos.findClosestByLimitedRange(this.colony.availableLinks, 2);
+															 site.structureType == STRUCTURE_LINK)[0];
+			this.container = roomPositionFindClosestByLimitedRange(this.pos, getRoomContainers(Game.rooms[this.pos.roomName]), 1);
+			this.link = roomPositionFindClosestByLimitedRange(this.pos, this.colony.availableLinks, 2);
 		}
 	}
 
@@ -255,12 +269,12 @@ export class MiningOverlord extends Overlord {
 		}
 		if (originPos) {
 			const path = Pathing.findShortestPath(this.pos, originPos).path;
-			const pos = _.find(path, pos => pos.getRangeTo(this) == 1);
+			const pos = path.find(pos => pos.getRangeTo(this) == 1);
 			if (pos) return pos;
 		}
 		// Shouldn't ever get here
 		log.warning(`Last resort container position calculation for ${this.print}!`);
-		return _.first(this.pos.availableNeighbors(true));
+		return roomPositionAvailableNeighbors(this.pos, true)[0];
 	}
 
 	/**
@@ -277,17 +291,17 @@ export class MiningOverlord extends Overlord {
 				log.error(`${this.print}: can't build container at ${this.room}`);
 				return;
 			}
-			const container = containerPos ? containerPos.lookForStructure(STRUCTURE_CONTAINER) as StructureContainer
+			const container = containerPos ? roomPositionLookForStructure(containerPos, STRUCTURE_CONTAINER) as StructureContainer
 				| undefined : undefined;
 			if (container) {
-				log.warning(`${this.print}: this.container out of sync at ${containerPos.print}`);
+				log.warning(`${this.print}: this.container out of sync at ${getRoomPositionPrint(containerPos)}`);
 				this.container = container;
 				return;
 			}
-			log.info(`${this.print}: building container at ${containerPos.print}`);
+			log.info(`${this.print}: building container at ${getRoomPositionPrint(containerPos)}`);
 			const result = containerPos.createConstructionSite(STRUCTURE_CONTAINER);
 			if (result != OK) {
-				log.error(`${this.print}: cannot build container at ${containerPos.print}! Result: ${result}`);
+				log.error(`${this.print}: cannot build container at ${getRoomPositionPrint(containerPos)}! Result: ${result}`);
 			}
 			return;
 		}
@@ -296,7 +310,7 @@ export class MiningOverlord extends Overlord {
 			// safety checks
 			if (this.colony.hatchery && this.container.pos.getRangeTo(this.colony.hatchery) > 2 &&
 				this.container.pos.getRangeTo(this.colony.upgradeSite) > 3) {
-				log.info(`${this.print}: container and link present; destroying container at ${this.container.pos.print}`);
+				log.info(`${this.print}: container and link present; destroying container at ${getRoomPositionPrint(this.container.pos)}`);
 				this.container.destroy();
 			}
 		}
@@ -306,7 +320,7 @@ export class MiningOverlord extends Overlord {
 		if (this.container) {
 			const transportCapacity = 200 * this.colony.level;
 			const threshold = this.colony.stage > ColonyStage.Larva ? 0.8 : 0.5;
-			if (_.sum(this.container.store) > threshold * transportCapacity) {
+			if (sum(this.container.store) > threshold * transportCapacity) {
 				this.colony.logisticsNetwork.requestOutput(this.container, {
 					resourceType: 'all',
 					dAmountdt   : this.energyPerTick
@@ -333,7 +347,7 @@ export class MiningOverlord extends Overlord {
 	private earlyMiningActions(miner: Zerg) {
 
 		// Don't use goToMiningSite() here because miners will push each other around and waste CPU
-		if (!miner.pos.inRangeToPos(this.pos, 1)) {
+		if (!roomPositionInRangeToPos(miner.pos, this.pos, 1)) {
 			return miner.goTo(this);
 		}
 
@@ -343,7 +357,7 @@ export class MiningOverlord extends Overlord {
 				&& miner.carry.energy >= Math.min(miner.carryCapacity, REPAIR_POWER * miner.getActiveBodyparts(WORK))) {
 				return miner.goRepair(this.container);
 			} else {
-				if (_.sum(miner.carry) < miner.carryCapacity) {
+				if (sum(miner.carry) < miner.carryCapacity) {
 					return miner.goHarvest(this.source!);
 				} else {
 					return miner.goTransfer(this.container);
@@ -364,7 +378,7 @@ export class MiningOverlord extends Overlord {
 		if (this.allowDropMining) {
 			miner.goHarvest(this.source!);
 			if (miner.carry.energy > 0.8 * miner.carryCapacity) { // try to drop on top of largest drop if full
-				const biggestDrop = maxBy(miner.pos.findInRange(miner.room.droppedEnergy, 1), drop => drop.amount);
+				const biggestDrop = maxBy(miner.pos.findInRange(getRoomDroppedEnergy(miner.room), 1), drop => drop.amount);
 				if (biggestDrop) {
 					miner.goDrop(biggestDrop.pos, RESOURCE_ENERGY);
 				}
@@ -380,7 +394,7 @@ export class MiningOverlord extends Overlord {
 		if (this.miners.length > this.minersNeeded && this.source) {
 			// if you have multiple miners and the source is visible
 			const targetPos = this.harvestPos || this.source.pos;
-			const minersNearSource = _.filter(this.miners,
+			const minersNearSource = this.miners.filter(
 											  miner => miner.pos.getRangeTo(targetPos) <= SUICIDE_CHECK_FREQUENCY);
 			if (minersNearSource.length > this.minersNeeded) {
 				// if you have more miners by the source than you need
@@ -462,7 +476,7 @@ export class MiningOverlord extends Overlord {
 		if (this.allowDropMining) {
 			this.harvestOrSleep(miner, source);
 			if (miner.carry.energy > 0.8 * miner.carryCapacity) { // move over the drop when you're close to full
-				const biggestDrop = maxBy(miner.pos.findInRange(miner.room.droppedEnergy, 1), drop => drop.amount);
+				const biggestDrop = maxBy(miner.pos.findInRange(getRoomDroppedEnergy(miner.room), 1), drop => drop.amount);
 				if (biggestDrop) {
 					miner.goTo(biggestDrop);
 				}
@@ -510,7 +524,7 @@ export class MiningOverlord extends Overlord {
 		if (this.allowDropMining) {
 			this.harvestOrSleep(miner, source);
 			if (miner.carry.energy > 0.8 * miner.carryCapacity) { // move over the drop when you're close to full
-				const biggestDrop = maxBy(miner.pos.findInRange(miner.room.droppedEnergy, 1), drop => drop.amount);
+				const biggestDrop = maxBy(miner.pos.findInRange(getRoomDroppedEnergy(miner.room), 1), drop => drop.amount);
 				if (biggestDrop) {
 					miner.goTo(biggestDrop);
 				}
@@ -570,7 +584,7 @@ export class MiningOverlord extends Overlord {
 		if (this.allowDropMining) {
 			miner.harvest(this.source!);
 			if (miner.carry.energy > 0.8 * miner.carryCapacity) { // move over the drop when you're close to full
-				const biggestDrop = maxBy(miner.pos.findInRange(miner.room.droppedEnergy, 1), drop => drop.amount);
+				const biggestDrop = maxBy(miner.pos.findInRange(getRoomDroppedEnergy(miner.room), 1), drop => drop.amount);
 				if (biggestDrop) {
 					miner.goTo(biggestDrop);
 				}
@@ -594,7 +608,7 @@ export class MiningOverlord extends Overlord {
 
 		// We're done if there are no dismantle positions left
 		if (!this.dismantlePositions || this.dismantlePositions.length == 0) {
-			log.info(`Miner dismantling completed in room ${miner.room.print}`);
+			log.info(`Miner dismantling completed in room ${getRoomPrint(miner.room)}`);
 			delete this.memory.dismantleNeeded;
 			this.memory[DISMANTLE_CHECK] = getCacheExpiration(DISMANTLE_CHECK_FREQUENCY,
 															  DISMANTLE_CHECK_FREQUENCY / 5);
@@ -602,13 +616,13 @@ export class MiningOverlord extends Overlord {
 		}
 
 		// Find the first reachable position to dismantle stuff
-		const dismantlePos = _.find(this.dismantlePositions,
+		const dismantlePos = this.dismantlePositions.find(
 									pos => Pathing.isReachable(miner.pos, pos,
-															   _.filter(miner.room.structures, s => !s.isWalkable)));
+															   getRoomStructures(miner.room).filter(s => !isStructureWalkable(s))));
 		if (dismantlePos) {
 			// Find the first blocking structure on the target position
-			const dismantleTarget = _.find(dismantlePos.lookFor(LOOK_STRUCTURES),
-										   s => !s.isWalkable && !(<OwnedStructure>s).my);
+			const dismantleTarget = dismantlePos.lookFor(LOOK_STRUCTURES).find(
+										   s => !isStructureWalkable(s) && !(<OwnedStructure>s).my);
 			// Dismantle it
 			if (dismantleTarget) {
 				if (dismantleTarget.hits > 1000 && Game.time % 10 == 0) {
@@ -632,12 +646,12 @@ export class MiningOverlord extends Overlord {
 	 */
 	private goToMiningSite(miner: Zerg, avoidSK = true): boolean {
 		if (this.harvestPos) {
-			if (!miner.pos.inRangeToPos(this.harvestPos, 0)) {
+			if (!roomPositionInRangeToPos(miner.pos, this.harvestPos, 0)) {
 				miner.goTo(this.harvestPos, {range: 0, pathOpts: {avoidSK: avoidSK}});
 				return true;
 			}
 		} else {
-			if (!miner.pos.inRangeToPos(this.pos, 1)) {
+			if (!roomPositionInRangeToPos(miner.pos, this.pos, 1)) {
 				miner.goTo(this.pos, {range: 1, pathOpts: {avoidSK: avoidSK}});
 				return true;
 			}

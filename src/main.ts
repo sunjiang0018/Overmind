@@ -22,18 +22,8 @@ global.LATEST_BUILD_TICK = Game.time;
 // Import ALL the things! ==============================================================================================
 import './assimilation/initializer'; // This must always be imported before anything else
 import './console/globals'; // Global functions accessible from CLI
-import './prototypes/Game'; // Game prototypes
-import './prototypes/Creep'; // Creep prototypes
-import './prototypes/PowerCreep'; // PowerCreep prototypes
-import './prototypes/RoomObject'; // RoomObject and targeting prototypes
-import './prototypes/RoomPosition'; // RoomPosition prototypes
-import './prototypes/RoomVisual'; // Prototypes used in Visualizer class
-import './prototypes/Room'; // Non-structure room prototypes
-import './prototypes/RoomStructures'; // IVM-cached structure prototypes
-import './prototypes/Structures'; // Prototypes for accessed structures
-import './prototypes/Miscellaneous'; // Everything else
 import './tasks/initializer'; // This line is necessary to ensure proper compilation ordering...
-import './zerg/CombatZerg'; // ...so is this one... rollup is dumb about generating reference errors
+import './zerg/CombatZerg'; // Initialize base classes before modules that extend them.
 import {MUON, MY_USERNAME, RL_TRAINING_MODE, USE_SCREEPS_PROFILER} from './~settings';
 import {sandbox} from './utilities/sandbox';
 import {Mem} from './memory/Memory';
@@ -49,6 +39,7 @@ import {generatePixelIfFull} from './utilities/pixels';
 
 // Main loop
 function main(): void {
+
 	// Memory operations: load and clean memory, suspend operation as needed -------------------------------------------
 	Mem.load();									// Load previous parsed memory if present
 	if (!Mem.shouldRun()) return;				// Suspend operation if necessary

@@ -1,3 +1,4 @@
+import {getRoomMineral} from '../game/RoomStructures';
 import {assimilationLocked} from '../assimilation/decorator';
 import {Colony, getAllColonies} from '../Colony';
 import {log} from '../console/log';
@@ -10,13 +11,14 @@ import {Cartographer} from '../utilities/Cartographer';
 import {maxBy} from '../utilities/utils';
 import {MAX_OWNED_ROOMS, SHARD3_MAX_OWNED_ROOMS} from '../~settings';
 import {MIN_EXPANSION_DISTANCE} from './ExpansionEvaluator';
+import {sum, zipObject, compactMap} from '../utilities/native';
 
 
 const CHECK_EXPANSION_FREQUENCY = 1000;
 
 const UNOWNED_MINERAL_BONUS = 100;
 const CATALYST_BONUS = 75;
-const MAX_SCORE_BONUS = _.sum([UNOWNED_MINERAL_BONUS, CATALYST_BONUS]);
+const MAX_SCORE_BONUS = sum([UNOWNED_MINERAL_BONUS, CATALYST_BONUS]);
 
 const TOO_CLOSE_PENALTY = 100;
 
@@ -71,11 +73,11 @@ export class ExpansionPlanner implements IExpansionPlanner {
 			// 	possibleIncubators.push(colony);
 			// }
 			if (colony.level >= DirectiveColonize.requiredRCL
-				&& _.filter(colony.flags, flag => DirectiveColonize.filter(flag)).length == 0) {
+				&& colony.flags.filter(flag => DirectiveColonize.filter(flag)).length == 0) {
 				possibleColonizers.push(colony);
 			}
 		}
-		const possibleBestExpansions = _.compact(_.map(possibleColonizers, col => this.getBestExpansionRoomFor(col)));
+		const possibleBestExpansions = compactMap(possibleColonizers, col => this.getBestExpansionRoomFor(col));
 		log.debug(JSON.stringify(possibleBestExpansions));
 		const bestExpansion = maxBy(possibleBestExpansions, choice => choice!.score);
 		if (bestExpansion) {
@@ -87,9 +89,9 @@ export class ExpansionPlanner implements IExpansionPlanner {
 	}
 
 	private getBestExpansionRoomFor(colony: Colony): { roomName: string, score: number } | undefined {
-		const allColonyRooms = _.zipObject(_.map(getAllColonies(),
+		const allColonyRooms = zipObject(getAllColonies().map(
 												 col => [col.room.name, true])) as { [roomName: string]: boolean };
-		const allOwnedMinerals = _.map(getAllColonies(), col => col.room.mineral!.mineralType) as MineralConstant[];
+		const allOwnedMinerals = getAllColonies().map(col => getRoomMineral(col.room)!.mineralType) as MineralConstant[];
 		let bestRoom: string = '';
 		let bestScore: number = -Infinity;
 		for (const roomName in colony.memory.expansionData.possibleExpansions) {
@@ -99,16 +101,16 @@ export class ExpansionPlanner implements IExpansionPlanner {
 			if (score + MAX_SCORE_BONUS > bestScore) {
 				// Is the room too close to an existing colony?
 				const range2Rooms = Cartographer.findRoomsInRange(roomName, MIN_EXPANSION_DISTANCE);
-				if (_.any(range2Rooms, roomName => allColonyRooms[roomName])) {
+				if (range2Rooms.some(roomName => allColonyRooms[roomName])) {
 					continue; // too close to another colony
 				}
 				const range3Rooms = Cartographer.findRoomsInRange(roomName, MIN_EXPANSION_DISTANCE + 1);
-				if (_.any(range3Rooms, roomName => allColonyRooms[roomName])) {
+				if (range3Rooms.some(roomName => allColonyRooms[roomName])) {
 					score -= TOO_CLOSE_PENALTY;
 				}
 				// Are there powerful hostile rooms nearby?
 				const adjacentRooms = Cartographer.findRoomsInRange(roomName, 1);
-				if (_.any(adjacentRooms, roomName => Memory.rooms[roomName][RMEM.AVOID])) {
+				if (adjacentRooms.some(roomName => Memory.rooms[roomName][RMEM.AVOID])) {
 					continue;
 				}
 				// Reward new minerals and catalyst rooms

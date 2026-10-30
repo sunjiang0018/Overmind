@@ -77,6 +77,35 @@ for t,ps in buildings.items():
   assert route is not None,(t,p)
   roads.update(route)
 roads.difference_update(occupied-set(buildings['container']))
+# Remove redundant paving without lengthening service routes. Preserve the
+# tunnel route and check both the current detour and the completed shortcut.
+road_goals=[p for t,ps in buildings.items() for p in ps]+positions('mineral')
+logistics=[p for t in ['spawn','storage','container','tower','terminal'] for p in buildings[t]]
+def road_distances(network,start,open_tunnel,start_range=1):
+ starts={p for p in network if rng(p,start)<=start_range and (not wall(p) or open_tunnel)}
+ distances={p:0 for p in starts};queue=collections.deque(starts)
+ while queue:
+  p=queue.popleft()
+  for n in near(p):
+   if n in network and n not in distances and (not wall(n) or open_tunnel):
+    distances[n]=distances[p]+1;queue.append(n)
+ return distances
+
+def road_service_costs(network,open_tunnel):
+ requirements=[((23,39),0,road_goals)]+[(p,1,logistics) for p in logistics]
+ costs=[]
+ for start,start_range,goals in requirements:
+  distances=road_distances(network,start,open_tunnel,start_range)
+  costs.extend(min((d for p,d in distances.items() if rng(p,goal)<=1),default=999) for goal in goals)
+ return costs
+
+baseline=[road_service_costs(roads,mode) for mode in (False,True)]
+assert all(cost<999 for costs in baseline for cost in costs),'Disconnected road network'
+for p in sorted(roads-set(shortcut)-{(23,39)},reverse=True):
+ candidate=roads-{p}
+ if all(all(a<=b for a,b in zip(road_service_costs(candidate,mode),baseline[i]))
+        for i,mode in enumerate((False,True))):roads=candidate
+
 # Minimum vertex cut against ALL eventual exits. Tunnel roads are passable here.
 # Source-side protected tiles have a 3-tile buffer around vital structures.
 walk={ (x,y) for y in range(50) for x in range(50) if not wall((x,y)) or (x,y) in tunnels}
@@ -128,8 +157,9 @@ for a in q:
   if c and b not in seen:seen.add(b);q.append(b)
 cut={p for p in walk if p[1]*50+p[0] in seen and p[1]*50+p[0]+2500 not in seen}
 assert all(not wall(p) and 2<=p[0]<=47 and 2<=p[1]<=47 for p in cut)
-barriers=cut|{p for p in old if 2<=p[0]<=47 and 2<=p[1]<=47}
-barriers|=set(sum([buildings[t] for t in ['spawn','tower','storage','terminal']],[]))
+# Keep only the enclosing cut. BarrierPlanner adds shields for critical buildings
+# when they actually exist; old interior lines and vacant future sites need none.
+barriers=cut
 # Sort the east gates first; existing ramparts don't consume site slots.
 barriers=sorted(barriers,key=lambda p:(-p[0],p[1]))
 # Every tile in a finished base, controller approach and source must be enclosed.

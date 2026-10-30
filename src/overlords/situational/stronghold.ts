@@ -1,3 +1,12 @@
+import {isCreepInRampart} from '../../game/Creep';
+import {getRoomHostiles, getRoomPrint, getRoomSourceKeepers} from '../../game/Room';
+import {getRoomKeeperLairs, getRoomMineral, getRoomRamparts, getRoomSources} from '../../game/RoomStructures';
+import {
+	getRoomPositionNeighbors,
+	getRoomPositionReadableName,
+	roomPositionGetPositionsAtRange,
+	roomPositionGetPositionsInRange,
+} from '../../game/RoomPosition';
 import {log} from '../../console/log';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
 import {DirectiveStronghold} from '../../directives/situational/stronghold';
@@ -7,6 +16,7 @@ import {getCacheExpiration, posFromReadableName} from '../../utilities/utils';
 import {Visualizer} from '../../visuals/Visualizer';
 import {CombatZerg} from '../../zerg/CombatZerg';
 import {CombatOverlord, CombatOverlordMemory} from '../CombatOverlord';
+import {flatten} from '../../utilities/native';
 
 
 /**
@@ -68,21 +78,22 @@ export class StrongholdOverlord extends CombatOverlord {
 		}
 
 		// bug with containers
-		const shootPositions = target.pos.getPositionsAtRange(range, false, false);
+		const shootPositions = roomPositionGetPositionsAtRange(target.pos, range, false, false);
 
 		// Index is range to avoid from
 		const avoidLocs: RoomPosition[][] = Array.from({length: 5}, () => []);
 
-		avoidLocs[1] = avoidLocs[1].concat(target.room.ramparts.map(rampart => rampart.pos));
-		avoidLocs[4] = avoidLocs[4].concat(target.room.sources.map(s => s.pos));
-		avoidLocs[4] = avoidLocs[4].concat(target.room.keeperLairs.map(s => s.pos));
-		if (target.room.mineral) {
-			avoidLocs[4] = avoidLocs[4].concat(target.room.mineral.pos);
+		avoidLocs[1] = avoidLocs[1].concat(getRoomRamparts(target.room).map(rampart => rampart.pos));
+		avoidLocs[4] = avoidLocs[4].concat(getRoomSources(target.room).map(s => s.pos));
+		avoidLocs[4] = avoidLocs[4].concat(getRoomKeeperLairs(target.room).map(s => s.pos));
+		const mineral = getRoomMineral(target.room);
+		if (mineral) {
+			avoidLocs[4] = avoidLocs[4].concat(mineral.pos);
 		}
 
 		// Array where first index is how many hostile locations there are
 		const safeSpots: RoomPosition[][] = this.findSafeLocation(shootPositions, avoidLocs);
-		_.forEach(safeSpots, (distanceArray, hostilesIndex) => distanceArray.forEach(
+		safeSpots.forEach((distanceArray, hostilesIndex) => distanceArray.forEach(
 			spot => Visualizer.marker(spot, {color: StrongholdOverlord.numberToColor(hostilesIndex), frames: 2})));
 
 		// If you can safely attack goal, do that
@@ -93,7 +104,7 @@ export class StrongholdOverlord extends CombatOverlord {
 		} else if (safeSpots[1].length > 0) {
 			// Can't safely attack target, need to attack another position first
 			const range1Spots = safeSpots[1];
-			const ramparts = target.room!.ramparts;
+			const ramparts = getRoomRamparts(target.room!);
 			const posToRampartMap: Map<RoomPosition, StructureRampart[]> = new Map();
 			for (const spot of range1Spots) {
 				for (const rampart of ramparts) {
@@ -197,7 +208,7 @@ export class StrongholdOverlord extends CombatOverlord {
 
 	private handleKiller(killer: CombatZerg): void {
 		if (Game.time % 15 == 0) {
-			log.info(`Stronghold Killer ${killer.print} for ${this.print} in room ${killer.room.print}`);
+			log.info(`Stronghold Killer ${killer.print} for ${this.print} in room ${getRoomPrint(killer.room)}`);
 		}
 
 		if (this.room && killer.pos.roomName == this.pos.roomName) {
@@ -215,12 +226,12 @@ export class StrongholdOverlord extends CombatOverlord {
 			killer.goToRoom(this.directive.pos.roomName);
 		}
 		if (killer.hits / killer.hitsMax < StrongholdOverlord.settings.retreatHitsPercent) {
-			killer.flee([this.directive.pos].concat(killer.room.hostiles.map(sk => sk.pos)));
+			killer.flee([this.directive.pos].concat(getRoomHostiles(killer.room).map(sk => sk.pos)));
 		}
 
 		// Shoot nearby enemies before moving on
-		const unprotectedHostiles = killer.room.hostiles.filter(hostile => hostile.pos.getRangeTo(killer.pos)
-																		   <= 3 && !hostile.inRampart);
+		const unprotectedHostiles = getRoomHostiles(killer.room).filter(hostile => hostile.pos.getRangeTo(killer.pos)
+																		   <= 3 && !isCreepInRampart(hostile));
 		if (unprotectedHostiles.length > 0) {
 			killer.rangedAttack(unprotectedHostiles[0]);
 			return;
@@ -231,13 +242,14 @@ export class StrongholdOverlord extends CombatOverlord {
 			if (!attackPos || !killer.pos.isEqualTo(attackPos)) {
 				let avoids: RoomPosition[] = [];
 				if (this.directive.room) {
-					avoids = avoids.concat(_.flatten(this.directive.room.sourceKeepers.map(
-						source => source.pos.getPositionsInRange(3, false, false))));
-					avoids = avoids.concat(_.flatten(this.directive.room.ramparts.map(
-						ramparts => ramparts.pos.neighbors)));
-					if (this.directive.room.mineral) {
+					avoids = avoids.concat(flatten(getRoomSourceKeepers(this.directive.room).map(
+						source => roomPositionGetPositionsInRange(source.pos, 3, false, false))));
+					avoids = avoids.concat(flatten(getRoomRamparts(this.directive.room).map(
+						ramparts => getRoomPositionNeighbors(ramparts.pos))));
+					const mineral = getRoomMineral(this.directive.room);
+					if (mineral) {
 						avoids = avoids.concat(
-							this.directive.room.mineral.pos.getPositionsInRange(4, false, false));
+							roomPositionGetPositionsInRange(mineral.pos, 4, false, false));
 					}
 					avoids.forEach(av => Visualizer.circle(av));
 					killer.goTo(attackPos!, {pathOpts: {obstacles: avoids}});
@@ -328,7 +340,7 @@ export class StrongholdOverlord extends CombatOverlord {
 		const targetingInfo = this.findAttackingPositionAndTarget(ultimateGoal, 3, myCreep);
 		if (targetingInfo) {
 			this.target = targetingInfo.target;
-			this.memory.attackingPosition = targetingInfo.attackPos.readableName;
+			this.memory.attackingPosition = getRoomPositionReadableName(targetingInfo.attackPos);
 		}
 		return targetingInfo;
 	}

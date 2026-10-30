@@ -1,3 +1,5 @@
+import {getRoomPositionRangeToEdge} from '../../game/RoomPosition';
+import {getRoomDangerousHostiles, getRoomHostileStructures, getRoomHostiles} from '../../game/Room';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
 import {DirectiveGuard} from '../../directives/defense/guard';
 import {OverlordPriority} from '../../priorities/priorities_overlords';
@@ -22,12 +24,12 @@ export class GuardSwarmOverlord extends Overlord {
 	}
 
 	private findAttackTarget(guard: Zerg): Creep | Structure | undefined | null {
-		if (guard.room.hostiles.length > 0) {
-			const targets = _.filter(guard.room.hostiles, hostile => hostile.pos.rangeToEdge > 0);
+		if (getRoomHostiles(guard.room).length > 0) {
+			const targets = getRoomHostiles(guard.room).filter(hostile => getRoomPositionRangeToEdge(hostile.pos) > 0);
 			return guard.pos.findClosestByRange(targets);
 		}
-		if (guard.room.hostileStructures.length > 0) {
-			return guard.pos.findClosestByRange(guard.room.hostileStructures);
+		if (getRoomHostileStructures(guard.room).length > 0) {
+			return guard.pos.findClosestByRange(getRoomHostileStructures(guard.room));
 		}
 	}
 
@@ -52,7 +54,7 @@ export class GuardSwarmOverlord extends Overlord {
 			this.wishlist(this.directive.memory.amount, CombatSetups.broodlings.early);
 		} else {
 			if (this.room) {
-				const smallHostiles = _.filter(this.room.dangerousHostiles, creep => creep.body.length < 10);
+				const smallHostiles = getRoomDangerousHostiles(this.room).filter(creep => creep.body.length < 10);
 				if (smallHostiles.length > 2) {
 					this.wishlist(Math.round(smallHostiles.length), CombatSetups.broodlings.early);
 				}

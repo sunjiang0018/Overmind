@@ -1,5 +1,6 @@
 import {Colony} from '../Colony';
 import {profile} from '../profiler/decorator';
+import {remove, min} from '../utilities/native';
 
 /**
  * The link network controls the flow of energy through various links in a room and uses a greedy matching algorithm
@@ -32,7 +33,7 @@ export class LinkNetwork {
 
 	claimLink(link: StructureLink | undefined): void {
 		if (link) {
-			_.remove(this.colony.availableLinks, l => l.id == link.id);
+			remove(this.colony.availableLinks, l => l.id == link.id);
 		}
 	}
 
@@ -76,9 +77,9 @@ export class LinkNetwork {
 			// If a send-receive match is found, transfer that first, then remove the pair from the link lists
 			if (closestTransmitLink) {
 				// Send min of (all the energy in sender link, amount of available space in receiver link)
-				const amountToSend = _.min([closestTransmitLink.energy, receiveLink.energyCapacity - receiveLink.energy]);
+				const amountToSend = min([closestTransmitLink.energy, receiveLink.energyCapacity - receiveLink.energy]);
 				closestTransmitLink.transferEnergy(receiveLink, amountToSend);
-				_.remove(this.transmit, link => link == closestTransmitLink);
+				remove(this.transmit, link => link == closestTransmitLink);
 				// _.remove(this.receive, link => link == receiveLink);
 			}
 		}

@@ -38,13 +38,17 @@ If you still want to use Overmind on the public server, that's okay too - [there
 If you just want to run Overmind without modification, you can copy the compiled `main.js` file attached to the [latest release](https://github.com/bencbartlett/Overmind/releases) into your script. While Overmind is fully automated by default, it can be run with varying levels of autonomy; refer to the [Overmind wiki](https://github.com/bencbartlett/Overmind/wiki) for how to configure and operate the bot.
 
 ### Compiling from source
-To install the full codebase, download or clone the repository. (Please note that while the latest release of Overmind should always be stable, the latest commit may contain unstable features.) Navigate to the Overmind root directory and run ```npm install```. To compile and deploy the codebase, create a `screeps.json` file from the [example file](https://github.com/bencbartlett/Overmind/blob/master/screeps.example.json), then do one of the following actions:
+Use Node.js 24 (`nvm use`) and pnpm 12.16.1 (`pnpm install --frozen-lockfile`). The version is recorded in `.nvmrc` and `package.json`. To deploy, create a `screeps.json` file from the [example file](https://github.com/bencbartlett/Overmind/blob/master/screeps.example.json), then use one of the following commands:
 
 - Compile and deploy to public server: `npm run push-main`
 - Compile and deploy to private server: `npm run push-pserver`
 - Compile without deploying: `npm run compile`
+- Run type checking and all JavaScript tests, including the generated bundle: `npm test`
+- Generate API documentation in `dist/docs`: `npm run docs`
 
-Overmind uses `rollup` to bundle the compiled TypeScript into a single `main.js` file. The codebase includes functionality to compute checksums for internal validation - if you have a different version of `rollup` installed globally, different checksums may be computed and some functionality will be disabled. Please ensure the local installation of `rollup` found in `node_modules` is used.
+Rolldown builds a self-contained CommonJS `dist/main.js` exporting `loop`, with a separate TypeScript check before bundling. Local builds need no credentials and ignore an inherited `DEST` environment variable; only the explicit deployment commands upload code. The Node 24 / TypeScript settings and build validation are documented in [the migration notes](docs/rolldown-migration.md). The old assimilation checksum system is disabled in this checkout.
+
+Type checking and TypeScript emission use TypeScript 7. The compiler API used by tests, build helpers, TypeDoc, and TSLint is supplied by the official TypeScript 6 compatibility package. Screeps global declarations and runtime mocks continue to use Lodash 3, while the project tooling dependency uses Lodash 4. See [dependency upgrade notes](docs/dependency-upgrades.md) for versions and compatibility details.
 
 ### Setting up the Grafana dashboard
 

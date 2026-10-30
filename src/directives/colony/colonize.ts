@@ -1,3 +1,4 @@
+import {getRoomOwner} from '../../game/Room';
 import {Colony} from '../../Colony';
 import {log} from '../../console/log';
 import {Roles} from '../../creepSetups/setups';
@@ -56,7 +57,7 @@ export class DirectiveColonize extends Directive {
 		// TODO bug where can't claim a reservation room -> this.flag.pos.roomName == this.toColonize.name
 		if (this.toColonize && this.toColonize.spawns.length > 0) {
 			// Reassign all pioneers to be miners and workers
-			const miningOverlords = _.map(this.toColonize.miningSites, site => site.overlords.mine);
+			const miningOverlords = Object.values(this.toColonize.miningSites).map(site => site.overlords.mine);
 			for (const pioneer of this.overlords.pioneer.pioneers) {
 				const miningOverlord = miningOverlords.shift();
 				if (miningOverlord) {
@@ -74,7 +75,7 @@ export class DirectiveColonize extends Directive {
 			// Remove the directive
 			this.remove();
 		}
-		if (Game.time % 10 == 2 && this.room && !!this.room.owner && this.room.owner != MY_USERNAME) {
+		if (Game.time % 10 == 2 && this.room && !!getRoomOwner(this.room) && getRoomOwner(this.room) != MY_USERNAME) {
 			log.notify(`Removing Colonize directive in ${this.pos.roomName}: room already owned by another player.`);
 			this.remove();
 		}

@@ -1,3 +1,4 @@
+import {getRoomHostiles} from '../../game/Room';
 import {CombatCreepSetup} from '../../creepSetups/CombatCreepSetup';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
 import {DirectiveOutpostDefense} from '../../directives/defense/outpostDefense';
@@ -26,7 +27,7 @@ export class OutpostDefenseOverlord extends CombatOverlord {
 	}
 
 	private handleCombat(zerg: CombatZerg) {
-		if (this.room && this.room.hostiles.length == 0) {
+		if (this.room && getRoomHostiles(this.room).length == 0) {
 			zerg.doMedicActions(this.room.name);
 		} else {
 			zerg.autoSkirmish(this.pos.roomName);
@@ -41,7 +42,7 @@ export class OutpostDefenseOverlord extends CombatOverlord {
 				return healer.suicide(); // you're useless at this point // TODO: this isn't smart
 			}
 		} else {
-			if (this.room && _.any([...this.zerglings, ...this.hydralisks], creep => creep.room == this.room)) {
+			if (this.room && [...this.zerglings, ...this.hydralisks].some(creep => creep.room == this.room)) {
 				this.handleCombat(healer); // go to room if there are any fighters in there
 			} else {
 				healer.autoSkirmish(healer.room.name);
@@ -72,7 +73,7 @@ export class OutpostDefenseOverlord extends CombatOverlord {
 
 	private getEnemyPotentials(): CombatPotentials {
 		if (this.room) {
-			return CombatIntel.getCombatPotentials(this.room.hostiles);
+			return CombatIntel.getCombatPotentials(getRoomHostiles(this.room));
 		} else {
 			return {attack: 0, ranged: 1, heal: 0,};
 		}
@@ -93,7 +94,7 @@ export class OutpostDefenseOverlord extends CombatOverlord {
 		if (this.reassignIdleCreeps(Roles.ranged, 1)) return;
 		if (this.reassignIdleCreeps(Roles.healer, 1)) return;
 
-		const noBigColoniesNearby = _.all(this.spawnGroup.colonies, col => col.room.energyCapacityAvailable < 800);
+		const noBigColoniesNearby = this.spawnGroup.colonies.every(col => col.room.energyCapacityAvailable < 800);
 
 		const myPotentials = CombatIntel.getMyCombatPotentials([...this.zerglings,
 																...this.hydralisks,

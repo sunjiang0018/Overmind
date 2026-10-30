@@ -1,3 +1,6 @@
+import {getRoomObjectRef} from '../game/RoomObject';
+import {getRoomPrint} from '../game/Room';
+import {getStoredEnergy, sendTerminalResources} from '../game/Structures';
 import {assimilationLocked} from '../assimilation/decorator';
 import {$} from '../caching/GlobalCache';
 import {Colony, getAllColonies} from '../Colony';
@@ -9,6 +12,7 @@ import {profile} from '../profiler/decorator';
 import {RESOURCE_IMPORTANCE} from '../resources/map_resources';
 import {alignedNewline, bullet, rightArrow} from '../utilities/stringConstants';
 import {cyclicListPermutation, maxBy, mergeSum, minBy, minMax} from '../utilities/utils';
+import {clone, sum, remove, sortBy, max, min} from '../utilities/native';
 
 interface TerminalNetworkMemory {
 	equalizeIndex: number;
@@ -108,8 +112,8 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 
 	constructor(terminals: StructureTerminal[]) {
 		this.allTerminals = terminals;
-		this.terminals = _.clone(terminals);
-		this.readyTerminals = _.filter(terminals, t => t.cooldown == 0);
+		this.terminals = clone(terminals);
+		this.readyTerminals = terminals.filter(t => t.cooldown == 0);
 		this.memory = Mem.wrap(Memory.Overmind, 'terminalNetwork', getDefaultTerminalNetworkMemory);
 		this.stats = Mem.wrap(Memory.stats.persistent, 'terminalNetwork', getDefaultTerminalNetworkStats);
 		this.alreadyReceived = [];
@@ -117,13 +121,13 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 		this.exceptionTerminals = {}; 		// populated in init()
 		this.assets = {}; 					// populated in init()
 		this.notifications = [];
-		this.averageFullness = _.sum(this.terminals, t => _.sum(t.store) / t.storeCapacity) / this.terminals.length;
+		this.averageFullness = sum(this.terminals, t => sum(t.store) / t.storeCapacity) / this.terminals.length;
 	}
 
 	refresh(): void {
 		$.refresh(this, 'allTerminals');
-		this.terminals = _.clone(this.allTerminals);
-		this.readyTerminals = _.filter(this.terminals, t => t.cooldown == 0);
+		this.terminals = clone(this.allTerminals);
+		this.readyTerminals = this.terminals.filter(t => t.cooldown == 0);
 		this.memory = Mem.wrap(Memory.Overmind, 'terminalNetwork', getDefaultTerminalNetworkMemory);
 		this.stats = Mem.wrap(Memory.stats.persistent, 'terminalNetwork', getDefaultTerminalNetworkStats);
 		this.alreadyReceived = [];
@@ -131,12 +135,12 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 		this.exceptionTerminals = {}; 		// populated in init()
 		this.assets = {}; 					// populated in init()
 		this.notifications = [];
-		this.averageFullness = _.sum(this.terminals, t => _.sum(t.store) / t.storeCapacity) / this.terminals.length;
+		this.averageFullness = sum(this.terminals, t => sum(t.store) / t.storeCapacity) / this.terminals.length;
 	}
 
 	/* Summarizes the total of all resources currently in a colony store structure */
 	private getAllAssets(): { [resourceType: string]: number } {
-		return mergeSum(_.map(this.terminals, terminal =>
+		return mergeSum(this.terminals.map(terminal =>
 			(colonyOf(terminal) != undefined ? colonyOf(terminal).assets : {})));
 	}
 
@@ -165,7 +169,7 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 	 * Whether the terminal is actively requesting energy
 	 */
 	private terminalNeedsEnergy(terminal: StructureTerminal): boolean {
-		return terminal.energy < Energetics.settings.terminal.energy.inThreshold;
+		return getStoredEnergy(terminal) < Energetics.settings.terminal.energy.inThreshold;
 	}
 
 	/**
@@ -174,10 +178,10 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 	private remainingRoomCapacity(room: Room): number {
 		let remainingCapacity = 0;
 		if (room.storage) {
-			remainingCapacity += room.storage.storeCapacity - _.sum(room.storage.store);
+			remainingCapacity += room.storage.storeCapacity - sum(room.storage.store);
 		}
 		if (room.terminal) {
-			remainingCapacity += room.terminal.storeCapacity - _.sum(room.terminal.store);
+			remainingCapacity += room.terminal.storeCapacity - sum(room.terminal.store);
 		}
 		return remainingCapacity;
 	}
@@ -188,10 +192,10 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 	private energyInRoom(room: Room): number {
 		let energyInRoom = 0;
 		if (room.storage) {
-			energyInRoom += room.storage.energy;
+			energyInRoom += getStoredEnergy(room.storage);
 		}
 		if (room.terminal) {
-			energyInRoom += room.terminal.energy;
+			energyInRoom += getStoredEnergy(room.terminal);
 		}
 		return energyInRoom;
 	}
@@ -202,10 +206,10 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 	private transfer(sender: StructureTerminal, receiver: StructureTerminal, resourceType: ResourceConstant,
 					 amount: number, description: string): number {
 		const cost = Game.market.calcTransactionCost(amount, sender.room.name, receiver.room.name);
-		const response = sender.send(resourceType, amount, receiver.room.name);
+		const response = sendTerminalResources(sender, resourceType, amount, receiver.room.name);
 		if (response == OK) {
-			let msg = `${sender.room.print} ${rightArrow} ${amount} ${resourceType} ${rightArrow} ` +
-					  `${receiver.room.print} `;
+			let msg = `${getRoomPrint(sender.room)} ${rightArrow} ${amount} ${resourceType} ${rightArrow} ` +
+					  `${getRoomPrint(receiver.room)} `;
 			if (description) {
 				msg += `(for ${description})`;
 			}
@@ -215,10 +219,10 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 			this.logTransfer(resourceType, amount, sender.room.name, receiver.room.name);
 			this.alreadySent.push(sender);
 			this.alreadyReceived.push(receiver);
-			_.remove(this.readyTerminals, terminal => terminal.id == sender.id);
+			remove(this.readyTerminals, terminal => terminal.id == sender.id);
 		} else {
-			log.warning(`Could not send ${amount} ${resourceType} from ${sender.room.print} to ` +
-						`${receiver.room.print}! Response: ${response}`);
+			log.warning(`Could not send ${amount} ${resourceType} from ${getRoomPrint(sender.room)} to ` +
+						`${getRoomPrint(receiver.room)}! Response: ${response}`);
 		}
 		return response;
 	}
@@ -228,12 +232,11 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 	 */
 	requestResource(receiver: StructureTerminal, resourceType: ResourceConstant, amount: number,
 					allowBuy = true, minDifference = 4000): void {
-		if (this.exceptionTerminals[receiver.ref]) {
+		if (this.exceptionTerminals[getRoomObjectRef(receiver)]) {
 			return; // don't send to abandoning terminals
 		}
 		amount = Math.max(amount, TERMINAL_MIN_SEND);
-		const possibleSenders = _.filter(this.terminals,
-										 terminal => (terminal.store[resourceType] || 0) > amount + minDifference &&
+		const possibleSenders = this.terminals.filter(terminal => (terminal.store[resourceType] || 0) > amount + minDifference &&
 													 terminal.cooldown == 0 && !this.alreadySent.includes(terminal) &&
 													 terminal.id != receiver.id);
 		const sender: StructureTerminal | undefined = maxBy(possibleSenders, t => (t.store[resourceType] || 0));
@@ -267,7 +270,7 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 					// don't do anything if you have storage that is below energy cap and energy can be moved there
 					const storage = colonyOf(terminal).storage;
 					const storageEnergyCap = Energetics.settings.storage.total.cap;
-					if (!storage || storage.energy >= storageEnergyCap) {
+					if (!storage || getStoredEnergy(storage) >= storageEnergyCap) {
 						const ret = Overmind.tradeNetwork.sell(terminal, RESOURCE_ENERGY, amount,
 															   {preferDirect: terminalNearCapacity});
 						if (ret == OK) return;
@@ -327,21 +330,22 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 		log.debug(`Equalizing ${resourceType} within terminal network`);
 		const maxSendSize = resourceType == RESOURCE_ENERGY ? TerminalNetwork.settings.equalize.maxEnergySendAmount
 															: TerminalNetwork.settings.equalize.maxResourceSendAmount;
-		const averageAmount = _.sum(_.map(terminals,
-										  terminal => (colonyOf(terminal).assets[resourceType] || 0))) / terminals.length;
+		const averageAmount = sum(terminals.map(terminal => (colonyOf(terminal).assets[resourceType] || 0))) / terminals.length;
 
-		const terminalsByResource = _.sortBy(terminals, terminal => (colonyOf(terminal).assets[resourceType] || 0));
-		if (verbose) log.debug(_.map(terminalsByResource, t => `${t.room.name}: ${colonyOf(t).assets[resourceType]}`));
+		const terminalsByResource = sortBy(terminals, terminal => (colonyOf(terminal).assets[resourceType] || 0));
+		if (verbose) log.debug(terminalsByResource.map(t => `${t.room.name}: ${colonyOf(t).assets[resourceType]}`));
 		// Min-max match terminals
-		const receivers = _.take(terminalsByResource, Math.floor(terminalsByResource.length / 2));
+		const receivers = terminalsByResource.slice(0, Math.floor(terminalsByResource.length / 2));
 		terminalsByResource.reverse();
 
-		const senders = _.take(terminalsByResource, Math.floor(terminalsByResource.length / 2));
-		if (verbose) log.debug(`Receivers: ${_.map(receivers, t => t.room.print)}`);
-		if (verbose) log.debug(`Senders:   ${_.map(senders, t => t.room.print)}`);
+		const senders = terminalsByResource.slice(0, Math.floor(terminalsByResource.length / 2));
+		if (verbose) log.debug(`Receivers: ${receivers.map(t => getRoomPrint(t.room))}`);
+		if (verbose) log.debug(`Senders:   ${senders.map(t => getRoomPrint(t.room))}`);
 
-		for (const [sender, receiver] of _.zip(senders, receivers)) {
-			if (verbose) log.debug(` > ${sender.room.print} to ${receiver.room.print}...`);
+		for (let i = 0; i < senders.length; i++) {
+			const sender = senders[i];
+			const receiver = receivers[i];
+			if (verbose) log.debug(` > ${getRoomPrint(sender.room)} to ${getRoomPrint(receiver.room)}...`);
 			const senderAmount = colonyOf(sender).assets[resourceType] || 0;
 			const receiverAmount = colonyOf(receiver).assets[resourceType] || 0;
 			const tolerance = TerminalNetwork.settings.equalize.tolerance[resourceType]
@@ -362,7 +366,7 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 			sendAmount = Math.floor(Math.max(sendAmount, 0));
 			const sendCost = Game.market.calcTransactionCost(sendAmount, sender.room.name, receiver.room.name);
 			sendAmount = Math.min(sendAmount, (sender.store[resourceType] || 0) - sendCost - 10,
-								  (receiver.storeCapacity - _.sum(receiver.store)));
+								  (receiver.storeCapacity - sum(receiver.store)));
 
 			if (sendAmount < TERMINAL_MIN_SEND) {
 				if (verbose) log.debug(`    Size too small`);
@@ -380,7 +384,7 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 		}
 		// Equalize current resource type
 		const resource = equalizeResources[this.memory.equalizeIndex] as ResourceConstant | undefined;
-		const terminals = resource == RESOURCE_POWER ? _.filter(this.terminals, t => colonyOf(t).powerSpawn != undefined)
+		const terminals = resource == RESOURCE_POWER ? this.terminals.filter(t => colonyOf(t).powerSpawn != undefined)
 													 : this.terminals;
 		if (resource) { // resource is undefined if there is nothing to equalize
 			this.equalize(resource, terminals);
@@ -388,26 +392,26 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 		// Determine next resource type to equalize; most recent resourceType gets cycled to end
 		const resourceEqualizeOrder = cyclicListPermutation(equalizeResources, this.memory.equalizeIndex + 1);
 		const allColonies = getAllColonies();
-		const nextResourceType = _.find(resourceEqualizeOrder, resource => {
+		const nextResourceType = resourceEqualizeOrder.find(resource => {
 			if (resource == RESOURCE_ENERGY) {
 				return true;
 			}
-			const amounts = _.map(this.terminals, terminal => colonyOf(terminal).assets[resource] || 0);
+			const amounts = this.terminals.map(terminal => colonyOf(terminal).assets[resource] || 0);
 			const tolerance = TerminalNetwork.settings.equalize.tolerance[resource]
 							  || TerminalNetwork.settings.equalize.tolerance.default;
-			return _.max(amounts) - _.min(amounts) > tolerance;
+			return max(amounts) - min(amounts) > tolerance;
 		});
 		// Set next equalize resource index
-		this.memory.equalizeIndex = _.findIndex(equalizeResources, resource => resource == nextResourceType);
+		this.memory.equalizeIndex = equalizeResources.findIndex(resource => resource == nextResourceType);
 	}
 
 	/**
 	 * Register a terminal to be placed in an exceptional state
 	 */
 	registerTerminalState(terminal: StructureTerminal, state: TerminalState): void {
-		this.exceptionTerminals[terminal.ref] = state;
+		this.exceptionTerminals[getRoomObjectRef(terminal)] = state;
 		// colonyOf(terminal).terminalState = state;
-		_.remove(this.terminals, t => t.id == terminal.id);
+		remove(this.terminals, t => t.id == terminal.id);
 	}
 
 	/**
@@ -429,7 +433,7 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 						const receiveAmount = minMax(targetAmount - amount, TERMINAL_MIN_SEND, maxSendSize);
 						if ((sender.store[resource] || 0) > TERMINAL_MIN_SEND) {
 							this.transfer(sender, terminal, resource, receiveAmount, 'exception state in');
-							_.remove(this.readyTerminals, t => t.ref == sender!.ref);
+							remove(this.readyTerminals, t => getRoomObjectRef(t) == getRoomObjectRef(sender!));
 						}
 					}
 				}
@@ -437,7 +441,7 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 			// Terminal output state - push resources away from this colony
 			if (state.type == 'out' || state.type == 'in/out') {
 				if (terminal.cooldown == 0 && amount > targetAmount + tolerance) {
-					const receiver = minBy(this.terminals, t => _.sum(t.store));
+					const receiver = minBy(this.terminals, t => sum(t.store));
 					if (receiver) {
 						let sendAmount: number;
 						if (resource == RESOURCE_ENERGY) {
@@ -446,7 +450,7 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 						} else {
 							sendAmount = minMax(amount - targetAmount, TERMINAL_MIN_SEND, maxSendSize);
 						}
-						if (receiver.storeCapacity - _.sum(receiver.store) > sendAmount) {
+						if (receiver.storeCapacity - sum(receiver.store) > sendAmount) {
 							this.transfer(terminal, receiver, resource, sendAmount, 'exception state out');
 							return;
 						}
@@ -458,7 +462,7 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 	}
 
 	addStore(store: { [resourceType: string]: number }, storeToAdd: StoreDefinition) {
-		_.keys(storeToAdd).forEach(resType => {
+		Object.keys(storeToAdd ?? {}).forEach(resType => {
 			const resourceType = resType as ResourceConstant;
 			if (store[resType]) {
 				store[resType] += storeToAdd[resourceType] || 0;
@@ -471,11 +475,11 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 	handleOverflowWithNoEnergy() {
 		for (const terminal of this.terminals) {
 			if (terminal.store.getFreeCapacity() < 5000 && terminal.store[RESOURCE_ENERGY] < 10000) {
-				const roomOrders = _.filter(Game.market.orders, order => order.roomName == terminal.room.name);
+				const roomOrders = Object.values(Game.market.orders ?? {}).filter(order => order.roomName == terminal.room.name);
 				for (const res in terminal.store) {
 					const quantity = terminal.store[res as ResourceConstant];
 					if (quantity > 15000 && roomOrders.filter(order => order.resourceType == res).length == 0) {
-						log.info(`Creating sell order for ${res} in room ${terminal.room.print}`);
+						log.info(`Creating sell order for ${res} in room ${getRoomPrint(terminal.room)}`);
 						Overmind.tradeNetwork.sell(terminal, res as ResourceConstant, 2000);
 					}
 				}
@@ -509,7 +513,7 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 			}
 			// Order more energy if needed
 			if (Game.market.credits > TraderJoe.settings.market.credits.canBuyEnergyAbove) {
-				const averageEnergy = _.sum(this.terminals, terminal => colonyOf(terminal).assets[RESOURCE_ENERGY] || 0)
+				const averageEnergy = sum(this.terminals, terminal => colonyOf(terminal).assets[RESOURCE_ENERGY] || 0)
 									  / this.terminals.length;
 				if (averageEnergy < TerminalNetwork.settings.buyEnergyThreshold) {
 					const poorestTerminal = minBy(this.terminals,

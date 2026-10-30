@@ -1,3 +1,5 @@
+import {isPositionVisible, roomPositionLookForStructure} from '../game/RoomPosition';
+import {isRoomMine} from '../game/Room';
 import {log} from '../console/log';
 import {profile} from '../profiler/decorator';
 import {Stats} from '../stats/stats';
@@ -9,6 +11,7 @@ import {
 	PROFILER_COLONY_LIMIT,
 	USE_SCREEPS_PROFILER
 } from '../~settings';
+import {defaultsDeep, isEmpty} from '../utilities/native';
 
 export enum Autonomy {
 	Manual        = 0,
@@ -56,7 +59,7 @@ export class Mem {
 			log.warning(`Profiling is currently enabled; only ${PROFILER_COLONY_LIMIT} colonies will be run!`);
 		}
 		if (Game.cpu.bucket < 500) {
-			if (_.keys(Game.spawns).length > 1 && !Memory.resetBucket && !Memory.haltTick) {
+			if (Object.keys(Game.spawns ?? {}).length > 1 && !Memory.resetBucket && !Memory.haltTick) {
 				// don't run CPU reset routine at very beginning or if it's already triggered
 				log.warning(`CPU bucket is critically low (${Game.cpu.bucket})! Starting CPU reset routine.`);
 				Memory.resetBucket = true;
@@ -131,7 +134,7 @@ export class Mem {
 		if (memory[memName] === undefined) {
 			memory[memName] = getDefaults();
 		} else if (Game.time == LATEST_GLOBAL_RESET_TICK) { // mem defaults would only change with a global reset
-			_.defaultsDeep(memory[memName], getDefaults());
+			defaultsDeep(memory[memName], getDefaults());
 		}
 		// if (deep) {
 		// 	_.defaultsDeep(memory[memName], defaults);
@@ -142,8 +145,8 @@ export class Mem {
 	}
 
 	private static _setDeep(object: any, keys: string[], value: any): void {
-		const key = _.first(keys);
-		keys = _.drop(keys);
+		const key = keys[0];
+		keys = keys.slice(1);
 		if (keys.length == 0) { // at the end of the recursion
 			object[key] = value;
 			return;
@@ -210,7 +213,7 @@ export class Mem {
 
 	static format() {
 		// Format the memory as needed, done once every global reset
-		_.defaultsDeep(Memory, Mem.getDefaultMemory());
+		defaultsDeep(Memory, Mem.getDefaultMemory());
 		// Increment build counter (if global reset is due to CPU halt, the count will have been decremented)
 		Memory.build++;
 		// Make global memory
@@ -281,7 +284,7 @@ export class Mem {
 		// Clear memory of dead colonies
 		for (const name in Memory.colonies) {
 			const room = Game.rooms[name];
-			if (!(room && room.my)) {
+			if (!(room && isRoomMine(room))) {
 				// Delete only if "persistent" is not set - use case: praise rooms
 				if (!Memory.colonies[name].persistent) {
 					delete Memory.colonies[name];
@@ -308,7 +311,7 @@ export class Mem {
 					site.remove();
 				}
 				// Remove duplicate construction sites that get placed on top of existing structures due to caching
-				if (site && site.pos.isVisible && site.pos.lookForStructure(site.structureType)) {
+				if (site && isPositionVisible(site.pos) && roomPositionLookForStructure(site.pos, site.structureType)) {
 					site.remove();
 				}
 			}
@@ -329,7 +332,7 @@ export class Mem {
 
 			// Randomly clear some cached path lengths
 			for (const pos1Name in Memory.pathing.distances) {
-				if (_.isEmpty(Memory.pathing.distances[pos1Name])) {
+				if (isEmpty(Memory.pathing.distances[pos1Name])) {
 					delete Memory.pathing.distances[pos1Name];
 				} else {
 					for (const pos2Name in Memory.pathing.distances[pos1Name]) {

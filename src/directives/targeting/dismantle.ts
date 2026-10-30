@@ -1,3 +1,4 @@
+import {isPositionVisible} from '../../game/RoomPosition';
 import {AttackStructurePriorities} from '../../priorities/priorities_structures';
 import {profile} from '../../profiler/decorator';
 import {Visualizer} from '../../visuals/Visualizer';
@@ -23,7 +24,7 @@ export class DirectiveDismantle extends Directive {
 	}
 
 	getTarget(): Structure | undefined {
-		if (!this.pos.isVisible) {
+		if (!isPositionVisible(this.pos)) {
 			return;
 		}
 		const targetedStructures = this.pos.lookFor(LOOK_STRUCTURES) as Structure[];
@@ -46,7 +47,7 @@ export class DirectiveDismantle extends Directive {
 
 	run(): void {
 		// Remove the directive once structures have been destroyed
-		if (this.pos.isVisible && !this.getTarget()) {
+		if (isPositionVisible(this.pos) && !this.getTarget()) {
 			this.remove();
 		}
 	}

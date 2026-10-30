@@ -1,3 +1,5 @@
+import {roomPositionInRangeToPos} from '../../game/RoomPosition';
+import {getStoredEnergy} from '../../game/Structures';
 import {Colony} from '../../Colony';
 import {log} from '../../console/log';
 import {Roles, Setups} from '../../creepSetups/setups';
@@ -11,6 +13,7 @@ import {Tasks} from '../../tasks/Tasks';
 import {maxBy, minBy} from '../../utilities/utils';
 import {Zerg} from '../../zerg/Zerg';
 import {Overlord} from '../Overlord';
+import {sum, compact} from '../../utilities/native';
 
 // The order in which resources are handled within the network
 const highPriorityLoot: ResourceConstant[] = [
@@ -27,7 +30,7 @@ const lowPriorityLoot: ResourceConstant[] = [
 const dontLoot: ResourceConstant[] = [
 	RESOURCE_ENERGY,
 ];
-const everythingElse = _.filter(RESOURCES_ALL,
+const everythingElse = RESOURCES_ALL.filter(
 								res => !(highPriorityLoot.includes(res) || lowPriorityLoot.includes(res))
 									   && !dontLoot.includes(res));
 
@@ -85,7 +88,7 @@ export class RemoteUpgradingOverlord extends Overlord {
 			return 0; // don't need this once you have a terminal
 		}
 		const roundTripDistance = 1.5 /* todo */ * this.directive.distanceFromColony.terrainWeighted;
-		const energyPerTick = _.sum(this.upgraders,
+		const energyPerTick = sum(this.upgraders,
 									upgrader => UPGRADE_CONTROLLER_POWER * upgrader.getActiveBodyparts(WORK));
 		return energyPerTick * roundTripDistance;
 	}
@@ -96,7 +99,7 @@ export class RemoteUpgradingOverlord extends Overlord {
 			neededCarriers = 1;
 		} else {
 			const neededCarryCapacity = this.computeNeededCarrierCapacity();
-			const currentCarryCapacity = _.sum(this.carriers, carrier =>
+			const currentCarryCapacity = sum(this.carriers, carrier =>
 				CARRY_CAPACITY * CombatIntel.getCarryPotential(carrier.creep, true));
 			const avgCarrierCapactiy = currentCarryCapacity / this.carriers.length;
 			this.debug(`Needed carry capacity: ${neededCarryCapacity}; Current carry capacity: ${currentCarryCapacity}`);
@@ -129,13 +132,13 @@ export class RemoteUpgradingOverlord extends Overlord {
 			upgrader.task = Tasks.withdraw(this.upgradeSite.link);
 			return;
 		}
-		if (this.upgradeSite.battery && this.upgradeSite.battery.energy > 0) {
+		if (this.upgradeSite.battery && getStoredEnergy(this.upgradeSite.battery) > 0) {
 			upgrader.task = Tasks.withdraw(this.upgradeSite.battery);
 			return;
 		}
 		// Recharge from transporter?
-		const nearbyCarriers = _.filter(this.carriers, carrier => upgrader.pos.getRangeTo(carrier) <= 5);
-		const nearbyCarriersWaitingToUnload = _.filter(nearbyCarriers, carrier => carrier.carry.energy > 0);
+		const nearbyCarriers = this.carriers.filter(carrier => upgrader.pos.getRangeTo(carrier) <= 5);
+		const nearbyCarriersWaitingToUnload = nearbyCarriers.filter(carrier => carrier.carry.energy > 0);
 		const lowestEnergyCarrier = minBy(nearbyCarriersWaitingToUnload, carrier => carrier.carry.energy);
 		if (lowestEnergyCarrier) {
 			upgrader.goTo(lowestEnergyCarrier);
@@ -158,11 +161,11 @@ export class RemoteUpgradingOverlord extends Overlord {
 			// then take those back before you go home
 			if (carrier.room == this.childColony.room && carrier.carry.getFreeCapacity() > 0) {
 				const storeStructuresNotMy =
-						  _.filter(_.compact([this.childColony.room.storage,
-											  this.childColony.room.terminal]),
+						  compact([this.childColony.room.storage,
+											  this.childColony.room.terminal]).filter(
 								   structure => !structure!.my) as (StructureStorage | StructureTerminal)[];
 				for (const resource of LOOTING_ORDER) {
-					const withdrawTarget = _.find(storeStructuresNotMy,
+					const withdrawTarget = storeStructuresNotMy.find(
 												  structure => structure.store.getUsedCapacity(resource) > 0);
 					if (withdrawTarget) {
 						const amount = Math.min(withdrawTarget.store.getUsedCapacity(resource),
@@ -178,7 +181,7 @@ export class RemoteUpgradingOverlord extends Overlord {
 				return;
 			}
 
-			const target = _.find(_.compact([this.parentColony.storage, this.parentColony.terminal]),
+			const target = compact([this.parentColony.storage, this.parentColony.terminal]).find(
 								  s => s!.store[RESOURCE_ENERGY] >= carrier.carryCapacity);
 			if (!target) {
 				log.warning(`${this.print}: no energy withdraw target for ${carrier.print}!`);
@@ -201,8 +204,8 @@ export class RemoteUpgradingOverlord extends Overlord {
 			// Try to deposit in container, unless there's already a crowd waiting there;
 			// otherwise put in storage if you can
 			const depositPos = this.upgradeSite.batteryPos || this.upgradeSite.pos;
-			const carriersWaitingToUnload = _.filter(this.carriers, carrier =>
-				carrier.carry.energy > 0 && carrier.pos.inRangeToPos(depositPos, 5));
+			const carriersWaitingToUnload = this.carriers.filter(carrier =>
+				carrier.carry.energy > 0 && roomPositionInRangeToPos(carrier.pos, depositPos, 5));
 			const firstCarrierInQueue = minBy(carriersWaitingToUnload, carrier =>
 				carrier.carry.energy + (carrier.ticksToLive || Infinity) / 10000);
 
@@ -214,7 +217,7 @@ export class RemoteUpgradingOverlord extends Overlord {
 
 			// Otherwise go to the dropoff point
 			const range = firstCarrierInQueue && carrier == firstCarrierInQueue ? 0 : 3;
-			if (!carrier.pos.inRangeToPos(depositPos, range)) {
+			if (!roomPositionInRangeToPos(carrier.pos, depositPos, range)) {
 				const ret = carrier.goTo(depositPos);
 				return;
 			}
@@ -226,7 +229,7 @@ export class RemoteUpgradingOverlord extends Overlord {
 					if (carrier.transfer(this.upgradeSite.battery) == OK) return;
 				}
 				// Carriers should unload one at a time
-				const upgraderTransferTarget = maxBy(_.filter(this.upgraders, upgrader => upgrader.pos.isNearTo(carrier)),
+				const upgraderTransferTarget = maxBy(this.upgraders.filter(upgrader => upgrader.pos.isNearTo(carrier)),
 													 upgrader => upgrader.store.getFreeCapacity());
 				if (upgraderTransferTarget) {
 					if (carrier.transfer(upgraderTransferTarget) == OK) return;
