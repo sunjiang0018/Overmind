@@ -375,10 +375,11 @@ export class LogisticsNetwork {
 	} {
 		if (transporter.task && transporter.task.target) {
 			const requestID = this.targetToRequest[getRoomObjectRef(transporter.task.target)];
-			if (requestID) {
+			if (requestID != undefined) {
 				const request = this.requests[requestID];
 				if (request) {
-					const carry = transporter.carry as ResourceAmounts;
+					// Predict on a copy: Screeps Store properties are read-only, and forecasts must not alter live cargo.
+					const carry = {...transporter.carry} as ResourceAmounts;
 					const remainingCapacity = transporter.carryCapacity - sum(carry);
 					const resourceAmount = -1 * this.predictedRequestAmount(transporter, request, nextAvailability);
 					// ^ need to multiply amount by -1 since transporter is doing complement of what request needs
@@ -387,28 +388,21 @@ export class LogisticsNetwork {
 							log.error(ALL_RESOURCE_TYPE_ERROR);
 							return {energy: 0};
 						}
+						const stored = sum(request.target.store);
+						const pickup = minMax(resourceAmount, 0, remainingCapacity);
 						for (const [resourceType, storeAmt] of getStoreContents(request.target.store)) {
-							const resourceFraction = storeAmt / sum(request.target.store);
-							if (carry[resourceType]) {
-								carry[resourceType]! += resourceAmount * resourceFraction;
-								carry[resourceType] = minMax(carry[resourceType]!, 0, remainingCapacity);
-							} else {
-								carry[resourceType] = minMax(resourceAmount, 0, remainingCapacity);
-							}
+							const resourceFraction = stored > 0 ? storeAmt / stored : 0;
+							carry[resourceType] = (carry[resourceType] || 0) + pickup * resourceFraction;
 						}
 					} else {
-						if (carry[request.resourceType]) {
-							carry[request.resourceType]! += resourceAmount;
-							carry[request.resourceType] = minMax(carry[request.resourceType]!, 0, remainingCapacity);
-						} else {
-							carry[request.resourceType] = minMax(resourceAmount, 0, remainingCapacity);
-						}
+						const current = carry[request.resourceType] || 0;
+						carry[request.resourceType] = minMax(current + resourceAmount, 0, current + remainingCapacity);
 					}
 					return carry;
 				}
 			}
 		}
-		return transporter.carry;
+		return {...transporter.carry};
 	}
 
 	/**
@@ -614,7 +608,8 @@ export class LogisticsNetwork {
 	invalidateCache(transporter: Zerg, request: LogisticsRequest): void {
 		delete this.cache.nextAvailability[transporter.name];
 		delete this.cache.predictedTransporterCarry[transporter.name];
-		delete this.cache.resourceChangeRate[request.id][transporter.name];
+		// A singleton preference list need not score its request, so its rate cache may not exist yet.
+		delete this.cache.resourceChangeRate[request.id]?.[transporter.name];
 	}
 
 	/**

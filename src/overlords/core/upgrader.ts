@@ -4,7 +4,6 @@ import {Roles, Setups} from '../../creepSetups/setups';
 import {UpgradeSite} from '../../hiveClusters/upgradeSite';
 import {OverlordPriority} from '../../priorities/priorities_overlords';
 import {profile} from '../../profiler/decorator';
-import {prioritizesRCL6, RCL6_RUSH} from '../../roomPlanner/roomOverrides';
 import {Tasks} from '../../tasks/Tasks';
 import {Zerg} from '../../zerg/Zerg';
 import {Overlord} from '../Overlord';
@@ -22,8 +21,7 @@ export class UpgradingOverlord extends Overlord {
 	room: Room;	//  Operates in owned room
 
 	constructor(upgradeSite: UpgradeSite, priority = OverlordPriority.upgrading.upgrade) {
-		super(upgradeSite, 'upgrade', prioritizesRCL6(upgradeSite.colony.name, upgradeSite.colony.level)
-			? OverlordPriority.ownedRoom.work + 1 : priority);
+		super(upgradeSite, 'upgrade', priority);
 		this.upgradeSite = upgradeSite;
 		// If new colony or boosts overflowing to storage
 		this.upgraders = this.zerg(Roles.upgrader);
@@ -33,9 +31,7 @@ export class UpgradingOverlord extends Overlord {
 		if (this.colony.level < 3) { // can't spawn upgraders at early levels
 			return;
 		}
-		const energyBuffer = prioritizesRCL6(this.colony.name, this.colony.level)
-			? RCL6_RUSH.energyBuffer : UpgradeSite.settings.energyBuffer;
-		if (this.colony.assets.energy > energyBuffer
+		if (this.colony.assets.energy > UpgradeSite.settings.energyBuffer
 			|| this.upgradeSite.controller.ticksToDowngrade < 500) {
 			let setup = Setups.upgraders.default;
 			if (this.colony.level == 8) {

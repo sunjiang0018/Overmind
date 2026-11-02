@@ -169,6 +169,12 @@ for p in q:
   if n in walk and n not in outside and n not in barriers:outside.add(n);q.append(n)
 assert not (protected & outside),('Leaking defense',protected&outside)
 # Runtime progressively slices structure arrays by CONTROLLER_STRUCTURES.
+# Keep through traffic off the occupied near-source container. The one-tile
+# bypass has the same route length; reserve it at RCL6+ by moving the unbuilt
+# output lab south, still within range two of both reagent labs.
+buildings['lab'][2]=(28,32)
+roads.add((27,30))
+shortcut=[(27,30) if p==(27,29) else p for p in shortcut]
 buildings['road']=sorted(roads)
 buildings['extractor']=positions('mineral')
 result={'buildings':{k:[{'x':x,'y':y} for x,y in v] for k,v in buildings.items()},'barriers':[{'x':x,'y':y} for x,y in barriers], 'tunnel':[{'x':x,'y':y} for x,y in tunnels], 'sourceRoute':[{'x':x,'y':y} for x,y in shortcut]}

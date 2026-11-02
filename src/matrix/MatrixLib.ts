@@ -1,10 +1,12 @@
 import {isConstructionSiteWalkable} from '../game/Miscellaneous';
 import {isStructureWalkable} from '../game/Structures';
 import {
+	getRoomContainers,
 	getRoomKeeperLairs,
 	getRoomPortals,
 	getRoomRamparts,
 	getRoomRoads,
+	getRoomSources,
 	getRoomWalkableRamparts,
 } from '../game/RoomStructures';
 import {
@@ -294,6 +296,15 @@ export class MatrixLib {
 										  ...impassibleConstructionSites,
 										  ...alliedConstructionSites].map(s => s.pos) as RoomPosition[];
 			MatrixLib.block(matrix, blockPositions);
+			// Source containers are workstations, not through roads. Keep a finite
+			// cost so miners can still reach them and single-access sources stay reachable.
+			const sources = getRoomSources(room);
+			for (const container of getRoomContainers(room)) {
+				if (sources.some(source => container.pos.isNearTo(source.pos))) {
+					matrix.set(container.pos.x, container.pos.y,
+							   Math.max(matrix.get(container.pos.x, container.pos.y), 20));
+				}
+			}
 		}
 
 		// Block any other obstacles that might be specified

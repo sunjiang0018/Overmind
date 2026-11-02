@@ -47,7 +47,7 @@ class LayoutTests(unittest.TestCase):
  def test_compact_roads_preserve_service_and_logistics_distances(self):
   baseline=coords(json.loads((ROOT/'tests/fixtures/E58S42-road-baseline.json').read_text())['roads'])
   roads=BUILDINGS['road']
-  self.assertLess(len(roads),len(baseline));self.assertTrue(roads<=baseline)
+  self.assertLess(len(roads),len(baseline));self.assertTrue(roads<=baseline|{(27,30)})
   logistics=[p for t in ('spawn','storage','container','tower','terminal') for p in BUILDINGS[t]]
   goals=[p for t,ps in BUILDINGS.items() if t not in ('road',) for p in ps]
   def costs(network,start,targets,opened,start_range):
@@ -62,7 +62,7 @@ class LayoutTests(unittest.TestCase):
    for start,start_range,targets in [((23,39),0,goals)]+[(p,1,logistics) for p in logistics]:
     before=costs(baseline,start,targets,opened,start_range);after=costs(roads,start,targets,opened,start_range)
     self.assertTrue(all(d<999 for d in after),(start,opened))
-    self.assertEqual(before,after,(start,opened))
+    self.assertTrue(all(a<=b for a,b in zip(after,before)),(start,opened))
  def test_service_access_without_finished_tunnel(self):
   blocked=NATURAL|set.union(*(ps for t,ps in BUILDINGS.items() if t not in ('container','road','extractor')))
   seen=flood([(23,39)],blocked)
@@ -79,6 +79,17 @@ class LayoutTests(unittest.TestCase):
    self.assertEqual(distance(last,p),1)
    self.assertIn(p,BUILDINGS['road']);last=p
   self.assertEqual(last,(39,20))
+  self.assertNotIn((27,29),route)
+  self.assertIn((27,30),route)
+ def test_mining_stations_do_not_block_through_traffic_at_rcl8(self):
+  stations={(27,29),(39,20)}
+  blocked=NATURAL|stations|set.union(*(ps for t,ps in BUILDINGS.items() if t not in ('container','road','extractor')))
+  seen=flood([(23,39)],blocked,TUNNELS)
+  self.assertIn((27,30),BUILDINGS['road'])
+  self.assertIn((27,30),seen)
+  self.assertIn((28,29),seen)
+  self.assertIn((38,21),seen)
+  for station in stations:self.assertTrue(any(n in seen for n in neighbors(station)))
  def test_defense_after_novice_walls_disappear_and_tunnel_opens(self):
   barriers=coords(PLAN['barriers'])
   for p in barriers:self.assertTrue(2<=p[0]<=47 and 2<=p[1]<=47 and not wall(p))

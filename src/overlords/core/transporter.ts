@@ -102,8 +102,15 @@ export class TransportOverlord extends Overlord {
 			const choices = this.colony.logisticsNetwork.bufferChoices(transporter, request);
 			const bestChoice = last(sortBy(choices, choice => request.multiplier * choice.dQ
 																  / Math.max(choice.dt, 0.5)));
-			let task = null;
 			const amount = this.colony.logisticsNetwork.predictedRequestAmount(transporter, request);
+			if (amount == 0 || !bestChoice || bestChoice.dQ <= 0) {
+				// A listed request may already be covered, or have no available resources/capacity.
+				// Finish carrying resources home instead of parking with a full load or visiting an empty buffer.
+				this.handleTransporter(transporter, undefined);
+				this.colony.logisticsNetwork.invalidateCache(transporter, request);
+				return;
+			}
+			let task = null;
 			// Target is requesting input
 			if (amount > 0) {
 				if (isResource(request.target) || isTombstone(request.target) || isRuin(request.target)) {

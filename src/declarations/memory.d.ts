@@ -50,6 +50,7 @@ interface Memory {
 	screepsProfiler?: any;
 
 	settings: {
+		pixelGenerationPaused?: boolean;
 		signature: string;
 		operationMode: operationMode;
 		log: any;

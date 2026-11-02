@@ -11,7 +11,7 @@ import {Cartographer} from '../utilities/Cartographer';
 import {maxBy} from '../utilities/utils';
 import {MAX_OWNED_ROOMS, SHARD3_MAX_OWNED_ROOMS} from '../~settings';
 import {MIN_EXPANSION_DISTANCE} from './ExpansionEvaluator';
-import {sum, zipObject, compactMap} from '../utilities/native';
+import {sum, compactMap} from '../utilities/native';
 
 
 const CHECK_EXPANSION_FREQUENCY = 1000;
@@ -89,8 +89,7 @@ export class ExpansionPlanner implements IExpansionPlanner {
 	}
 
 	private getBestExpansionRoomFor(colony: Colony): { roomName: string, score: number } | undefined {
-		const allColonyRooms = zipObject(getAllColonies().map(
-												 col => [col.room.name, true])) as { [roomName: string]: boolean };
+		const allColonyRooms = new Set(getAllColonies().map(col => col.room.name));
 		const allOwnedMinerals = getAllColonies().map(col => getRoomMineral(col.room)!.mineralType) as MineralConstant[];
 		let bestRoom: string = '';
 		let bestScore: number = -Infinity;
@@ -101,11 +100,11 @@ export class ExpansionPlanner implements IExpansionPlanner {
 			if (score + MAX_SCORE_BONUS > bestScore) {
 				// Is the room too close to an existing colony?
 				const range2Rooms = Cartographer.findRoomsInRange(roomName, MIN_EXPANSION_DISTANCE);
-				if (range2Rooms.some(roomName => allColonyRooms[roomName])) {
+				if (range2Rooms.some(roomName => allColonyRooms.has(roomName))) {
 					continue; // too close to another colony
 				}
 				const range3Rooms = Cartographer.findRoomsInRange(roomName, MIN_EXPANSION_DISTANCE + 1);
-				if (range3Rooms.some(roomName => allColonyRooms[roomName])) {
+				if (range3Rooms.some(roomName => allColonyRooms.has(roomName))) {
 					score -= TOO_CLOSE_PENALTY;
 				}
 				// Are there powerful hostile rooms nearby?

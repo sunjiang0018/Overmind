@@ -1,5 +1,5 @@
-import {getRoomPositionPrint} from './game/RoomPosition';
-import {getRoomFlags, isRoomMine} from './game/Room';
+import { getRoomPositionPrint } from './game/RoomPosition';
+import { getRoomFlags, isRoomMine } from './game/Room';
 import { GameCache } from './caching/GameCache';
 import { Colony, getAllColonies } from './Colony';
 import { log } from './console/log';
@@ -32,7 +32,7 @@ import {
 	USE_SCREEPS_PROFILER,
 	USE_TRY_CATCH
 } from './~settings';
-import {groupBy, sample} from './utilities/native';
+import { groupBy, sample } from './utilities/native';
 
 declare global {
 	interface IOvermindMemory {
@@ -182,8 +182,9 @@ export default class Overmind implements IOvermind {
 					this.suspendedColonies.push(name);
 					continue;
 				}
-				if (getRoomFlags(room)) {
-					const clearOrPoisonFlags = getRoomFlags(room).filter(flag =>
+				const flags = getRoomFlags(room);
+				if (flags) {
+					const clearOrPoisonFlags = flags.filter(flag =>
 						DirectiveClearRoom.filter(flag) || DirectivePoisonRoom.filter(flag));
 					if (clearOrPoisonFlags.length > 0) {
 						this.suppressedColonies.push(name);

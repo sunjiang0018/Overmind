@@ -40,7 +40,7 @@ test('migration preserves existing buildings at RCL4, removes bunker mode, and i
   const {api,colony,existing}=setup();
   const memory={active:false,bunkerData:{anchor:{x:36,y:31}},savedFlags:[]};
   api.installRoomOverride(colony,memory);
-  assert.equal(memory.customLayout,'E58S42-terrain-v4');
+  assert.equal(memory.customLayout,'E58S42-terrain-v5');
   assert.equal(memory.bunkerData,undefined);
   assert.equal(memory.relocating,false);
   assert.equal(memory.mapsByLevel[4].extension.length,20);
@@ -53,17 +53,19 @@ test('migration preserves existing buildings at RCL4, removes bunker mode, and i
 test('other shards are untouched',()=>{
   const {api,colony}=setup('shard2');const memory={};api.installRoomOverride(colony,memory);assert.deepEqual(memory,{});
 });
+test('v4 upgrade reserves the mining bypass at every RCL and moves only the unbuilt output lab',()=>{
+  const {api,colony}=setup();const memory={customLayout:'E58S42-terrain-v4'};
+  api.installRoomOverride(colony,memory);
+  for(let level=1;level<=8;level++) {
+    const map=memory.mapsByLevel[level];
+    assert.ok(map.road.some(p=>p.x===27&&p.y===30));
+    assert.ok(!map.lab.some(p=>p.x===27&&p.y===30));
+    if(level>=6) assert.ok(map.lab.some(p=>p.x===28&&p.y===32));
+  }
+});
 test('stale live structures reject migration before changing memory',()=>{
   const {api,colony,existing}=setup();existing.push({structureType:'spawn',pos:{x:10,y:10}});const memory={};
   assert.throws(()=>api.installRoomOverride(colony,memory),/needs review/);assert.deepEqual(memory,{});
-});
-test('tunnel site scheduling honors room site budget and RCL',()=>{
-  const {api,colony,created}=setup();colony.room.find=()=>Array(9).fill({});
-  for (const level of [4,5]) {colony.level=level;api.buildOverrideTunnel(colony);assert.equal(created.length,0);}
-  colony.level=6;api.buildOverrideTunnel(colony);
-  assert.deepEqual(created,[[30,28,'road']]);created.length=0;
-  colony.level=3;api.buildOverrideTunnel(colony);assert.equal(created.length,0);
-  colony.level=6;colony.room.find=()=>Array(10).fill({});api.buildOverrideTunnel(colony);assert.equal(created.length,0);
 });
 test('road obstacles reserve RCL8 buildings when the active map is only RCL4',()=>{
   const {api,colony,context}=setup();const memory={};api.installRoomOverride(colony,memory);
@@ -81,53 +83,11 @@ test('road obstacles reserve RCL8 buildings when the active map is only RCL4',()
   }
 });
 
-test('existing tunnel tasks pause below RCL6 and resume without losing progress',()=>{
-  const {api,context}=setup();
-  const source=ts.createSourceFile('build.ts',fs.readFileSync('src/tasks/instances/build.ts','utf8'),ts.ScriptTarget.Latest,true);
-  const cls=source.statements.find(n=>ts.isClassDeclaration(n)&&n.name.text==='TaskBuild');
-  const methods=cls.members.filter(n=>n.name&&['isValidTarget','work'].includes(n.name.getText(source)));
-  const code=ts.transpileModule('class BuildTask {'+methods.map(m=>m.getText(source)).join('\n')+'}; exports.BuildTask=BuildTask;',
-    {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2017}}).outputText;
-  Object.assign(context,{isDeferredTunnel:api.isDeferredTunnel,ERR_INVALID_TARGET:-7});
-  vm.runInNewContext(code,context);
-  const task=new context.exports.BuildTask();let builds=0;
-  task.target={my:true,structureType:'road',pos:{roomName:'E58S42',x:30,y:28},progress:5400,progressTotal:45000,isWalkable:true};
-  task.creep={build(){builds++;return 0;}};
-  for(const level of [4,5]) {
-    context.Game.rooms.E58S42.controller.level=level;
-    assert.equal(task.isValidTarget(),false);assert.equal(task.work(),-7);
-  }
-  assert.equal(builds,0);assert.equal(task.target.progress,5400);
-  context.Game.rooms.E58S42.controller.level=6;
-  assert.equal(task.isValidTarget(),true);assert.equal(task.work(),0);assert.equal(builds,1);
-  context.Game.rooms.E58S42.controller.level=4;task.target.pos.x=29;
-  assert.equal(task.isValidTarget(),true,'ordinary roads must remain buildable');
-});
-test('generic road planner respects the tunnel gate as well as the dedicated scheduler',()=>{
-  const {api,context}=setup();
-  const source=ts.createSourceFile('RoadPlanner.ts',fs.readFileSync('src/roomPlanner/RoadPlanner.ts','utf8'),ts.ScriptTarget.Latest,true);
-  const cls=source.statements.find(n=>ts.isClassDeclaration(n)&&n.name.text==='RoadPlanner');
-  const method=cls.members.find(n=>n.name&&n.name.getText(source)==='buildMissing');
-  const code=ts.transpileModule('class RoadPlanner {'+method.getText(source)+'}; exports.RoadPlanner=RoadPlanner;',
-    {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2017}}).outputText;
-  const built=[];
-  const positions=[{x:30,y:28},{x:31,y:27},{x:29,y:29}].map(p=>({...p,roomName:'E58S42',room:{},
-    getMultiRoomRangeTo(){return 0;},lookForStructure(){return undefined;},createConstructionSite(){built.push([p.x,p.y]);return 0;}}));
-  Object.assign(context,{isDeferredTunnel:api.isDeferredTunnel,RoomPlanner:{settings:{maxSitesPerColony:10}},
-    unpackCoordListAsPosList:()=>positions,_:{sortBy:ps=>ps}});
-  vm.runInNewContext(code,context);
-  const planner=new context.exports.RoadPlanner();
-  Object.assign(planner,{colony:{constructionSites:[],pos:{}},memory:{roadCoordsPacked:{E58S42:'test'}},roomPlanner:{requestRecheck(){}}});
-  planner.buildMissing();assert.deepEqual(built,[[29,29]]);
-  built.length=0;context.Game.rooms.E58S42.controller.level=6;
-  planner.buildMissing();assert.deepEqual(built,[[30,28],[31,27],[29,29]]);
-});
-
 test('v2 migration drops redundant shields without relocating the economy',()=>{
   const {api,colony}=setup();
   const memory={customLayout:'E58S42-terrain-v2',active:false};
   api.installRoomOverride(colony,memory);
-  assert.equal(memory.customLayout,'E58S42-terrain-v4');
+  assert.equal(memory.customLayout,'E58S42-terrain-v5');
   assert.equal(memory.relocating,false);
   const barriers=JSON.parse(colony.memory.barrierPlanner.barrierCoordsPacked);
   assert.equal(barriers.length,31);

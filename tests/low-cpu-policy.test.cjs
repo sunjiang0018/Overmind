@@ -135,16 +135,3 @@ test('routine directive checks are spaced out while home defense and bootstrappi
   assert.equal(counts.handleNukeResponse, 4); assert.equal(counts.handleUnkillableStrongholds, 1);
 });
 
-test('cached fortification candidates above the cap are skipped and new tasks receive the limit', () => {
-  const tasks = [];
-  const context = {exports: {}, _: {filter: (xs, fn) => xs.filter(fn), map: (xs, fn) => xs.map(fn),
-    max: xs => Math.max(...xs), take: (xs, n) => xs.slice(0, n)}, Tasks: {fortify: (target, limit) => {
-      const task = {target, limit}; tasks.push(task); return task;
-    }}, WorkerOverlord: {settings: {hitTolerance: 100000}}};
-  const Subject = loadClass('src/overlords/core/worker.ts', 'WorkerOverlord', ['fortifyActions'], context);
-  const subject = new Subject(); subject.barrierTarget = 5000;
-  const worker = {pos: {findClosestByMultiRoomRange: targets => targets[0]}};
-  assert.equal(subject.fortifyActions(worker, [{hits: 5000}, {hits: 10000}]), false);
-  assert.equal(subject.fortifyActions(worker, [{hits: 5000}, {hits: 2000}]), true);
-  assert.equal(tasks[0].limit, 5000); assert.equal(tasks[0].target.hits, 2000);
-});

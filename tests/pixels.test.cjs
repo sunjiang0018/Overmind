@@ -12,3 +12,10 @@ test('generates one pixel when the bucket is full',()=>{const {ctx,calls}=setup(
 test('leaves a partially filled bucket untouched',()=>{const {ctx,calls}=setup(9999);ctx.exports.generatePixelIfFull();assert.equal(calls(),0);});
 test('does not report failed generation as success',()=>{const {ctx,calls}=setup(10000,-6);ctx.exports.generatePixelIfFull();assert.equal(calls(),1);assert.equal(ctx.Memory.stats.persistent.lastPixelTick,undefined);});
 test('skips servers without pixel generation',()=>{const {ctx,calls}=setup(10000);delete ctx.Game.cpu.generatePixel;ctx.exports.generatePixelIfFull();assert.equal(calls(),0);});
+test('the independent Pixel pause can be cleared to resume generation',()=>{
+ const {ctx,calls}=setup(10000);
+ ctx.Memory.settings={pixelGenerationPaused:true};
+ ctx.exports.generatePixelIfFull();assert.equal(calls(),0);
+ ctx.Memory.settings.pixelGenerationPaused=false;
+ ctx.exports.generatePixelIfFull();assert.equal(calls(),1);
+});

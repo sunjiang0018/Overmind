@@ -26,7 +26,7 @@ import {bunkerLayout} from './layouts/bunker';
 import {commandCenterLayout} from './layouts/commandCenter';
 import {hatcheryLayout} from './layouts/hatchery';
 import {RoadPlanner} from './RoadPlanner';
-import {buildOverrideTunnel, hasRoomOverride, installRoomOverride} from './roomOverrides';
+import {hasRoomOverride, installRoomOverride} from './roomOverrides';
 import {mapValues, uniqueBy, unique, compact, isEmpty, sum, sortBy, flatten} from '../utilities/native';
 
 export interface BuildingPlannerOutput {
@@ -936,7 +936,6 @@ export class RoomPlanner {
 	}
 
 	run(): void {
-		buildOverrideTunnel(this.colony);
 		if (this.active) {
 			this.make();
 			this.visuals();

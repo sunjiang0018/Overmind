@@ -1,40 +1,12 @@
-import {roomPositionLookForStructure} from '../game/RoomPosition';
-import {getRoomDangerousHostiles} from '../game/Room';
 import type {Colony} from '../Colony';
 import {packCoordList} from '../utilities/packrat';
-import {PEACETIME_BARRIER_HITS} from '../~settings';
 import {E58S42_PLAN} from './layouts/E58S42';
 import type {RoomPlannerMemory} from './RoomPlanner';
 
-const VERSION = 'E58S42-terrain-v4';
-export const OVERRIDE_TUNNEL_RCL = 6;
-export const RCL6_RUSH = {
-	barrierHits: 10000,
-	criticalBarrierHits: 2500,
-	energyBuffer: 2000,
-	upgradePower: 9,
-	maxWorkers: 3,
-};
+const VERSION = 'E58S42-terrain-v5';
 
 export function hasRoomOverride(roomName: string): boolean {
 	return Game.shard.name == 'shard3' && roomName == 'E58S42';
-}
-
-export function prioritizesRCL6(roomName: string, level: number): boolean {
-	return hasRoomOverride(roomName) && level >= 3 && level < 6;
-}
-
-/** Cap peaceful upkeep, including tasks saved before the policy changed. */
-export function earlyBarrierLimit(pos: ProtoPos): number | undefined {
-	const room = Game.rooms[pos.roomName];
-	if (PEACETIME_BARRIER_HITS != undefined && room && room.controller && room.controller.my
-		&& getRoomDangerousHostiles(room).length == 0 && room.find(FIND_NUKES).length == 0) {
-		return PEACETIME_BARRIER_HITS;
-	}
-	if (room && room.controller && prioritizesRCL6(pos.roomName, room.controller.level)
-		&& getRoomDangerousHostiles(room).length == 0 && room.find(FIND_NUKES).length == 0) {
-		return RCL6_RUSH.barrierHits;
-	}
 }
 
 /** Install once, before Colony selects its hatchery/manager implementation. */
@@ -83,29 +55,5 @@ export function installRoomOverride(colony: Colony, memory: RoomPlannerMemory): 
 			roadCoverages: {},
 		},
 	});
-	console.log(`Installed ${VERSION}: compact roads and perimeter; critical shields follow completed buildings.`);
-}
-
-/** Reserve tunnel sites once the colony can afford them at RCL6. */
-export function buildOverrideTunnel(colony: Colony): void {
-	if (!hasRoomOverride(colony.name) || colony.level < OVERRIDE_TUNNEL_RCL || Game.time % 10 != 0) return;
-	let slots = Math.max(0, 10 - colony.room.find(FIND_MY_CONSTRUCTION_SITES).length);
-	for (const coord of E58S42_PLAN.tunnel) {
-		if (slots == 0) break;
-		const pos = new RoomPosition(coord.x, coord.y, colony.name);
-		if (!roomPositionLookForStructure(pos, STRUCTURE_ROAD) && pos.lookFor(LOOK_CONSTRUCTION_SITES).length == 0) {
-			if (pos.createConstructionSite(STRUCTURE_ROAD) == OK) slots--;
-		}
-	}
-}
-
-export function isOverrideTunnel(roomName: string, x: number, y: number): boolean {
-	return hasRoomOverride(roomName) && E58S42_PLAN.tunnel.some(p => p.x == x && p.y == y);
-}
-
-/** Keep existing sites and their progress, but defer all construction until RCL6. */
-export function isDeferredTunnel(pos: ProtoPos): boolean {
-	if (!isOverrideTunnel(pos.roomName, pos.x, pos.y)) return false;
-	const room = Game.rooms[pos.roomName];
-	return !room || !room.controller || room.controller.level < OVERRIDE_TUNNEL_RCL;
+	console.log(`Installed ${VERSION}: mining bypass reserved at (27,30); source workstations stay clear of traffic.`);
 }

@@ -492,13 +492,20 @@ export class Movement {
 
 	private static getPushPriority(creep: AnyCreep | AnyZerg): number {
 		if (!creep.memory) return MovePriorities.default;
-		if (creep.memory._go && creep.memory._go.priority) {
+		// A miner at its assigned station must keep harvesting, including while
+		// sleeping for regeneration. Travelling/replacement miners can still yield.
+		if (creep.memory.role == Roles.drone) {
+			const ref = creep.memory[MEM.OVERLORD];
+			const mining = ref ? Overmind.overlords[ref] as {harvestPos?: RoomPosition} | undefined : undefined;
+			if (mining && mining.harvestPos && creep.pos.isEqualTo(mining.harvestPos)) return 0;
+		}
+		if (creep.memory._go && creep.memory._go.priority !== undefined) {
 			return creep.memory._go.priority;
 		} else {
 			if (isPowerZerg(creep)) {
 				return MovePriorities.powerCreep;
 			} else {
-				return MovePriorities[creep.memory.role] || MovePriorities.default;
+				return MovePriorities[creep.memory.role] ?? MovePriorities.default;
 			}
 		}
 	}

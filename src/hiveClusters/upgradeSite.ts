@@ -14,7 +14,6 @@ import {log} from '../console/log';
 import {Mem} from '../memory/Memory';
 import {UpgradingOverlord} from '../overlords/core/upgrader';
 import {profile} from '../profiler/decorator';
-import {prioritizesRCL6, RCL6_RUSH} from '../roomPlanner/roomOverrides';
 import {Stats} from '../stats/stats';
 import {hasMinerals} from '../utilities/utils';
 import {HiveCluster} from './_HiveCluster';
@@ -105,7 +104,6 @@ export class UpgradeSite extends HiveCluster {
 	}
 
 	private getUpgradePowerNeeded(): number {
-		if (prioritizesRCL6(this.colony.name, this.colony.level)) return RCL6_RUSH.upgradePower;
 		return $.number(this, 'upgradePowerNeeded', () => {
 			if (this.room.storage) { // Workers perform upgrading until storage is set up
 				const amountOver = Math.max(this.colony.assets.energy - UpgradeSite.settings.energyBuffer, 0);
@@ -137,19 +135,18 @@ export class UpgradeSite extends HiveCluster {
 		if (this.link && this.link.energy < UpgradeSite.settings.linksRequestBelow) {
 			this.colony.linkNetwork.requestReceive(this.link);
 		}
-		const rush = prioritizesRCL6(this.colony.name, this.colony.level);
-		const inThreshold = rush ? 0.9 : (this.colony.stage == ColonyStage.Larva ? 0.75 : 0.5);
+		const inThreshold = this.colony.stage == ColonyStage.Larva ? 0.75 : 0.5;
 		if (this.battery) {
 			if (this.colony.stage == ColonyStage.Larva) {
 				if (getStoredEnergy(this.battery) < inThreshold * this.battery.storeCapacity) {
 					const workers = this.colony.overlords.work.workers;
 					const energyPerTick = UPGRADE_CONTROLLER_POWER * sum(workers, worker => worker.getBodyparts(WORK));
-					this.colony.logisticsNetwork.requestInput(this.battery, {dAmountdt: energyPerTick, multiplier: rush ? 2 : 1});
+					this.colony.logisticsNetwork.requestInput(this.battery, {dAmountdt: energyPerTick});
 				}
 			} else {
 				if (getStoredEnergy(this.battery) < inThreshold * this.battery.storeCapacity) {
 					const energyPerTick = UPGRADE_CONTROLLER_POWER * this.upgradePowerNeeded;
-					this.colony.logisticsNetwork.requestInput(this.battery, {dAmountdt: energyPerTick, multiplier: rush ? 2 : 1});
+					this.colony.logisticsNetwork.requestInput(this.battery, {dAmountdt: energyPerTick});
 				}
 			}
 			if (hasMinerals(this.battery.store)) { // get rid of any minerals in the container if present
