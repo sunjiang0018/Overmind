@@ -1,4 +1,5 @@
 import {getRoomPrint} from '../game/Room';
+import {orderDevelopmentRoads} from '../utilities/outpostDevelopment';
 import {isConstructionSiteWalkable} from '../game/Miscellaneous';
 import {isStructureWalkable} from '../game/Structures';
 import {
@@ -354,6 +355,19 @@ export class RoadPlanner {
 		}
 		const origin = (this.colony.storage || this.colony.hatchery || this.colony).pos;
 		roadPositions = sortBy(roadPositions, pos => roomPositionGetMultiRoomRangeTo(pos, origin));
+		const priorities = this.colony.memory.priorityRoads;
+		if (priorities?.length) {
+			const planned = new Set(roadPositions.map(p => `${p.roomName}:${p.x}:${p.y}`));
+			roadPositions.push(...priorities.filter(p => !planned.has(`${p.roomName}:${p.x}:${p.y}`))
+				.map(p => new RoomPosition(p.x, p.y, p.roomName)));
+			roadPositions = orderDevelopmentRoads(roadPositions, priorities);
+			const pending = priorities.some(p => !Game.rooms[p.roomName]
+				|| !roomPositionLookForStructure(new RoomPosition(p.x, p.y, p.roomName), STRUCTURE_ROAD));
+			if (pending) {
+				const keys = new Set(priorities.map(p => `${p.roomName}:${p.x}:${p.y}`));
+				roadPositions = roadPositions.filter(p => keys.has(`${p.roomName}:${p.x}:${p.y}`));
+			}
+		}
 		let needsRoad = false;
 		for (const pos of roadPositions) {
 			if (!getRoomPositionRoom(pos)) {

@@ -200,6 +200,7 @@ interface ITerminalNetwork {
 	getAssets(): { [resourceType: string]: number };
 
 	thresholds(colony: IColony, resource: ResourceConstant): Thresholds;
+	shouldKeepBuyOrder(colony: IColony, resource: ResourceConstant): boolean;
 
 	canObtainResource(requestor: IColony, resource: ResourceConstant, totalAmount: number): boolean;
 

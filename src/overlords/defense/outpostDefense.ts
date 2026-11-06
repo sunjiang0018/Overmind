@@ -1,4 +1,6 @@
-import {getRoomHostiles} from '../../game/Room';
+import {getRoomClaimingPlayerHostiles, getRoomHostiles} from '../../game/Room';
+import {GoalFinder} from '../../targeting/GoalFinder';
+import {Movement} from '../../movement/Movement';
 import {CombatCreepSetup} from '../../creepSetups/CombatCreepSetup';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
 import {DirectiveOutpostDefense} from '../../directives/defense/outpostDefense';
@@ -27,9 +29,25 @@ export class OutpostDefenseOverlord extends CombatOverlord {
 	}
 
 	private handleCombat(zerg: CombatZerg) {
+		if (this.room && zerg.room.name == this.pos.roomName && zerg.getActiveBodyparts(RANGED_ATTACK) > 0
+			&& !zerg.needsToRecover()) {
+			const claimers = getRoomClaimingPlayerHostiles(this.room);
+			const target = zerg.pos.findClosestByRange(claimers);
+			if (target) {
+				// Stop the controller contest before chasing passing transporters.
+				zerg.autoRanged(claimers, false);
+				zerg.healSelfIfPossible();
+				const goals = GoalFinder.skirmishGoals(zerg);
+				// Direct combat movement bypasses goTo's path cursor. Never reuse that old route later.
+				delete zerg.memory._go;
+				Movement.combatMove(zerg, [{pos: target.pos, range: 3}], goals.avoid);
+				return;
+			}
+		}
 		if (this.room && getRoomHostiles(this.room).length == 0) {
 			zerg.doMedicActions(this.room.name);
 		} else {
+			if (zerg.room.name == this.pos.roomName && !zerg.needsToRecover()) delete zerg.memory._go;
 			zerg.autoSkirmish(this.pos.roomName);
 		}
 	}
@@ -82,7 +100,10 @@ export class OutpostDefenseOverlord extends CombatOverlord {
 	init() {
 		const enemyPotentials = this.getEnemyPotentials();
 		const needAttack = enemyPotentials.attack * 1.1;
-		const needRanged = enemyPotentials.ranged * 1.3;
+		// CLAIM-only invaders have zero combat potential but still need a defender.
+		const controllerContest = this.room && getRoomClaimingPlayerHostiles(this.room).length > 0;
+		const maintainPresence = this.directive.memory.persistent && this.room && getRoomHostiles(this.room).length > 0;
+		const needRanged = Math.max(enemyPotentials.ranged * 1.3, controllerContest || maintainPresence ? 1 : 0);
 		const needHeal = enemyPotentials.heal * 1.2;
 
 		if (needAttack > 100 || needRanged > 100 || needHeal > 100) {

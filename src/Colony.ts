@@ -1,4 +1,5 @@
 import {getStoredEnergy} from './game/Structures';
+import {orderOutposts} from './utilities/outpostDevelopment';
 import {roomPositionGetMultiRoomRangeTo, roomPositionLookForStructure} from './game/RoomPosition';
 import {getRoomObjectRef} from './game/RoomObject';
 import {
@@ -96,6 +97,8 @@ export interface ColonyMemory {
 	expansionData: ColonyExpansionData;
 	maxLevel: number;
 	outposts: { [roomName: string]: OutpostData };
+	outpostOrder?: string[];
+	priorityRoads?: ProtoPos[];
 	suspend?: boolean;
 	debug?: boolean;
 }
@@ -296,6 +299,7 @@ export class Colony {
 	 * Builds the colony object
 	 */
 	build(roomName: string, outposts: string[]): void {
+		outposts = orderOutposts(outposts, this.memory.outpostOrder);
 		// Register rooms
 		this.room = Game.rooms[roomName];
 		this.roomNames = [roomName].concat(outposts);

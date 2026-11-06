@@ -133,6 +133,11 @@ export function getRoomPlayerHostiles(room: Room): Creep[] {
 	return cache.playerHostiles;
 }
 
+// Controller contest is an economic threat, not a reason for workers to flee.
+export function getRoomClaimingPlayerHostiles(room: Room): Creep[] {
+	return getRoomPlayerHostiles(room).filter(creep => creep.getActiveBodyparts(CLAIM) > 0);
+}
+
 export function getRoomDangerousHostiles(room: Room): Creep[] {
 	const cache = getRoomCache(room);
 	if (!cache.dangerousHostiles) {

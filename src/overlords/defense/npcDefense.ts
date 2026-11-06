@@ -1,5 +1,6 @@
 import {getRoomPositionRangeToEdge, isPositionOnEdge} from '../../game/RoomPosition';
 import {getRoomFlags, getRoomHostileStructures, getRoomHostiles, getRoomInvaders} from '../../game/Room';
+import {getRoomInvaderCore} from '../../game/RoomStructures';
 import {CombatSetups, Roles} from '../../creepSetups/setups';
 import {DirectiveGuard} from '../../directives/defense/guard';
 import {DirectiveHaul} from '../../directives/resource/haul';
@@ -60,15 +61,22 @@ export class DefenseNPCOverlord extends Overlord {
 	 */
 	private combatActions(guard: CombatZerg, target: Creep | Structure): void {
 		// Attack the target if you can, else move to get in range
-		guard.attackAndChase(target);
+		if (guard.pos.isNearTo(target)) {
+			guard.attackAndChase(target);
+		} else {
+			// Leaving the defended room makes handleGuard send us straight back.
+			guard.goTo(target, {movingTarget: target instanceof Creep, pathOpts: {maxRooms: 1}});
+		}
 		// Heal yourself if it won't interfere with attacking
 		guard.healSelfIfPossible();
 	}
 
 	private handleGuard(guard: CombatZerg): void {
-		if (!guard.inSameRoomAs(this) || isPositionOnEdge(guard.pos)) {
+		if (!guard.inSameRoomAs(this)) {
 			// Move into the assigned room if there is a guard flag present
 			guard.goToRoom(this.pos.roomName);
+		} else if (isPositionOnEdge(guard.pos)) {
+			guard.goToRoom(this.pos.roomName, {pathOpts: {maxRooms: 1}});
 		} else { // If you're in the assigned room or if there is no assignment, try to attack or heal
 			const attackTarget = this.findAttackTarget(guard);
 			if (attackTarget) {
@@ -80,7 +88,9 @@ export class DefenseNPCOverlord extends Overlord {
 	}
 
 	init() {
-		const amount = this.room && (getRoomInvaders(this.room).length > 0 || RoomIntel.isInvasionLikely(this.room)) ? 1 : 0;
+		const core = this.room && getRoomInvaderCore(this.room);
+		const amount = this.room && (core?.level === 0 || getRoomInvaders(this.room).length > 0
+			|| RoomIntel.isInvasionLikely(this.room)) ? 1 : 0;
 		this.wishlist(amount, CombatSetups.broodlings.default, {reassignIdle: true});
 	}
 

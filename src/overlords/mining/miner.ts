@@ -1,5 +1,5 @@
 import {getRoomDroppedEnergy, getRoomPrint, getRoomStructures} from '../../game/Room';
-import {isStructureWalkable} from '../../game/Structures';
+import {isControllerReservedByMe, isStructureWalkable} from '../../game/Structures';
 import {getRoomContainers, getRoomSources} from '../../game/RoomStructures';
 import {
 	getRoomPositionPrint,
@@ -337,7 +337,11 @@ export class MiningOverlord extends Overlord {
 	}
 
 	init() {
-		this.wishlist(this.minersNeeded, this.setup);
+		// Do not replace miners while harvesting is blocked by another user's reservation.
+		const controller = this.room?.controller;
+		if (!controller?.reservation || isControllerReservedByMe(controller)) {
+			this.wishlist(this.minersNeeded, this.setup);
+		}
 		this.registerEnergyRequests();
 	}
 

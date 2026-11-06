@@ -122,8 +122,11 @@ export class QueenOverlord extends Overlord {
 
 	run() {
 		for (const queen of this.queens) {
-			// Get a task
-			this.handleQueen(queen);
+			// Keep a valid task until completion. Choosing the closest request every
+			// tick can alternate targets as the queen moves around extensions.
+			if (queen.isIdle) {
+				this.handleQueen(queen);
+			}
 			// Run the task if you have one; else move back to idle pos
 			if (queen.hasValidTask) {
 				queen.run();

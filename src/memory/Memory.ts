@@ -58,14 +58,14 @@ export class Mem {
 		if (USE_SCREEPS_PROFILER && Game.time % 10 == 0) {
 			log.warning(`Profiling is currently enabled; only ${PROFILER_COLONY_LIMIT} colonies will be run!`);
 		}
-		if (Game.cpu.bucket < 500) {
+		if (Game.cpu.bucket < 100) {
 			if (Object.keys(Game.spawns ?? {}).length > 1 && !Memory.resetBucket && !Memory.haltTick) {
 				// don't run CPU reset routine at very beginning or if it's already triggered
 				log.warning(`CPU bucket is critically low (${Game.cpu.bucket})! Starting CPU reset routine.`);
 				Memory.resetBucket = true;
 				Memory.haltTick = Game.time + 1; // reset global next tick
 			} else {
-				log.info(`CPU bucket is too low (${Game.cpu.bucket}). Postponing operation until bucket reaches 500.`);
+				log.info(`CPU bucket is too low (${Game.cpu.bucket}). Postponing operation until bucket reaches 100.`);
 			}
 			shouldRun = false;
 		}

@@ -41,8 +41,9 @@ export class ReservingOverlord extends Overlord {
 			} else if (this.room.controller!.reservation && !isControllerReservedByMe(this.room.controller!)) {
 				amount = Math.min(roomPositionAvailableNeighbors(this.room.controller!.pos, true).length, 2);
 			}
-		} else if (RoomIntel.roomReservedBy(this.pos.roomName) == MY_USERNAME &&
+		} else if (RoomIntel.roomReservedBy(this.pos.roomName) != MY_USERNAME ||
 				   RoomIntel.roomReservationRemaining(this.pos.roomName) < 1000) {
+			// A new outpost needs a reserver to establish vision as well as reservation.
 			amount = 1;
 		}
 		this.wishlist(amount, Setups.infestors.reserve);

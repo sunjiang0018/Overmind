@@ -1,6 +1,6 @@
 import {getRoomPositionPrint} from './game/RoomPosition';
 import {getRoomBarriers, getRoomInvaderCore, getRoomPowerBanks, getRoomSources} from './game/RoomStructures';
-import {getRoomDangerousPlayerHostiles, getRoomDrops, getRoomFlags, getRoomInvaders, getRoomPrint} from './game/Room';
+import {getRoomClaimingPlayerHostiles, getRoomDangerousPlayerHostiles, getRoomDrops, getRoomFlags, getRoomInvaders, getRoomPrint} from './game/Room';
 import {Colony, ColonyStage, getAllColonies, OutpostDisableReason} from './Colony';
 import {log} from './console/log';
 import {bodyCost} from './creepSetups/CreepSetup';
@@ -269,7 +269,7 @@ export class Overseer implements IOverseer {
 				continue;
 			}
 			// Handle player defense
-			if (getRoomDangerousPlayerHostiles(room).length > 0) {
+			if (getRoomDangerousPlayerHostiles(room).length > 0 || getRoomClaimingPlayerHostiles(room).length > 0) {
 				DirectiveOutpostDefense.createIfNotPresent(Pathing.findPathablePosition(room.name), 'room');
 			}
 			// Handle NPC invasion directives

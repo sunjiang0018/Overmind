@@ -8,7 +8,8 @@ const bundle = path.resolve('dist/main.js');
 
 for (const scenario of [
   {name: 'global reset, build and refresh ticks', options: {}, ticks: 3},
-  {name: 'low CPU bucket suspension', options: {bucket: 100}, ticks: 2},
+  {name: 'low CPU bucket suspension', options: {bucket: 99}, ticks: 2},
+  {name: 'operation at bucket threshold', options: {bucket: 100}, ticks: 2},
   {name: 'full bucket pixel generation', options: {bucket: 10000}, ticks: 1},
 ]) {
   test(`Rolldown bundle supports ${scenario.name}`, () => {
@@ -22,7 +23,7 @@ for (const scenario of [
     assert.equal(Object.getOwnPropertyDescriptor(context.RoomObject.prototype, 'ref'), undefined);
     for (let i = 0; i < scenario.ticks; i++) runtime.tick();
     if (scenario.options.bucket === 10000) assert.equal(runtime.calls.pixels, 1);
-    if (scenario.options.bucket === 100) assert.equal(context.Memory.tick, 1001);
+    if (scenario.options.bucket === 99) assert.equal(context.Memory.tick, 1001);
     else {
       assert.equal(context.Memory.tick, 1001 + scenario.ticks);
       assert.equal(context.Overmind.exceptions.length, 0);

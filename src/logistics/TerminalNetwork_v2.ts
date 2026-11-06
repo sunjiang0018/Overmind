@@ -1,4 +1,5 @@
 import {getRoomPrint} from '../game/Room';
+import {getRoomMineral} from '../game/RoomStructures';
 import {hasTerminalReceived, isTerminalReady, sendTerminalResources} from '../game/Structures';
 import {assimilationLocked} from '../assimilation/decorator';
 import {Colony} from '../Colony';
@@ -503,6 +504,18 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 		}
 	}
 
+	isLocallyProduced(colony: Colony, resource: ResourceConstant): boolean {
+		const mineral = getRoomMineral(colony.room);
+		return Abathur.isBaseMineral(resource) && mineral?.mineralType == resource
+			&& colony.extractors.some(e => e.pos.isEqualTo(mineral.pos) && e.isActive());
+	}
+
+	shouldKeepBuyOrder(colony: Colony, resource: ResourceConstant): boolean {
+		if ((colony.assets[resource] || 0) >= this.thresholds(colony, resource).target) return false;
+		const activeRequest = this.colonyStates[colony.name]?.[resource] == TN_STATE.activeRequestor;
+		return activeRequest || !this.isLocallyProduced(colony, resource);
+	}
+
 	private lockedAmount(colony: Colony, resource: ResourceConstant): number {
 		if (this.colonyLockedAmounts[colony.name] && this.colonyLockedAmounts[colony.name][resource]) {
 			return this.colonyLockedAmounts[colony.name][resource];
@@ -847,6 +860,8 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
 
 		// If you are allowed to buy it on the market, try to do so
 		if (opts.allowMarketBuy) {
+			// Wait for local mineral regeneration instead of passively buying our own mineral.
+			if (opts.requestType == 'passive' && this.isLocallyProduced(colony, resource)) return false;
 			// Special cases if it's energy or boosts since these have higher buy thresholds
 			if (resource == RESOURCE_ENERGY &&
 				Game.market.credits < TraderJoe.settings.market.credits.canBuyEnergyAbove) {

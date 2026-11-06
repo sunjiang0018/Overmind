@@ -1,4 +1,5 @@
 import {isControllerSignedByMe, isControllerSignedByScreeps} from '../../game/Structures';
+import {developmentPositionKey} from '../../utilities/outpostDevelopment';
 import {getTargetedBy} from '../../game/RoomObject';
 import {roomPositionFindClosestByMultiRoomRange} from '../../game/RoomPosition';
 import {getRoomDangerousHostiles, getRoomFleeDefaults} from '../../game/Room';
@@ -272,6 +273,13 @@ export class WorkerOverlord extends Overlord {
 	}
 
 	private buildActions(worker: Zerg): boolean {
+		const priorities = new Set((this.colony.memory.priorityRoads || []).map(developmentPositionKey));
+		const prioritySites = this.constructionSites.filter(s => s.structureType == STRUCTURE_ROAD
+			&& priorities.has(developmentPositionKey(s.pos)));
+		if (prioritySites.length) {
+			worker.task = Tasks.build(roomPositionFindClosestByMultiRoomRange(worker.pos, prioritySites)!);
+			return true;
+		}
 		const groupedSites = groupBy(this.constructionSites, site => site.structureType);
 		for (const structureType of BuildPriorities) {
 			if (groupedSites[structureType]) {

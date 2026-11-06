@@ -571,6 +571,10 @@ export class TraderJoe implements ITradeNetwork {
 
 	private cleanOrders() {
 		const ordersToClean = Object.values(Game.market.orders ?? {}).filter(order => {
+			if (order.type == ORDER_BUY && order.roomName && (RESOURCES_ALL as string[]).includes(order.resourceType)) {
+				const colony = Overmind.colonies[order.roomName];
+				if (colony && !Overmind.terminalNetwork.shouldKeepBuyOrder(colony, order.resourceType as ResourceConstant)) return true;
+			}
 			// Clean up inactive orders where you've bought/sold everything
 			if (order.active == false && order.remainingAmount == 0) {
 				return true;

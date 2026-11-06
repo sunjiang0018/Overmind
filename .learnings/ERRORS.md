@@ -237,3 +237,54 @@ Dependencies were already installed. Running the existing scripts with `npm test
 - Reproducible: yes
 - Related Files: package.json
 - See Also: ERR-20261030-RMG
+
+## [ERR-20261104-SSL] Python HTTPS certificate store
+
+**Logged**: 2026-11-04T19:10:04+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: config
+
+### Summary
+Python's default OpenSSL certificate bundle is missing on this macOS host; authenticated Screeps HTTPS reads failed certificate verification.
+
+### Error
+`SSL: CERTIFICATE_VERIFY_FAILED: unable to get local issuer certificate`
+
+### Context
+Python urllib requests to the configured Screeps API. No credentials were printed.
+
+### Suggested Fix
+Use `ssl.create_default_context(cafile='/etc/ssl/cert.pem')` on this host; preserve certificate verification.
+
+### Metadata
+- Reproducible: yes
+- Tags: python, ssl, macos, screeps
+
+### Resolution
+- **Resolved**: 2026-11-04T19:10:04+08:00
+- **Notes**: The system CA bundle successfully verified an authenticated HTTPS request. Native curl also works, though occasional connection errors may require retrying read-only requests. Do not blindly retry trade submissions.
+
+---
+
+## [ERR-20261105-HISTORY-GZIP] Screeps historical room response
+
+**Logged**: 2026-11-05
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+Official Screeps room-history responses can contain a gzip payload and null ticks.
+
+### Error
+Direct JSON decoding failed with an invalid UTF-8 byte; processing a missing tick as an object also raised a TypeError.
+
+### Resolution
+Read response bytes and decompress when the gzip magic bytes are present before JSON decoding. The official history chunk size is advertised by /api/version (100 ticks during this audit). Ignore null tick entries and reconstruct state from available full snapshots and subsequent object diffs. Read-only audit scripts and raw evidence were saved under /tmp/overmind-e48s43-audit; credentials were not logged.
+
+### Metadata
+- Reproducible: yes
+- Tags: screeps, history, gzip, null-ticks
+
+---
