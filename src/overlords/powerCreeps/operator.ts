@@ -1,3 +1,4 @@
+import { MEM } from "../../memory/MemoryKeys";
 import { DirectiveBaseOperator } from "../../directives/powerCreeps/baseOperator";
 import { OverlordPriority } from "../../priorities/priorities_overlords";
 import { PowerZergOperator } from "../../zerg/PowerZergOperator";

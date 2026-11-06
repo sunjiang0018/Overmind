@@ -1,3 +1,4 @@
+import { MEM } from "../../memory/MemoryKeys";
 import { isPositionVisible, roomPositionGetPositionAtDirection } from "../../game/RoomPosition";
 import { getRoomRuins } from "../../game/Room";
 import { getRoomContainers, getRoomRamparts } from "../../game/RoomStructures";

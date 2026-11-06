@@ -1,3 +1,4 @@
+import { MEM } from "./memory/MemoryKeys";
 import { getStoredEnergy } from "./game/Structures";
 import { orderOutposts } from "./utilities/outpostDevelopment";
 import { roomPositionGetMultiRoomRangeTo, roomPositionLookForStructure } from "./game/RoomPosition";

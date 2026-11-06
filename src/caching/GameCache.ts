@@ -1,3 +1,4 @@
+import { MEM } from "../memory/MemoryKeys";
 import { DirectiveOutpost } from "../directives/colony/outpost";
 import { DirectiveSKOutpost } from "../directives/colony/outpostSK";
 import { profile } from "../profiler/decorator";

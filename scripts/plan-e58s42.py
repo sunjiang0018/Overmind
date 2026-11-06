@@ -2,7 +2,7 @@
 import json, heapq, collections, sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-f=json.loads((ROOT/'tests/fixtures/E58S42.json').read_text())
+f=json.loads((ROOT/'scripts/fixtures/E58S42.json').read_text())
 terrain=f['terrain']; objects=f['objects']
 def wall(p): return terrain[p[1]*50+p[0]]=='1'
 def near(p):

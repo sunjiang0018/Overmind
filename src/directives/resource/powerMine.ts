@@ -1,3 +1,4 @@
+import { MEM } from "../../memory/MemoryKeys";
 import { getRoomHostiles, getRoomPrint, getRoomRuins } from "../../game/Room";
 import {
   getRoomPositionRoom,

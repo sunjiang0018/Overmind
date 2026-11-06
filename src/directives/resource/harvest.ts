@@ -1,3 +1,4 @@
+import { MEM } from "../../memory/MemoryKeys";
 import { isStructureFull } from "../../game/Structures";
 import { isRoomMine } from "../../game/Room";
 import { Pathing } from "../../movement/Pathing";

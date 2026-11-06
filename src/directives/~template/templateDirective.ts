@@ -1,3 +1,4 @@
+import { MEM } from "../../memory/MemoryKeys";
 import { getRoomHostiles } from "../../game/Room";
 import { $ } from "../../caching/GlobalCache";
 import { log } from "../../console/log";

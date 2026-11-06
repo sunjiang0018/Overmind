@@ -1,3 +1,4 @@
+import { MEM } from "../memory/MemoryKeys";
 import { getRoomPositionPrint } from "../game/RoomPosition";
 import { Colony } from "../Colony";
 import { log } from "../console/log";

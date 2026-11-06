@@ -1,3 +1,4 @@
+import { MEM, RMEM } from "../memory/MemoryKeys";
 import { getRoomKeeperLairs, getRoomWalkableRamparts } from "../game/RoomStructures";
 import { getRoomCreeps, getRoomInvaders, getRoomSourceKeepers } from "../game/Room";
 import {

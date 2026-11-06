@@ -1,3 +1,4 @@
+import { MEM } from "../memory/MemoryKeys";
 import { getRoomPrint } from "../game/Room";
 import { getStoredEnergy, isStructureEmpty } from "../game/Structures";
 import {

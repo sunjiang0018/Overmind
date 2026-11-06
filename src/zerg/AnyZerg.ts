@@ -1,3 +1,4 @@
+import { MEM } from "../memory/MemoryKeys";
 import { getStoreContents } from "../game/Structures";
 import { isCreepInRampart } from "../game/Creep";
 import { getRoomContainers, getRoomKeeperLairs, getRoomStorageUnits } from "../game/RoomStructures";

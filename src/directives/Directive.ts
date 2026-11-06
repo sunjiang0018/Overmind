@@ -1,3 +1,4 @@
+import { MEM, MEM_DISTANCE } from "../memory/MemoryKeys";
 import { getRoomPrint } from "../game/Room";
 import { getRoomPositionPrint } from "../game/RoomPosition";
 import { getRoomObjectRef } from "../game/RoomObject";

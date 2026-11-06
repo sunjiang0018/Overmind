@@ -1,3 +1,4 @@
+import { MEM } from "../memory/MemoryKeys";
 import { getRoomSpawns } from "../game/RoomStructures";
 
 import { log } from "../console/log";

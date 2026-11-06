@@ -1,3 +1,4 @@
+import { MEM } from "./memory/MemoryKeys";
 import { getRoomPositionPrint } from "./game/RoomPosition";
 import { getRoomFlags, isRoomMine } from "./game/Room";
 import { GameCache } from "./caching/GameCache";

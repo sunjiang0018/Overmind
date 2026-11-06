@@ -1,3 +1,4 @@
+import { MEM } from "../../memory/MemoryKeys";
 import { isRoomMine } from "../../game/Room";
 import { log } from "../../console/log";
 import { ExtractorOverlord } from "../../overlords/mining/extractor";

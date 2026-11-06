@@ -1,3 +1,4 @@
+import { RMEM } from "../memory/MemoryKeys";
 import { isStructureWalkable } from "../game/Structures";
 import { getRoomPositionPrint, roomPositionGetOffsetPos } from "../game/RoomPosition";
 import { getRoomTowers } from "../game/RoomStructures";

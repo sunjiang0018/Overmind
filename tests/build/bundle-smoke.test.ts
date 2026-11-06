@@ -1,0 +1,86 @@
+import { test } from "vite-plus/test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import vm from "node:vm";
+import ts from "typescript";
+import { loadBundle } from "../helpers/screeps-runtime";
+
+const bundle = path.resolve("dist/main.js");
+
+test("production output is a single JavaScript file with no external or dynamic imports", () => {
+  assert.deepEqual(fs.readdirSync(path.dirname(bundle)), ["main.js"]);
+  const source = ts.createSourceFile(
+    bundle,
+    fs.readFileSync(bundle, "utf8"),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const imports: string[] = [];
+  function visit(node: ts.Node) {
+    if (
+      ts.isImportDeclaration(node) ||
+      (ts.isExportDeclaration(node) && node.moduleSpecifier) ||
+      (ts.isCallExpression(node) &&
+        (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+          (ts.isIdentifier(node.expression) && node.expression.text === "require")))
+    ) {
+      imports.push(node.getText(source));
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  assert.deepEqual(imports, []);
+});
+
+for (const scenario of [
+  { name: "global reset, build and refresh ticks", options: {}, ticks: 3 },
+  { name: "low CPU bucket suspension", options: { bucket: 99 }, ticks: 2 },
+  { name: "operation at bucket threshold", options: { bucket: 100 }, ticks: 2 },
+  { name: "full bucket pixel generation", options: { bucket: 10000 }, ticks: 1 },
+]) {
+  test(`Vite+ Pack bundle supports ${scenario.name}`, () => {
+    const runtime = loadBundle(bundle, scenario.options);
+    const { context } = runtime;
+    assert.deepEqual(Object.keys(context.module.exports), ["loop"]);
+    assert.equal(typeof context.module.exports.loop, "function");
+    assert.equal(context.NO_ACTION, 1);
+    assert.equal(typeof context.deref, "function");
+    assert.equal(typeof context.derefRoomPosition, "function");
+    assert.equal(typeof context.PERMACACHE, "object");
+    assert.equal(context.Memory.build, 1);
+    assert.equal(context.LATEST_GLOBAL_RESET_TICK, 1001);
+    assert.equal(context.Room.prototype._refreshStructureCache, undefined);
+    assert.equal(Object.getOwnPropertyDescriptor(context.RoomObject.prototype, "ref"), undefined);
+    for (let i = 0; i < scenario.ticks; i++) runtime.tick();
+    if (scenario.options.bucket === 10000) assert.equal(runtime.calls.pixels, 1);
+    if (scenario.options.bucket === 99) assert.equal(context.Memory.tick, 1001);
+    else {
+      assert.equal(context.Memory.tick, 1001 + scenario.ticks);
+      assert.equal(context.Overmind.exceptions.length, 0);
+      assert.equal(context.PHASE, "postRun");
+    }
+  });
+}
+
+test("compressed room memory keys round-trip without ambient enum globals", () => {
+  const runtime = loadBundle(bundle);
+  const result = JSON.parse(
+    vm.runInContext(
+      `
+    RoomIntel.setExpansionData('W1N1', {
+      score: 123, bunkerAnchor: new RoomPosition(11, 12, 'W1N1'), outposts: {W2N1: 9},
+    });
+    Memory.rooms.W1N1.T = 777;
+    JSON.stringify({saved: Memory.rooms.W1N1, decoded: RoomIntel.getExpansionData('W1N1'),
+                    lastVisible: RoomIntel.lastVisible('W1N1')});
+  `,
+      runtime.context,
+    ),
+  );
+  assert.deepEqual(Object.keys(result.saved).sort(), ["T", "e"]);
+  assert.deepEqual(Object.keys(result.saved.e).sort(), ["a", "o", "s"]);
+  assert.equal(result.decoded.score, 123);
+  assert.equal(result.decoded.bunkerAnchor.x, 11);
+  assert.equal(result.lastVisible, 777);
+});

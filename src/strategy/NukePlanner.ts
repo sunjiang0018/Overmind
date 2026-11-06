@@ -1,3 +1,4 @@
+import { MEM } from "../memory/MemoryKeys";
 import { getRoomStructures } from "../game/Room";
 import { Colony } from "../Colony";
 import { getCacheExpiration, maxBy, minBy } from "../utilities/utils";

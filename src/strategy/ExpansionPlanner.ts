@@ -1,3 +1,4 @@
+import { RMEM, RMEM_MNRL } from "../memory/MemoryKeys";
 import { getRoomMineral } from "../game/RoomStructures";
 import { assimilationLocked } from "../assimilation/decorator";
 import { Colony, getAllColonies } from "../Colony";

@@ -1,11 +1,4 @@
 import { defineConfig } from "vite-plus";
-import path from "node:path";
-import { createRequire } from "node:module";
-
-// Load CommonJS helpers at runtime; the config bundler must not rewrite their require() calls.
-const require = createRequire(import.meta.url);
-const ambientEnums = require("./scripts/ambient-enums.cjs");
-const outputFile = process.env.BUILD_OUTPUT || path.join(import.meta.dirname, "dist/main.js");
 
 export default defineConfig({
   fmt: {
@@ -23,14 +16,30 @@ export default defineConfig({
   lint: {
     ignorePatterns: ["**/*.d.ts", "src/deprecated/**", "src/profiler/screeps-profiler.js"],
   },
+  test: {
+    maxWorkers: 4,
+    projects: [
+      {
+        extends: true,
+        test: { name: "unit", include: ["tests/*.test.ts"] },
+      },
+      {
+        extends: true,
+        test: {
+          name: "bundle",
+          include: ["tests/build/*.test.ts"],
+          globalSetup: ["./tests/global-setup.ts"],
+          testTimeout: 30000,
+        },
+      },
+    ],
+  },
   pack: {
     entry: "src/main.ts",
     format: "cjs",
     deps: { alwaysBundle: [/.*/] },
-    outDir: path.dirname(outputFile),
-    define: ambientEnums.ambientEnumDefines(),
     outputOptions: {
-      entryFileNames: path.basename(outputFile),
+      entryFileNames: "main.js",
       codeSplitting: false,
     },
   },

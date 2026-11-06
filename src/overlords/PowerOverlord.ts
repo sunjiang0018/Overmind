@@ -1,3 +1,4 @@
+import { MEM } from "../memory/MemoryKeys";
 import { Colony } from "../Colony";
 import { log } from "../console/log";
 import { PowerCreepSetup } from "../creepSetups/powerSetups";

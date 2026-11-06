@@ -16,16 +16,16 @@
     "build": "vp run typecheck && vp pack",
     "typecheck": "vp lint --type-aware --type-check -A all",
     "docs": "typedoc",
-    "test:unit": "node --test tests/*.test.cjs",
-    "test:bundle": "npm run build && node --test tests/build/*.test.cjs",
+    "test:unit": "vp test --project unit",
+    "test:bundle": "vp test --project bundle",
     "lint": "vp lint src",
     "check": "vp check && vp run typecheck",
     "format": "vp fmt",
     "format:check": "vp fmt --check",
     "clean": "rm -rf tsc-out && rm -rf dist",
-    "push-main": "node scripts/build.cjs --destination main",
-    "push-pserver": "node scripts/build.cjs --destination pserver",
-    "test": "npm run test:unit && npm run test:bundle"
+    "push-main": "vp run build && node scripts/upload.cjs --destination main",
+    "push-pserver": "vp run build && node scripts/upload.cjs --destination pserver",
+    "test": "vp test"
   },
   "dependencies": {
     "columnify": "1.6.0"

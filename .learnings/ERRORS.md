@@ -318,3 +318,25 @@ retry online rather than disabling policy verification.
 - Related Files: package.json, pnpm-lock.yaml
 
 ---
+
+## [ERR-20261106-001] vitest_compiler_oracle_timeout
+
+**Logged**: 2026-11-06T14:13:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+The ambient enum compiler oracle exceeded Vitest's default five-second timeout under load.
+
+### Error
+`every generated memory key matches the TypeScript compiler output` took about 9.8 seconds; the other 90 tests passed.
+
+### Resolution
+Give only this compiler integration test a 30-second timeout. Keep the unit suite's default timeout unchanged.
+
+### Metadata
+- Related Files: tests/ambient-enums.test.ts
+- Tags: vitest, typescript, timeout
+
+---

@@ -1,3 +1,4 @@
+import { MEM } from "../memory/MemoryKeys";
 import { Directive } from "../directives/Directive";
 import { SpawnGroup } from "../logistics/SpawnGroup";
 import { profile } from "../profiler/decorator";

@@ -1,3 +1,4 @@
+import { MEM } from "../../memory/MemoryKeys";
 import { getRoomPositionPrint } from "../../game/RoomPosition";
 import { log } from "../../console/log";
 import { profile } from "../../profiler/decorator";

@@ -1,3 +1,15 @@
+import {
+  MEM,
+  RMEM,
+  RMEM_STRUCTS,
+  RMEM_INVASION,
+  RMEM_CTRL,
+  RMEM_MNRL,
+  RMEM_ROOM_STATUS,
+  RMEM_EXPANSION_DATA,
+  RMEM_SAFETY,
+  COMBAT_POTENTIALS,
+} from "../memory/MemoryKeys";
 import { getCreepBoosts } from "../game/Creep";
 import {
   getRoomDangerousHostiles,

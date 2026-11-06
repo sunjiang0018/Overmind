@@ -1,3 +1,4 @@
+import { MEM, RMEM } from "./memory/MemoryKeys";
 import { getRoomPositionPrint } from "./game/RoomPosition";
 import {
   getRoomBarriers,
