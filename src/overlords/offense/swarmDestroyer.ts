@@ -1,19 +1,19 @@
-import {getRoomHostileStructures, getRoomHostiles} from '../../game/Room';
-import {getRoomPositionPrint} from '../../game/RoomPosition';
-import {$} from '../../caching/GlobalCache';
-import {log} from '../../console/log';
-import {CombatSetups, Roles} from '../../creepSetups/setups';
-import {DirectiveSwarmDestroy} from '../../directives/offense/swarmDestroy';
-import {CombatIntel} from '../../intel/CombatIntel';
-import {RoomIntel} from '../../intel/RoomIntel';
-import {Mem} from '../../memory/Memory';
-import {OverlordPriority} from '../../priorities/priorities_overlords';
-import {profile} from '../../profiler/decorator';
-import {Visualizer} from '../../visuals/Visualizer';
-import {CombatZerg} from '../../zerg/CombatZerg';
-import {Swarm} from '../../zerg/Swarm';
-import {SwarmOverlord} from '../SwarmOverlord';
-import {groupBy, sum, min} from '../../utilities/native';
+import { getRoomHostileStructures, getRoomHostiles } from "../../game/Room";
+import { getRoomPositionPrint } from "../../game/RoomPosition";
+import { $ } from "../../caching/GlobalCache";
+import { log } from "../../console/log";
+import { CombatSetups, Roles } from "../../creepSetups/setups";
+import { DirectiveSwarmDestroy } from "../../directives/offense/swarmDestroy";
+import { CombatIntel } from "../../intel/CombatIntel";
+import { RoomIntel } from "../../intel/RoomIntel";
+import { Mem } from "../../memory/Memory";
+import { OverlordPriority } from "../../priorities/priorities_overlords";
+import { profile } from "../../profiler/decorator";
+import { Visualizer } from "../../visuals/Visualizer";
+import { CombatZerg } from "../../zerg/CombatZerg";
+import { Swarm } from "../../zerg/Swarm";
+import { SwarmOverlord } from "../SwarmOverlord";
+import { groupBy, sum, min } from "../../utilities/native";
 
 const DEBUG = false;
 
@@ -22,150 +22,169 @@ const DEBUG = false;
  */
 @profile
 export class SwarmDestroyerOverlord extends SwarmOverlord {
+  memory: any;
+  directive: DirectiveSwarmDestroy;
+  fallback: RoomPosition;
+  assemblyPoints: RoomPosition[];
+  intel: CombatIntel;
+  zerglings: CombatZerg[];
+  // hydralisks: CombatZerg[];
+  healers: CombatZerg[];
+  swarms: { [ref: string]: Swarm };
 
-	memory: any;
-	directive: DirectiveSwarmDestroy;
-	fallback: RoomPosition;
-	assemblyPoints: RoomPosition[];
-	intel: CombatIntel;
-	zerglings: CombatZerg[];
-	// hydralisks: CombatZerg[];
-	healers: CombatZerg[];
-	swarms: { [ref: string]: Swarm };
+  static settings = {
+    retreatHitsPercent: 0.85,
+    reengageHitsPercent: 0.95,
+  };
 
-	static settings = {
-		retreatHitsPercent : 0.85,
-		reengageHitsPercent: 0.95,
-	};
+  constructor(directive: DirectiveSwarmDestroy, priority = OverlordPriority.offense.destroy) {
+    super(directive, "destroy", priority, 8);
+    this.directive = directive;
+    this.memory = Mem.wrap(this.directive.memory, this.name);
+    this.intel = new CombatIntel(this.directive);
+    this.zerglings = this.combatZerg(Roles.melee, { notifyWhenAttacked: false });
+    // this.hydralisks = this.combatZerg(Roles.ranged, {
+    // 	notifyWhenAttacked: false,
+    // 	boostWishlist     : [BOOST_TIERS.ranged[3], BOOST_TIERS.tough[3], BOOST_TIERS.move[3]]
+    // });
+    this.healers = this.combatZerg(Roles.healer, { notifyWhenAttacked: false });
+    // Make swarms
+    this.makeSwarms();
+    // Compute fallback positions and assembly points
+    this.fallback = $.pos(
+      this,
+      "fallback",
+      () => this.intel.findSwarmAssemblyPointInColony({ width: 2, height: 2 }),
+      200,
+    )!;
+    this.assemblyPoints = [];
+    for (let i = 0; i < Object.keys(this.swarms ?? {}).length + 1; i++) {
+      this.assemblyPoints.push(
+        $.pos(
+          this,
+          `assemble_${i}`,
+          () => this.intel.findSwarmAssemblyPointInColony({ width: 2, height: 2 }, i + 1),
+          200,
+        )!,
+      );
+    }
+  }
 
-	constructor(directive: DirectiveSwarmDestroy, priority = OverlordPriority.offense.destroy) {
-		super(directive, 'destroy', priority, 8);
-		this.directive = directive;
-		this.memory = Mem.wrap(this.directive.memory, this.name);
-		this.intel = new CombatIntel(this.directive);
-		this.zerglings = this.combatZerg(Roles.melee, {notifyWhenAttacked: false});
-		// this.hydralisks = this.combatZerg(Roles.ranged, {
-		// 	notifyWhenAttacked: false,
-		// 	boostWishlist     : [BOOST_TIERS.ranged[3], BOOST_TIERS.tough[3], BOOST_TIERS.move[3]]
-		// });
-		this.healers = this.combatZerg(Roles.healer, {notifyWhenAttacked: false});
-		// Make swarms
-		this.makeSwarms();
-		// Compute fallback positions and assembly points
-		this.fallback = $.pos(this, 'fallback', () =>
-			this.intel.findSwarmAssemblyPointInColony({width: 2, height: 2}), 200)!;
-		this.assemblyPoints = [];
-		for (let i = 0; i < Object.keys(this.swarms ?? {}).length + 1; i++) {
-			this.assemblyPoints.push($.pos(this, `assemble_${i}`, () =>
-				this.intel.findSwarmAssemblyPointInColony({width: 2, height: 2}, i + 1), 200)!);
-		}
-	}
+  refresh() {
+    super.refresh();
+    this.memory = Mem.wrap(this.directive.memory, this.name);
+    this.makeSwarms();
+  }
 
-	refresh() {
-		super.refresh();
-		this.memory = Mem.wrap(this.directive.memory, this.name);
-		this.makeSwarms();
-	}
+  makeSwarms(): void {
+    this.swarms = {};
+    const meleeZerg: CombatZerg[] = [...this.zerglings, ...this.healers];
+    // let rangedZerg: CombatZerg[] = this.hydralisks;
+    const maxPerSwarm = { [Roles.melee]: 2, [Roles.healer]: 2, [Roles.ranged]: 4 };
+    const meleeZergBySwarm = groupBy(meleeZerg, (zerg) => zerg.findSwarm(meleeZerg, maxPerSwarm));
+    // let rangedZergBySwarm = _.groupBy(rangedZerg, zerg => zerg.findSwarm(rangedZerg, maxPerSwarm));
+    // let zergBySwarm = _.merge(meleeZergBySwarm, rangedZergBySwarm);
+    for (const ref in meleeZergBySwarm) {
+      if (ref != undefined) {
+        if (DEBUG)
+          log.debug(`Making swarm for ${(meleeZergBySwarm[ref] || []).map((z) => z.name)}`);
+        this.swarms[ref] = new Swarm(this, ref, meleeZergBySwarm[ref]);
+      }
+    }
+    // for (let ref in rangedZergBySwarm) { // todo: finish changing
+    // 	if (ref != undefined) {
+    // 		if (DEBUG) log.debug(`Making swarm for ${_.map(meleeZergBySwarm[ref], z => z.name)}`);
+    // 		this.swarms[ref] = new Swarm(this, ref, meleeZergBySwarm[ref]);
+    // 	}
+    // }
+  }
 
-	makeSwarms(): void {
-		this.swarms = {};
-		const meleeZerg: CombatZerg[] = [...this.zerglings, ...this.healers];
-		// let rangedZerg: CombatZerg[] = this.hydralisks;
-		const maxPerSwarm = {[Roles.melee]: 2, [Roles.healer]: 2, [Roles.ranged]: 4};
-		const meleeZergBySwarm = groupBy(meleeZerg, zerg => zerg.findSwarm(meleeZerg, maxPerSwarm));
-		// let rangedZergBySwarm = _.groupBy(rangedZerg, zerg => zerg.findSwarm(rangedZerg, maxPerSwarm));
-		// let zergBySwarm = _.merge(meleeZergBySwarm, rangedZergBySwarm);
-		for (const ref in meleeZergBySwarm) {
-			if (ref != undefined) {
-				if (DEBUG) log.debug(`Making swarm for ${(meleeZergBySwarm[ref] || []).map(z => z.name)}`);
-				this.swarms[ref] = new Swarm(this, ref, meleeZergBySwarm[ref]);
-			}
-		}
-		// for (let ref in rangedZergBySwarm) { // todo: finish changing
-		// 	if (ref != undefined) {
-		// 		if (DEBUG) log.debug(`Making swarm for ${_.map(meleeZergBySwarm[ref], z => z.name)}`);
-		// 		this.swarms[ref] = new Swarm(this, ref, meleeZergBySwarm[ref]);
-		// 	}
-		// }
-	}
+  private handleSwarm(swarm: Swarm, index: number, waypoint = this.directive.pos) {
+    // Swarm initially groups up at fallback location
+    if (!swarm.memory.initialAssembly) {
+      const assemblyPoint = this.assemblyPoints[index] || this.fallback;
+      log.debug(`Assmbling at ${getRoomPositionPrint(assemblyPoint)}`);
+      swarm.memory.initialAssembly = swarm.assemble(assemblyPoint);
+      return;
+    }
 
-	private handleSwarm(swarm: Swarm, index: number, waypoint = this.directive.pos) {
-		// Swarm initially groups up at fallback location
-		if (!swarm.memory.initialAssembly) {
-			const assemblyPoint = this.assemblyPoints[index] || this.fallback;
-			log.debug(`Assmbling at ${getRoomPositionPrint(assemblyPoint)}`);
-			swarm.memory.initialAssembly = swarm.assemble(assemblyPoint);
-			return;
-		}
+    // Swarm has now initially assembled with all members present
+    // log.debug(`Done assmbling`);
 
-		// Swarm has now initially assembled with all members present
-		// log.debug(`Done assmbling`);
+    const room = swarm.rooms[0];
+    if (!room) {
+      log.warning(`${this.print} No room! (Why?)`);
+    }
+    // Siege the room
+    const nearbyHostiles = getRoomHostiles(room).filter(
+      (creep) => swarm.minRangeTo(creep) <= 3 + 1,
+    );
+    const attack = sum(nearbyHostiles, (creep) => CombatIntel.getAttackDamage(creep));
+    const rangedAttack = sum(nearbyHostiles, (creep) => CombatIntel.getRangedAttackDamage(creep));
+    const myDamageMultiplier = CombatIntel.minimumDamageMultiplierForGroup(
+      swarm.creeps.map((c) => c.creep),
+    );
 
-		const room = swarm.rooms[0];
-		if (!room) {
-			log.warning(`${this.print} No room! (Why?)`);
-		}
-		// Siege the room
-		const nearbyHostiles = getRoomHostiles(room).filter(creep => swarm.minRangeTo(creep) <= 3 + 1);
-		const attack = sum(nearbyHostiles, creep => CombatIntel.getAttackDamage(creep));
-		const rangedAttack = sum(nearbyHostiles, creep => CombatIntel.getRangedAttackDamage(creep));
-		const myDamageMultiplier = CombatIntel.minimumDamageMultiplierForGroup(swarm.creeps.map(c => c.creep));
+    const canPopShield =
+      (attack + rangedAttack + CombatIntel.towerDamageAtPos(swarm.anchor)) * myDamageMultiplier >
+      min(swarm.creeps, (creep) => 100 * creep.getActiveBodyparts(TOUGH));
 
-		const canPopShield = (attack + rangedAttack + CombatIntel.towerDamageAtPos(swarm.anchor)) * myDamageMultiplier
-							 > min(swarm.creeps, creep => 100 * creep.getActiveBodyparts(TOUGH));
+    if (
+      canPopShield ||
+      getRoomHostileStructures(room).length == 0 ||
+      Object.values(this.swarms ?? {}).length > 1
+    ) {
+      swarm.autoCombat(this.pos.roomName, waypoint);
+    } else {
+      swarm.autoSiege(this.pos.roomName, waypoint);
+    }
+  }
 
-		if (canPopShield || getRoomHostileStructures(room).length == 0 || Object.values(this.swarms ?? {}).length > 1) {
-			swarm.autoCombat(this.pos.roomName, waypoint);
-		} else {
-			swarm.autoSiege(this.pos.roomName, waypoint);
-		}
-	}
+  init() {
+    let numSwarms = this.directive.memory.amount || 1;
+    if (RoomIntel.inSafeMode(this.pos.roomName)) {
+      numSwarms = 0;
+    }
 
-	init() {
-		let numSwarms = this.directive.memory.amount || 1;
-		if (RoomIntel.inSafeMode(this.pos.roomName)) {
-			numSwarms = 0;
-		}
+    const zerglingPriority =
+      this.zerglings.length <= this.healers.length ? this.priority - 0.1 : this.priority + 0.1;
+    const zerglingSetup = CombatSetups.zerglings.boosted.armored;
 
-		const zerglingPriority = this.zerglings.length <= this.healers.length ? this.priority - 0.1 : this.priority + 0.1;
-		const zerglingSetup = CombatSetups.zerglings.boosted.armored;
+    const healerPriority =
+      this.healers.length < this.zerglings.length ? this.priority - 0.1 : this.priority + 0.1;
+    const healerSetup = CombatSetups.transfusers.boosted.armored;
 
-		const healerPriority = this.healers.length < this.zerglings.length ? this.priority - 0.1 : this.priority + 0.1;
-		const healerSetup = CombatSetups.transfusers.boosted.armored;
+    const swarmConfig = [
+      { setup: zerglingSetup, amount: 2, priority: zerglingPriority },
+      { setup: healerSetup, amount: 2, priority: healerPriority },
+    ];
+    this.swarmWishlist(numSwarms, swarmConfig);
 
-		const hydraliskPriority = this.healers.length < this.zerglings.length ? this.priority - 0.1 : this.priority + 0.1;
-		const hydraliskSetup = CombatSetups.hydralisks.boosted.armored;
+    // const rangedSwarmConfig = [{setup: hydraliskSetup, amount: 4, priority: hydraliskPriority}];
+    // this.swarmWishlist(numSwarms, rangedSwarmConfig);
+  }
 
-		const swarmConfig = [{setup: zerglingSetup, amount: 2, priority: zerglingPriority},
-							 {setup: healerSetup, amount: 2, priority: healerPriority}];
-		this.swarmWishlist(numSwarms, swarmConfig);
+  run() {
+    this.autoRun(this.zerglings, (_zergling) => undefined); // zergling => undefined is to handle boosting
+    this.autoRun(this.healers, (_healer) => undefined);
+    // this.autoRun(this.hydralisks, hydralisk => undefined);
+    // Run swarms in order
+    const refs = Object.keys(this.swarms ?? {}).sort();
+    let i = 0;
+    for (const ref of refs) {
+      this.handleSwarm(this.swarms[ref], i);
+      i++;
+    }
+  }
 
-		// const rangedSwarmConfig = [{setup: hydraliskSetup, amount: 4, priority: hydraliskPriority}];
-		// this.swarmWishlist(numSwarms, rangedSwarmConfig);
-
-	}
-
-	run() {
-		this.autoRun(this.zerglings, zergling => undefined); // zergling => undefined is to handle boosting
-		this.autoRun(this.healers, healer => undefined);
-		// this.autoRun(this.hydralisks, hydralisk => undefined);
-		// Run swarms in order
-		const refs = Object.keys(this.swarms ?? {}).sort();
-		let i = 0;
-		for (const ref of refs) {
-			this.handleSwarm(this.swarms[ref], i);
-			i++;
-		}
-	}
-
-	visuals() {
-		Visualizer.marker(this.fallback, {color: 'green'});
-		for (const ref in this.swarms) {
-			const swarm = this.swarms[ref];
-			Visualizer.marker(swarm.anchor, {color: 'blue'});
-			if (swarm.target) {
-				Visualizer.marker(swarm.target.pos, {color: 'orange'});
-			}
-		}
-	}
+  visuals() {
+    Visualizer.marker(this.fallback, { color: "green" });
+    for (const ref in this.swarms) {
+      const swarm = this.swarms[ref];
+      Visualizer.marker(swarm.anchor, { color: "blue" });
+      if (swarm.target) {
+        Visualizer.marker(swarm.target.pos, { color: "orange" });
+      }
+    }
+  }
 }

@@ -1,107 +1,123 @@
-import {getRoomPositionRangeToEdge, isPositionOnEdge} from '../../game/RoomPosition';
-import {getRoomFlags, getRoomHostileStructures, getRoomHostiles, getRoomInvaders} from '../../game/Room';
-import {getRoomInvaderCore} from '../../game/RoomStructures';
-import {CombatSetups, Roles} from '../../creepSetups/setups';
-import {DirectiveGuard} from '../../directives/defense/guard';
-import {DirectiveHaul} from '../../directives/resource/haul';
-import {DirectiveTargetSiege} from '../../directives/targeting/siegeTarget';
-import {RoomIntel} from '../../intel/RoomIntel';
-import {OverlordPriority} from '../../priorities/priorities_overlords';
-import {profile} from '../../profiler/decorator';
-import {CombatZerg} from '../../zerg/CombatZerg';
-import {Overlord} from '../Overlord';
-import {compactMap} from '../../utilities/native';
+import { getRoomPositionRangeToEdge, isPositionOnEdge } from "../../game/RoomPosition";
+import {
+  getRoomFlags,
+  getRoomHostileStructures,
+  getRoomHostiles,
+  getRoomInvaders,
+} from "../../game/Room";
+import { getRoomInvaderCore } from "../../game/RoomStructures";
+import { CombatSetups, Roles } from "../../creepSetups/setups";
+import { DirectiveGuard } from "../../directives/defense/guard";
+import { DirectiveHaul } from "../../directives/resource/haul";
+import { DirectiveTargetSiege } from "../../directives/targeting/siegeTarget";
+import { RoomIntel } from "../../intel/RoomIntel";
+import { OverlordPriority } from "../../priorities/priorities_overlords";
+import { profile } from "../../profiler/decorator";
+import { CombatZerg } from "../../zerg/CombatZerg";
+import { Overlord } from "../Overlord";
+import { compactMap } from "../../utilities/native";
 
 /**
  * NPC defense overlord: spawns specially-optimized guards as needed to deal with standard NPC invasions
  */
 @profile
 export class DefenseNPCOverlord extends Overlord {
+  guards: CombatZerg[];
 
-	guards: CombatZerg[];
+  static requiredRCL = 3;
 
-	static requiredRCL = 3;
+  constructor(directive: DirectiveGuard, priority = OverlordPriority.outpostDefense.guard) {
+    super(directive, "guard", priority);
+    this.guards = this.combatZerg(Roles.guardMelee);
+  }
 
-	constructor(directive: DirectiveGuard, priority = OverlordPriority.outpostDefense.guard) {
-		super(directive, 'guard', priority);
-		this.guards = this.combatZerg(Roles.guardMelee);
-	}
+  // private reassignIdleGuards(): void {
+  // 	// Find all idle guards
+  // 	let idleGuards = _.filter(this.colony.getCreepsByRole('guard'), (guard: Zerg) => !guard.overlord);
+  // 	// Reassign them all to this flag
+  // 	for (let guard of idleGuards) {
+  // 		guard.overlord = this;
+  // 	}
+  // 	// Refresh the list of guards
+  // 	this.guards = this.creeps('guard');
+  // }
 
-	// private reassignIdleGuards(): void {
-	// 	// Find all idle guards
-	// 	let idleGuards = _.filter(this.colony.getCreepsByRole('guard'), (guard: Zerg) => !guard.overlord);
-	// 	// Reassign them all to this flag
-	// 	for (let guard of idleGuards) {
-	// 		guard.overlord = this;
-	// 	}
-	// 	// Refresh the list of guards
-	// 	this.guards = this.creeps('guard');
-	// }
+  private findAttackTarget(guard: CombatZerg): Creep | Structure | undefined | null {
+    const targetingDirectives = DirectiveTargetSiege.find(
+      getRoomFlags(guard.room),
+    ) as DirectiveTargetSiege[];
+    const targetedStructures = compactMap(targetingDirectives, (directive) =>
+      directive.getTarget(),
+    ) as Structure[];
+    if (targetedStructures.length > 0) {
+      return guard.pos.findClosestByRange(targetedStructures);
+    }
+    if (getRoomHostiles(guard.room).length > 0) {
+      const targets = getRoomHostiles(guard.room).filter(
+        (hostile) => getRoomPositionRangeToEdge(hostile.pos) > 0,
+      );
+      return guard.pos.findClosestByRange(targets);
+    }
+    if (getRoomHostileStructures(guard.room).length > 0) {
+      const haulFlags = DirectiveHaul.find(getRoomFlags(guard.room));
+      if (haulFlags.length == 0) {
+        return guard.pos.findClosestByRange(getRoomHostileStructures(guard.room));
+      }
+    }
+  }
 
-	private findAttackTarget(guard: CombatZerg): Creep | Structure | undefined | null {
-		const targetingDirectives = DirectiveTargetSiege.find(getRoomFlags(guard.room)) as DirectiveTargetSiege[];
-		const targetedStructures = compactMap(targetingDirectives, directive => directive.getTarget()) as Structure[];
-		if (targetedStructures.length > 0) {
-			return guard.pos.findClosestByRange(targetedStructures);
-		}
-		if (getRoomHostiles(guard.room).length > 0) {
-			const targets = getRoomHostiles(guard.room).filter(hostile => getRoomPositionRangeToEdge(hostile.pos) > 0);
-			return guard.pos.findClosestByRange(targets);
-		}
-		if (getRoomHostileStructures(guard.room).length > 0) {
-			const haulFlags = DirectiveHaul.find(getRoomFlags(guard.room));
-			if (haulFlags.length == 0) {
-				return guard.pos.findClosestByRange(getRoomHostileStructures(guard.room));
-			}
-		}
-	}
+  /**
+   * Attack and chase the specified target
+   */
+  private combatActions(guard: CombatZerg, target: Creep | Structure): void {
+    // Attack the target if you can, else move to get in range
+    if (guard.pos.isNearTo(target)) {
+      guard.attackAndChase(target);
+    } else {
+      // Leaving the defended room makes handleGuard send us straight back.
+      guard.goTo(target, { movingTarget: target instanceof Creep, pathOpts: { maxRooms: 1 } });
+    }
+    // Heal yourself if it won't interfere with attacking
+    guard.healSelfIfPossible();
+  }
 
-	/**
-	 * Attack and chase the specified target
-	 */
-	private combatActions(guard: CombatZerg, target: Creep | Structure): void {
-		// Attack the target if you can, else move to get in range
-		if (guard.pos.isNearTo(target)) {
-			guard.attackAndChase(target);
-		} else {
-			// Leaving the defended room makes handleGuard send us straight back.
-			guard.goTo(target, {movingTarget: target instanceof Creep, pathOpts: {maxRooms: 1}});
-		}
-		// Heal yourself if it won't interfere with attacking
-		guard.healSelfIfPossible();
-	}
+  private handleGuard(guard: CombatZerg): void {
+    if (!guard.inSameRoomAs(this)) {
+      // Move into the assigned room if there is a guard flag present
+      guard.goToRoom(this.pos.roomName);
+    } else if (isPositionOnEdge(guard.pos)) {
+      guard.goToRoom(this.pos.roomName, { pathOpts: { maxRooms: 1 } });
+    } else {
+      // If you're in the assigned room or if there is no assignment, try to attack or heal
+      const attackTarget = this.findAttackTarget(guard);
+      if (attackTarget) {
+        this.combatActions(guard, attackTarget);
+      } else {
+        guard.doMedicActions(this.pos.roomName);
+      }
+    }
+  }
 
-	private handleGuard(guard: CombatZerg): void {
-		if (!guard.inSameRoomAs(this)) {
-			// Move into the assigned room if there is a guard flag present
-			guard.goToRoom(this.pos.roomName);
-		} else if (isPositionOnEdge(guard.pos)) {
-			guard.goToRoom(this.pos.roomName, {pathOpts: {maxRooms: 1}});
-		} else { // If you're in the assigned room or if there is no assignment, try to attack or heal
-			const attackTarget = this.findAttackTarget(guard);
-			if (attackTarget) {
-				this.combatActions(guard, attackTarget);
-			} else {
-				guard.doMedicActions(this.pos.roomName);
-			}
-		}
-	}
+  init() {
+    const core = this.room && getRoomInvaderCore(this.room);
+    const amount =
+      this.room &&
+      (core?.level === 0 ||
+        getRoomInvaders(this.room).length > 0 ||
+        RoomIntel.isInvasionLikely(this.room))
+        ? 1
+        : 0;
+    this.wishlist(amount, CombatSetups.broodlings.default, { reassignIdle: true });
+  }
 
-	init() {
-		const core = this.room && getRoomInvaderCore(this.room);
-		const amount = this.room && (core?.level === 0 || getRoomInvaders(this.room).length > 0
-			|| RoomIntel.isInvasionLikely(this.room)) ? 1 : 0;
-		this.wishlist(amount, CombatSetups.broodlings.default, {reassignIdle: true});
-	}
-
-	run() {
-		for (const guard of this.guards) {
-			// Run the creep if it has a task given to it by something else; otherwise, proceed with non-task actions
-			if (guard.hasValidTask) {
-				guard.run();
-			} else {
-				this.handleGuard(guard);
-			}
-		}
-	}
+  run() {
+    for (const guard of this.guards) {
+      // Run the creep if it has a task given to it by something else; otherwise, proceed with non-task actions
+      if (guard.hasValidTask) {
+        guard.run();
+      } else {
+        this.handleGuard(guard);
+      }
+    }
+  }
 }

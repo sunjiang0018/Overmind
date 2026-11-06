@@ -1,16 +1,16 @@
 // Global settings file containing player information
 
 import {
-	getMyUsername,
-	getReinforcementLearningTrainingVerbosity,
-	onPublicServer,
-	onTrainingEnvironment
-} from './utilities/utils';
+  getMyUsername,
+  getReinforcementLearningTrainingVerbosity,
+  onPublicServer,
+  onTrainingEnvironment,
+} from "./utilities/utils";
 
 /**
  * My Screeps username; used for a variety of updating and communications purposes. (Changing this might break things.)
  */
-export const MUON = 'Muon';
+export const MUON = "Muon";
 
 /**
  * Your username - you shouldn't need to change this.
@@ -46,14 +46,14 @@ export const SUPPRESS_INVALID_DIRECTIVE_ALERTS: boolean = false;
 /**
  * Default controller signature. Use setSignature() to choose another signature.
  */
-export const OVERMIND_SMALL_CAPS = '\u1D0F\u1D20\u1D07\u0280\u1D0D\u026A\u0274\u1D05';
-export const DEFAULT_OVERMIND_SIGNATURE = '星海为途，长路有光';
+export const OVERMIND_SMALL_CAPS = "\u1D0F\u1D20\u1D07\u0280\u1D0D\u026A\u0274\u1D05";
+export const DEFAULT_OVERMIND_SIGNATURE = "星海为途，长路有光";
 global.__DEFAULT_OVERMIND_SIGNATURE__ = DEFAULT_OVERMIND_SIGNATURE;
 
 /**
  * If this is enabled, Memory.bot will default to true. This will not change the mode if already set - use setMode().
  */
-export const DEFAULT_OPERATION_MODE: operationMode = 'automatic';
+export const DEFAULT_OPERATION_MODE: operationMode = "automatic";
 
 /**
  * Limit how many rooms you can claim (for any shard)

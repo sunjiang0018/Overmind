@@ -1,12 +1,12 @@
-import {getRoomHostileStructures, getRoomHostiles} from '../../game/Room';
-import {log} from '../../console/log';
-import {profile} from '../../profiler/decorator';
-import {CombatPlanner, SiegeAnalysis} from '../../strategy/CombatPlanner';
-import {Visualizer} from '../../visuals/Visualizer';
-import {Directive} from '../Directive';
+import { getRoomHostileStructures, getRoomHostiles } from "../../game/Room";
+import { log } from "../../console/log";
+import { profile } from "../../profiler/decorator";
+import { CombatPlanner, SiegeAnalysis } from "../../strategy/CombatPlanner";
+import { Visualizer } from "../../visuals/Visualizer";
+import { Directive } from "../Directive";
 
 interface DirectiveAutoSiegeMemory extends FlagMemory {
-	siegeAnalysis?: SiegeAnalysis;
+  siegeAnalysis?: SiegeAnalysis;
 }
 
 /**
@@ -15,55 +15,57 @@ interface DirectiveAutoSiegeMemory extends FlagMemory {
  */
 @profile
 export class DirectiveAutoSiege extends Directive {
+  static directiveName = "autoSiege";
+  static color = COLOR_RED;
+  static secondaryColor = COLOR_ORANGE;
 
-	static directiveName = 'autoSiege';
-	static color = COLOR_RED;
-	static secondaryColor = COLOR_ORANGE;
+  memory: DirectiveAutoSiegeMemory;
 
-	memory: DirectiveAutoSiegeMemory;
+  // overlords: {
+  // 	scout?: StationaryScoutOverlord;
+  // 	destroy?: SwarmDestroyerOverlord | PairDestroyerOverlord;
+  // 	guard?: OutpostDefenseOverlord;
+  // 	controllerAttack?: ControllerAttackerOverlord;
+  // };
 
-	// overlords: {
-	// 	scout?: StationaryScoutOverlord;
-	// 	destroy?: SwarmDestroyerOverlord | PairDestroyerOverlord;
-	// 	guard?: OutpostDefenseOverlord;
-	// 	controllerAttack?: ControllerAttackerOverlord;
-	// };
+  constructor(flag: Flag) {
+    super(flag);
+  }
 
-	constructor(flag: Flag) {
-		super(flag);
-	}
+  spawnMoarOverlords() {
+    // this.overlords.destroy = new SwarmDestroyerOverlord(this);
+  }
 
-	spawnMoarOverlords() {
-		// this.overlords.destroy = new SwarmDestroyerOverlord(this);
-	}
+  init(): void {
+    this.alert(`Auto-siege directive active`);
+    if (!this.memory.siegeAnalysis || Game.time > this.memory.siegeAnalysis.expiration) {
+      if (this.room) {
+        // Register a siege analysis
+        this.memory.siegeAnalysis = CombatPlanner.getSiegeAnalysis(this.room);
+      } else {
+        // Obtain vision of room
+        if (this.colony.commandCenter && this.colony.commandCenter.observer) {
+          this.colony.commandCenter.requestRoomObservation(this.pos.roomName);
+        } else {
+          // todo
+        }
+      }
+    }
+  }
 
-	init(): void {
-		this.alert(`Auto-siege directive active`);
-		if (!this.memory.siegeAnalysis || Game.time > this.memory.siegeAnalysis.expiration) {
-			if (this.room) {
-				// Register a siege analysis
-				this.memory.siegeAnalysis = CombatPlanner.getSiegeAnalysis(this.room);
-			} else {
-				// Obtain vision of room
-				if (this.colony.commandCenter && this.colony.commandCenter.observer) {
-					this.colony.commandCenter.requestRoomObservation(this.pos.roomName);
-				} else {
-					// todo
-				}
-			}
-		}
-	}
+  run(): void {
+    // If there are no hostiles left in the room then remove the flag and associated healpoint
+    if (
+      this.room &&
+      getRoomHostiles(this.room).length == 0 &&
+      getRoomHostileStructures(this.room).length == 0
+    ) {
+      log.notify(`Auto-siege operation at ${this.pos.roomName} completed successfully.`);
+      this.remove();
+    }
+  }
 
-	run(): void {
-		// If there are no hostiles left in the room then remove the flag and associated healpoint
-		if (this.room && getRoomHostiles(this.room).length == 0 && getRoomHostileStructures(this.room).length == 0) {
-			log.notify(`Auto-siege operation at ${this.pos.roomName} completed successfully.`);
-			this.remove();
-		}
-	}
-
-	visuals(): void {
-		Visualizer.marker(this.pos, {color: 'red'});
-	}
-
+  visuals(): void {
+    Visualizer.marker(this.pos, { color: "red" });
+  }
 }

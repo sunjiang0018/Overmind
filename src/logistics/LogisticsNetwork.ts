@@ -1,73 +1,81 @@
-import {getStoreContents} from '../game/Structures';
-import {getRoomObjectRef, getTargetedBy} from '../game/RoomObject';
-import {getRoomPositionPrint, getRoomPositionPrintPlain, roomPositionGetMultiRoomRangeTo} from '../game/RoomPosition';
-/* tslint:disable:variable-name */
+import { getStoreContents } from "../game/Structures";
+import { getRoomObjectRef, getTargetedBy } from "../game/RoomObject";
+import {
+  getRoomPositionPrint,
+  getRoomPositionPrintPlain,
+  roomPositionGetMultiRoomRangeTo,
+} from "../game/RoomPosition";
 
-import columnify from 'columnify';
-import {Matcher} from '../algorithms/galeShapley';
-import {Colony} from '../Colony';
-import {log} from '../console/log';
-import {Roles} from '../creepSetups/setups';
-import {isAnyZerg, isCreep, isDirective, isResource, isRuin, isTombstone,} from '../declarations/typeGuards';
-import {DirectiveDrop} from '../directives/logistics/drop';
-import {Mem} from '../memory/Memory';
-import {Pathing} from '../movement/Pathing';
-import {profile} from '../profiler/decorator';
-import {minMax} from '../utilities/utils';
-import {Zerg} from '../zerg/Zerg';
-import {mapValues, compact, defaults, sum, remove, max, sortBy} from '../utilities/native';
+import columnify from "columnify";
+import { Matcher } from "../algorithms/galeShapley";
+import { Colony } from "../Colony";
+import { log } from "../console/log";
+import { Roles } from "../creepSetups/setups";
+import {
+  isAnyZerg,
+  isDirective,
+  isResource,
+  isRuin,
+  isTombstone,
+} from "../declarations/typeGuards";
+import { DirectiveDrop } from "../directives/logistics/drop";
+import { Mem } from "../memory/Memory";
+import { Pathing } from "../movement/Pathing";
+import { profile } from "../profiler/decorator";
+import { minMax } from "../utilities/utils";
+import { Zerg } from "../zerg/Zerg";
+import { mapValues, compact, defaults, sum, remove, max, sortBy } from "../utilities/native";
 
 export type LogisticsTarget =
-	StructureContainer
-	| StructureExtension
-	| StructureFactory
-	| StructureLab
-	| StructureLink
-	| StructureNuker
-	| StructurePowerSpawn
-	| StructureSpawn
-	| StructureStorage
-	| StructureTerminal
-	| StructureTower
-	| Ruin
-	| Tombstone
-	| Resource
-	| DirectiveDrop
-	| Zerg;
+  | StructureContainer
+  | StructureExtension
+  | StructureFactory
+  | StructureLab
+  | StructureLink
+  | StructureNuker
+  | StructurePowerSpawn
+  | StructureSpawn
+  | StructureStorage
+  | StructureTerminal
+  | StructureTower
+  | Ruin
+  | Tombstone
+  | Resource
+  | DirectiveDrop
+  | Zerg;
 
-export const ALL_RESOURCE_TYPE_ERROR =
-				 `Improper logistics request: 'all' can only be used for store structure or tombstone!`;
+export const ALL_RESOURCE_TYPE_ERROR = `Improper logistics request: 'all' can only be used for store structure or tombstone!`;
 
 export type BufferTarget = StructureStorage | StructureTerminal;
 
 export interface LogisticsRequest {
-	id: string;							// ID of the request; used for matching purposes
-	target: LogisticsTarget;			// Target making the request
-	amount: number;						// Amount to request
-	dAmountdt: number;					// Optional value showing how fast it fills up / empties (e.g. mining rates)
-	resourceType: ResourceConstant | 'all';		// Resource type being requested
-	multiplier: number;					// Multiplier to prioritize important requests
+  id: string; // ID of the request; used for matching purposes
+  target: LogisticsTarget; // Target making the request
+  amount: number; // Amount to request
+  dAmountdt: number; // Optional value showing how fast it fills up / empties (e.g. mining rates)
+  resourceType: ResourceConstant | "all"; // Resource type being requested
+  multiplier: number; // Multiplier to prioritize important requests
 }
 
 interface RequestOptions {
-	amount?: number;
-	dAmountdt?: number;					// Always pass a positive value for this; sign is determined by function call
-	resourceType?: ResourceConstant | 'all';
-	multiplier?: number;
+  amount?: number;
+  dAmountdt?: number; // Always pass a positive value for this; sign is determined by function call
+  resourceType?: ResourceConstant | "all";
+  multiplier?: number;
 }
 
 interface LogisticsNetworkMemory {
-	transporterCache: {
-		[transporterName: string]: {
-			nextAvailability: [number, RoomPosition],
-			predictedTransporterCarry: ResourceAmounts,
-			tick: number,
-		}
-	};
+  transporterCache: {
+    [transporterName: string]: {
+      nextAvailability: [number, RoomPosition];
+      predictedTransporterCarry: ResourceAmounts;
+      tick: number;
+    };
+  };
 }
 
 const getDefaultLogisticsMemory: () => LogisticsNetworkMemory = () => ({
-	transporterCache: {},
+  transporterCache: {},
 });
 
 /**
@@ -77,660 +85,744 @@ const getDefaultLogisticsMemory: () => LogisticsNetworkMemory = () => ({
  */
 @profile
 export class LogisticsNetwork {
+  memory: LogisticsNetworkMemory;
+  requests: LogisticsRequest[];
+  // transporters: Zerg[];
+  buffers: BufferTarget[];
+  colony: Colony;
+  private targetToRequest: { [targetRef: string]: number };
+  private _matching: { [creepName: string]: LogisticsRequest | undefined } | undefined;
+  // private logisticPositions: { [roomName: string]: RoomPosition[] };
+  private cache: {
+    nextAvailability: { [transporterName: string]: [number, RoomPosition] };
+    predictedTransporterCarry: { [transporterName: string]: ResourceAmounts };
+    resourceChangeRate: { [requestID: string]: { [transporterName: string]: number } };
+  };
+  static settings = {
+    flagDropAmount: 1000,
+    rangeToPathHeuristic: 1.1, // findClosestByRange * this ~= findClosestByPos except in pathological cases
+    carryThreshold: 800, // only do stable matching on transporters at least this big (RCL4+)
+    droppedEnergyThreshold: 200, // ignore dropped energy below this amount
+  };
 
-	memory: LogisticsNetworkMemory;
-	requests: LogisticsRequest[];
-	// transporters: Zerg[];
-	buffers: BufferTarget[];
-	colony: Colony;
-	private targetToRequest: { [targetRef: string]: number };
-	private _matching: { [creepName: string]: LogisticsRequest | undefined } | undefined;
-	// private logisticPositions: { [roomName: string]: RoomPosition[] };
-	private cache: {
-		nextAvailability: { [transporterName: string]: [number, RoomPosition] },
-		predictedTransporterCarry: { [transporterName: string]: ResourceAmounts },
-		resourceChangeRate: { [requestID: string]: { [transporterName: string]: number } },
-	};
-	static settings = {
-		flagDropAmount        : 1000,
-		rangeToPathHeuristic  : 1.1, 	// findClosestByRange * this ~= findClosestByPos except in pathological cases
-		carryThreshold        : 800, 	// only do stable matching on transporters at least this big (RCL4+)
-		droppedEnergyThreshold: 200,	// ignore dropped energy below this amount
-	};
+  constructor(colony: Colony) {
+    this.memory = Mem.wrap(colony.memory, "logisticsNetwork", getDefaultLogisticsMemory);
+    this.requests = [];
+    this.targetToRequest = {};
+    this.colony = colony;
+    // this.transporters = _.filter(colony.getCreepsByRole(TransporterSetup.role),
+    // 							 creep => !creep.spawning &&
+    // 									  creep.carryCapacity >= LogisticsNetwork.settings.carryThreshold);
+    this.buffers = compact([colony.storage!, colony.terminal!]);
+    this.cache = {
+      nextAvailability: {},
+      predictedTransporterCarry: {},
+      resourceChangeRate: {},
+    };
+    // this.logisticPositions = {};
+    // for (let room of this.colony.rooms) {
+    // 	this.logisticPositions[room.name] = _.map([...room.storageUnits, ...room.links], s => s.pos);
+    // }
+  }
 
-	constructor(colony: Colony) {
-		this.memory = Mem.wrap(colony.memory, 'logisticsNetwork', getDefaultLogisticsMemory);
-		this.requests = [];
-		this.targetToRequest = {};
-		this.colony = colony;
-		// this.transporters = _.filter(colony.getCreepsByRole(TransporterSetup.role),
-		// 							 creep => !creep.spawning &&
-		// 									  creep.carryCapacity >= LogisticsNetwork.settings.carryThreshold);
-		this.buffers = compact([colony.storage!, colony.terminal!]);
-		this.cache = {
-			nextAvailability         : {},
-			predictedTransporterCarry: {},
-			resourceChangeRate       : {}
-		};
-		// this.logisticPositions = {};
-		// for (let room of this.colony.rooms) {
-		// 	this.logisticPositions[room.name] = _.map([...room.storageUnits, ...room.links], s => s.pos);
-		// }
-	}
+  refresh(): void {
+    this.memory = Mem.wrap(this.colony.memory, "logisticsNetwork", getDefaultLogisticsMemory);
+    this.requests = [];
+    this.targetToRequest = {};
+    this._matching = undefined;
+    this.cache = {
+      nextAvailability: {},
+      predictedTransporterCarry: {},
+      resourceChangeRate: {},
+    };
+  }
 
-	refresh(): void {
-		this.memory = Mem.wrap(this.colony.memory, 'logisticsNetwork', getDefaultLogisticsMemory);
-		this.requests = [];
-		this.targetToRequest = {};
-		this._matching = undefined;
-		this.cache = {
-			nextAvailability         : {},
-			predictedTransporterCarry: {},
-			resourceChangeRate       : {}
-		};
-	}
+  // Request and provide functions ===================================================================================
 
-	// Request and provide functions ===================================================================================
+  /**
+   * Request for resources to be deposited into this target
+   */
+  requestInput(target: LogisticsTarget, opts = {} as RequestOptions): void {
+    defaults(opts, {
+      resourceType: RESOURCE_ENERGY,
+      multiplier: 1,
+      dAmountdt: 0,
+    });
+    if (target.room != this.colony.room) {
+      log.warning(
+        `${getRoomObjectRef(target)} at ${getRoomPositionPrint(target.pos)} is outside colony room; shouldn't request!`,
+      );
+      return;
+    }
+    if (opts.resourceType == "all") {
+      log.warning(`Logistics request error: 'all' can only be used for output requests`);
+      return;
+    }
+    if (!opts.amount) {
+      opts.amount = this.getInputAmount(target, opts.resourceType!);
+    }
+    // Register the request
+    const requestID = this.requests.length;
+    const req: LogisticsRequest = {
+      id: requestID.toString(),
+      target: target,
+      amount: opts.amount,
+      dAmountdt: opts.dAmountdt!,
+      resourceType: opts.resourceType!,
+      multiplier: opts.multiplier!,
+    };
+    this.requests.push(req);
+    this.targetToRequest[getRoomObjectRef(req.target)] = requestID;
+  }
 
-	/**
-	 * Request for resources to be deposited into this target
-	 */
-	requestInput(target: LogisticsTarget, opts = {} as RequestOptions): void {
-		defaults(opts, {
-			resourceType: RESOURCE_ENERGY,
-			multiplier  : 1,
-			dAmountdt   : 0,
-		});
-		if (target.room != this.colony.room) {
-			log.warning(`${getRoomObjectRef(target)} at ${getRoomPositionPrint(target.pos)} is outside colony room; shouldn't request!`);
-			return;
-		}
-		if (opts.resourceType == 'all') {
-			log.warning(`Logistics request error: 'all' can only be used for output requests`);
-			return;
-		}
-		if (!opts.amount) {
-			opts.amount = this.getInputAmount(target, opts.resourceType!);
-		}
-		// Register the request
-		const requestID = this.requests.length;
-		const req: LogisticsRequest = {
-			id          : requestID.toString(),
-			target      : target,
-			amount      : opts.amount,
-			dAmountdt   : opts.dAmountdt!,
-			resourceType: opts.resourceType!,
-			multiplier  : opts.multiplier!,
-		};
-		this.requests.push(req);
-		this.targetToRequest[getRoomObjectRef(req.target)] = requestID;
-	}
+  /**
+   * Request for resources to be withdrawn from this target
+   */
+  requestOutput(target: LogisticsTarget, opts = {} as RequestOptions): void {
+    defaults(opts, {
+      resourceType: RESOURCE_ENERGY,
+      multiplier: 1,
+      dAmountdt: 0,
+    });
+    if (opts.resourceType == "all" && !isResource(target)) {
+      if (sum(target.store) == target.store.energy) {
+        opts.resourceType = RESOURCE_ENERGY; // convert "all" requests to energy if that's all they have
+      }
+    }
+    if (!opts.amount) {
+      opts.amount = this.getOutputAmount(target, opts.resourceType!);
+    }
+    opts.amount *= -1;
+    opts.dAmountdt! *= -1;
+    // Register the request
+    const requestID = this.requests.length;
+    const req: LogisticsRequest = {
+      id: requestID.toString(),
+      target: target,
+      amount: opts.amount,
+      dAmountdt: opts.dAmountdt!,
+      resourceType: opts.resourceType!,
+      multiplier: opts.multiplier!,
+    };
+    this.requests.push(req);
+    this.targetToRequest[getRoomObjectRef(req.target)] = requestID;
+  }
 
-	/**
-	 * Request for resources to be withdrawn from this target
-	 */
-	requestOutput(target: LogisticsTarget, opts = {} as RequestOptions): void {
-		defaults(opts, {
-			resourceType: RESOURCE_ENERGY,
-			multiplier  : 1,
-			dAmountdt   : 0,
-		});
-		if (opts.resourceType == 'all' && !isResource(target)) {
-			if (sum(target.store) == target.store.energy) {
-				opts.resourceType = RESOURCE_ENERGY; // convert "all" requests to energy if that's all they have
-			}
-		}
-		if (!opts.amount) {
-			opts.amount = this.getOutputAmount(target, opts.resourceType!);
-		}
-		opts.amount *= -1;
-		(opts.dAmountdt!) *= -1;
-		// Register the request
-		const requestID = this.requests.length;
-		const req: LogisticsRequest = {
-			id          : requestID.toString(),
-			target      : target,
-			amount      : opts.amount,
-			dAmountdt   : opts.dAmountdt!,
-			resourceType: opts.resourceType!,
-			multiplier  : opts.multiplier!,
-		};
-		this.requests.push(req);
-		this.targetToRequest[getRoomObjectRef(req.target)] = requestID;
-	}
+  /**
+   * Requests output for every mineral in a requestor object
+   */
+  requestOutputMinerals(
+    target: Exclude<LogisticsTarget, Resource>,
+    opts = {} as RequestOptions,
+  ): void {
+    for (const [resourceType, amount] of getStoreContents(target.store)) {
+      if (resourceType == RESOURCE_ENERGY) continue;
+      if (amount > 0) {
+        opts.resourceType = <ResourceConstant>resourceType;
+        this.requestOutput(target, opts);
+      }
+    }
+  }
 
-	/**
-	 * Requests output for every mineral in a requestor object
-	 */
-	requestOutputMinerals(target: Exclude<LogisticsTarget, Resource>, opts = {} as RequestOptions): void {
-		for (const [resourceType, amount] of getStoreContents(target.store)) {
-			if (resourceType == RESOURCE_ENERGY) continue;
-			if (amount > 0) {
-				opts.resourceType = <ResourceConstant>resourceType;
-				this.requestOutput(target, opts);
-			}
-		}
-	}
+  private getInputAmount(target: LogisticsTarget, resourceType: ResourceConstant): number {
+    // if (target instanceof DirectivePickup) {
+    // 	return target.storeCapacity - _.sum(target.store);
+    // } else
+    if (isResource(target) || isTombstone(target) || isRuin(target)) {
+      log.error(`Improper logistics request: should not request input for resource or tombstone!`);
+      return 0;
+    } else if (isDirective(target)) {
+      return target.memory.amount - (target.store[resourceType] || 0);
+    } else {
+      return target.store.getFreeCapacity(resourceType) || 0;
+    }
 
-	private getInputAmount(target: LogisticsTarget, resourceType: ResourceConstant): number {
-		// if (target instanceof DirectivePickup) {
-		// 	return target.storeCapacity - _.sum(target.store);
-		// } else
-		if (isResource(target) || isTombstone(target) || isRuin(target)) {
-			log.error(`Improper logistics request: should not request input for resource or tombstone!`);
-			return 0;
-		} else if (isDirective(target)) {
-			return target.memory.amount - (target.store[resourceType] || 0);
-		} else {
-			return target.store.getFreeCapacity(resourceType) || 0;
-		}
+    // else if (isStoreStructure(target)) {
+    // 	return target.storeCapacity - _.sum(target.store);
+    // } else if (isEnergyStructure(target) && resourceType == RESOURCE_ENERGY) {
+    // 	return target.energyCapacity - target.energy;
+    // }
+    // // else if (target instanceof Zerg) {
+    // // 	return target.carryCapacity - _.sum(target.carry);
+    // // }
+    // else {
+    // 	if (target instanceof StructureLab) {
+    // 		if (resourceType == target.mineralType) {
+    // 			return target.mineralCapacity - target.mineralAmount;
+    // 		} else if (resourceType == RESOURCE_ENERGY) {
+    // 			return target.energyCapacity - target.energy;
+    // 		}
+    // 	} else if (target instanceof StructureNuker) {
+    // 		if (resourceType == RESOURCE_GHODIUM) {
+    // 			return target.ghodiumCapacity - target.ghodium;
+    // 		} else if (resourceType == RESOURCE_ENERGY) {
+    // 			return target.energyCapacity - target.energy;
+    // 		}
+    // 	} else if (target instanceof StructurePowerSpawn) {
+    // 		if (resourceType == RESOURCE_POWER) {
+    // 			return target.powerCapacity - target.power;
+    // 		} else if (resourceType == RESOURCE_ENERGY) {
+    // 			return target.energyCapacity - target.energy;
+    // 		}
+    // 	}
+    // }
+    // log.warning('Could not determine input amount!');
+    // return 0;
+  }
 
+  private getOutputAmount(target: LogisticsTarget, resourceType: ResourceConstant | "all"): number {
+    if (resourceType == "all") {
+      if (isResource(target)) {
+        log.error(ALL_RESOURCE_TYPE_ERROR);
+        return 0;
+      } else {
+        // @ts-ignore
+        return target.store.getUsedCapacity();
+      }
+    } else {
+      if (isResource(target)) {
+        return target.amount;
+      } else {
+        // @ts-ignore
+        return target.store.getUsedCapacity(resourceType);
+      }
 
-		// else if (isStoreStructure(target)) {
-		// 	return target.storeCapacity - _.sum(target.store);
-		// } else if (isEnergyStructure(target) && resourceType == RESOURCE_ENERGY) {
-		// 	return target.energyCapacity - target.energy;
-		// }
-		// // else if (target instanceof Zerg) {
-		// // 	return target.carryCapacity - _.sum(target.carry);
-		// // }
-		// else {
-		// 	if (target instanceof StructureLab) {
-		// 		if (resourceType == target.mineralType) {
-		// 			return target.mineralCapacity - target.mineralAmount;
-		// 		} else if (resourceType == RESOURCE_ENERGY) {
-		// 			return target.energyCapacity - target.energy;
-		// 		}
-		// 	} else if (target instanceof StructureNuker) {
-		// 		if (resourceType == RESOURCE_GHODIUM) {
-		// 			return target.ghodiumCapacity - target.ghodium;
-		// 		} else if (resourceType == RESOURCE_ENERGY) {
-		// 			return target.energyCapacity - target.energy;
-		// 		}
-		// 	} else if (target instanceof StructurePowerSpawn) {
-		// 		if (resourceType == RESOURCE_POWER) {
-		// 			return target.powerCapacity - target.power;
-		// 		} else if (resourceType == RESOURCE_ENERGY) {
-		// 			return target.energyCapacity - target.energy;
-		// 		}
-		// 	}
-		// }
-		// log.warning('Could not determine input amount!');
-		// return 0;
-	}
+      // Legacy code
+      // else if (isTombstone(target)) {
+      // 	return target.store[resourceType] || 0;
+      // } else if (isStoreStructure(target)) {
+      // 	return target.store[resourceType] || 0;
+      // } else if (isEnergyStructure(target) && resourceType == RESOURCE_ENERGY) {
+      // 	return target.energy;
+      // }
+      // // else if (target instanceof Zerg) {
+      // // 	return target.carry[resourceType]!;
+      // // }
+      // else {
+      // 	if (target instanceof StructureLab) {
+      // 		if (resourceType == target.mineralType) {
+      // 			return target.mineralAmount;
+      // 		} else if (resourceType == RESOURCE_ENERGY) {
+      // 			return target.energy;
+      // 		}
+      // 	} else if (target instanceof StructureNuker) {
+      // 		if (resourceType == RESOURCE_GHODIUM) {
+      // 			return target.ghodium;
+      // 		} else if (resourceType == RESOURCE_ENERGY) {
+      // 			return target.energy;
+      // 		}
+      // 	} else if (target instanceof StructurePowerSpawn) {
+      // 		if (resourceType == RESOURCE_POWER) {
+      // 			return target.power;
+      // 		} else if (resourceType == RESOURCE_ENERGY) {
+      // 			return target.energy;
+      // 		}
+      // 	}
+      // }
+    }
+    // log.warning('Could not determine output amount!');
+    // return 0;
+  }
 
-	private getOutputAmount(target: LogisticsTarget, resourceType: ResourceConstant | 'all'): number {
-		if (resourceType == 'all') {
-			if (isResource(target)) {
-				log.error(ALL_RESOURCE_TYPE_ERROR);
-				return 0;
-			} else {
-				// @ts-ignore
-				return target.store.getUsedCapacity();
-			}
-		} else {
-			if (isResource(target)) {
-				return target.amount;
-			} else {
-				// @ts-ignore
-				return target.store.getUsedCapacity(resourceType);
-			}
+  // Transporter availability and predictive functions ===============================================================
 
-			// Legacy code
-			// else if (isTombstone(target)) {
-			// 	return target.store[resourceType] || 0;
-			// } else if (isStoreStructure(target)) {
-			// 	return target.store[resourceType] || 0;
-			// } else if (isEnergyStructure(target) && resourceType == RESOURCE_ENERGY) {
-			// 	return target.energy;
-			// }
-			// // else if (target instanceof Zerg) {
-			// // 	return target.carry[resourceType]!;
-			// // }
-			// else {
-			// 	if (target instanceof StructureLab) {
-			// 		if (resourceType == target.mineralType) {
-			// 			return target.mineralAmount;
-			// 		} else if (resourceType == RESOURCE_ENERGY) {
-			// 			return target.energy;
-			// 		}
-			// 	} else if (target instanceof StructureNuker) {
-			// 		if (resourceType == RESOURCE_GHODIUM) {
-			// 			return target.ghodium;
-			// 		} else if (resourceType == RESOURCE_ENERGY) {
-			// 			return target.energy;
-			// 		}
-			// 	} else if (target instanceof StructurePowerSpawn) {
-			// 		if (resourceType == RESOURCE_POWER) {
-			// 			return target.power;
-			// 		} else if (resourceType == RESOURCE_ENERGY) {
-			// 			return target.energy;
-			// 		}
-			// 	}
-			// }
-		}
-		// log.warning('Could not determine output amount!');
-		// return 0;
-	}
+  private computeNextAvailability(transporter: Zerg): [number, RoomPosition] {
+    if (transporter.task) {
+      let approximateDistance = transporter.task.eta;
+      let pos = transporter.pos;
+      const targetPositions = transporter.task.targetPosManifest;
+      // If there is a well-defined task ETA, use that as the first leg, else set dist to zero and use range
+      if (approximateDistance) {
+        for (const targetPos of targetPositions.slice(1)) {
+          // The path lengths between any two logistics targets should be well-memorized
+          approximateDistance += Math.ceil(
+            roomPositionGetMultiRoomRangeTo(pos, targetPos) *
+              LogisticsNetwork.settings.rangeToPathHeuristic,
+          );
+          // approximateDistance += Pathing.distance(pos, targetPos);
+          pos = targetPos;
+        }
+      } else {
+        // This probably shouldn't happen...
+        approximateDistance = 0;
+        for (const targetPos of targetPositions) {
+          approximateDistance += Math.ceil(
+            roomPositionGetMultiRoomRangeTo(pos, targetPos) *
+              LogisticsNetwork.settings.rangeToPathHeuristic,
+          );
+          // approximateDistance += Pathing.distance(pos, targetPos);
+          pos = targetPos;
+        }
+      }
+      return [approximateDistance, pos];
+    } else {
+      // Report the transporter as being near a logistics target so that Pathing.distance() won't waste CPU
+      // let nearbyLogisticPositions = transporter.pos.findInRange(this.logisticPositions[transporter.room.name], 2);
+      return [0, transporter.pos];
+    }
+  }
 
-	// Transporter availability and predictive functions ===============================================================
+  /**
+   * Number of ticks until the transporter is available and where it will be
+   */
+  private nextAvailability(transporter: Zerg): [number, RoomPosition] {
+    if (!this.cache.nextAvailability[transporter.name]) {
+      this.cache.nextAvailability[transporter.name] = this.computeNextAvailability(transporter);
+    }
+    return this.cache.nextAvailability[transporter.name];
+  }
 
-	private computeNextAvailability(transporter: Zerg): [number, RoomPosition] {
-		if (transporter.task) {
-			let approximateDistance = transporter.task.eta;
-			let pos = transporter.pos;
-			const targetPositions = transporter.task.targetPosManifest;
-			// If there is a well-defined task ETA, use that as the first leg, else set dist to zero and use range
-			if (approximateDistance) {
-				for (const targetPos of targetPositions.slice(1)) {
-					// The path lengths between any two logistics targets should be well-memorized
-					approximateDistance += Math.ceil(roomPositionGetMultiRoomRangeTo(pos, targetPos)
-													 * LogisticsNetwork.settings.rangeToPathHeuristic);
-					// approximateDistance += Pathing.distance(pos, targetPos);
-					pos = targetPos;
-				}
-			} else {
-				// This probably shouldn't happen...
-				approximateDistance = 0;
-				for (const targetPos of targetPositions) {
-					approximateDistance += Math.ceil(roomPositionGetMultiRoomRangeTo(pos, targetPos)
-													 * LogisticsNetwork.settings.rangeToPathHeuristic);
-					// approximateDistance += Pathing.distance(pos, targetPos);
-					pos = targetPos;
-				}
-			}
-			return [approximateDistance, pos];
-		} else {
-			// Report the transporter as being near a logistics target so that Pathing.distance() won't waste CPU
-			// let nearbyLogisticPositions = transporter.pos.findInRange(this.logisticPositions[transporter.room.name], 2);
-			return [0, transporter.pos];
-		}
-	}
+  static targetingTransporters(target: LogisticsTarget, excludedTransporter?: Zerg): Zerg[] {
+    const targetingZerg = (getTargetedBy(target) || []).map((name) => Overmind.zerg[name]);
+    const targetingTransporters = targetingZerg.filter((zerg) => zerg.roleName == Roles.transport);
+    if (excludedTransporter) {
+      remove(targetingTransporters, (transporter) => transporter.name == excludedTransporter.name);
+    }
+    return targetingTransporters;
+  }
 
-	/**
-	 * Number of ticks until the transporter is available and where it will be
-	 */
-	private nextAvailability(transporter: Zerg): [number, RoomPosition] {
-		if (!this.cache.nextAvailability[transporter.name]) {
-			this.cache.nextAvailability[transporter.name] = this.computeNextAvailability(transporter);
-		}
-		return this.cache.nextAvailability[transporter.name];
-	}
+  /**
+   * Returns the predicted state of the transporter's carry after completing its current task
+   */
+  private computePredictedTransporterCarry(
+    transporter: Zerg,
+    nextAvailability?: [number, RoomPosition],
+  ): {
+    [resourceType in ResourceConstant]?: number;
+  } {
+    if (transporter.task && transporter.task.target) {
+      const requestID = this.targetToRequest[getRoomObjectRef(transporter.task.target)];
+      if (requestID != undefined) {
+        const request = this.requests[requestID];
+        if (request) {
+          // Predict on a copy: Screeps Store properties are read-only, and forecasts must not alter live cargo.
+          const carry = { ...transporter.carry } as ResourceAmounts;
+          const remainingCapacity = transporter.carryCapacity - sum(carry);
+          const resourceAmount =
+            -1 * this.predictedRequestAmount(transporter, request, nextAvailability);
+          // ^ need to multiply amount by -1 since transporter is doing complement of what request needs
+          if (request.resourceType == "all") {
+            if (isResource(request.target)) {
+              log.error(ALL_RESOURCE_TYPE_ERROR);
+              return { energy: 0 };
+            }
+            const stored = sum(request.target.store);
+            const pickup = minMax(resourceAmount, 0, remainingCapacity);
+            for (const [resourceType, storeAmt] of getStoreContents(request.target.store)) {
+              const resourceFraction = stored > 0 ? storeAmt / stored : 0;
+              carry[resourceType] = (carry[resourceType] || 0) + pickup * resourceFraction;
+            }
+          } else {
+            const current = carry[request.resourceType] || 0;
+            carry[request.resourceType] = minMax(
+              current + resourceAmount,
+              0,
+              current + remainingCapacity,
+            );
+          }
+          return carry;
+        }
+      }
+    }
+    return { ...transporter.carry };
+  }
 
-	static targetingTransporters(target: LogisticsTarget, excludedTransporter?: Zerg): Zerg[] {
-		const targetingZerg = (getTargetedBy(target) || []).map(name => Overmind.zerg[name]);
-		const targetingTransporters = targetingZerg.filter(zerg => zerg.roleName == Roles.transport);
-		if (excludedTransporter) {
-			remove(targetingTransporters, transporter => transporter.name == excludedTransporter.name);
-		}
-		return targetingTransporters;
-	}
+  /**
+   * Returns the predicted state of the transporter's carry after completing its task
+   */
+  private predictedTransporterCarry(transporter: Zerg): ResourceAmounts {
+    if (!this.cache.predictedTransporterCarry[transporter.name]) {
+      this.cache.predictedTransporterCarry[transporter.name] =
+        this.computePredictedTransporterCarry(transporter);
+    }
+    return this.cache.predictedTransporterCarry[transporter.name];
+  }
 
-	/**
-	 * Returns the predicted state of the transporter's carry after completing its current task
-	 */
-	private computePredictedTransporterCarry(transporter: Zerg,
-											 nextAvailability?: [number, RoomPosition]): {
-		[resourceType in ResourceConstant]?: number
-	} {
-		if (transporter.task && transporter.task.target) {
-			const requestID = this.targetToRequest[getRoomObjectRef(transporter.task.target)];
-			if (requestID != undefined) {
-				const request = this.requests[requestID];
-				if (request) {
-					// Predict on a copy: Screeps Store properties are read-only, and forecasts must not alter live cargo.
-					const carry = {...transporter.carry} as ResourceAmounts;
-					const remainingCapacity = transporter.carryCapacity - sum(carry);
-					const resourceAmount = -1 * this.predictedRequestAmount(transporter, request, nextAvailability);
-					// ^ need to multiply amount by -1 since transporter is doing complement of what request needs
-					if (request.resourceType == 'all') {
-						if (isResource(request.target)) {
-							log.error(ALL_RESOURCE_TYPE_ERROR);
-							return {energy: 0};
-						}
-						const stored = sum(request.target.store);
-						const pickup = minMax(resourceAmount, 0, remainingCapacity);
-						for (const [resourceType, storeAmt] of getStoreContents(request.target.store)) {
-							const resourceFraction = stored > 0 ? storeAmt / stored : 0;
-							carry[resourceType] = (carry[resourceType] || 0) + pickup * resourceFraction;
-						}
-					} else {
-						const current = carry[request.resourceType] || 0;
-						carry[request.resourceType] = minMax(current + resourceAmount, 0, current + remainingCapacity);
-					}
-					return carry;
-				}
-			}
-		}
-		return {...transporter.carry};
-	}
+  /**
+   * Returns the effective amount that a transporter will see upon arrival, accounting for other targeting creeps
+   */
+  predictedRequestAmount(
+    transporter: Zerg,
+    request: LogisticsRequest,
+    nextAvailability?: [number, RoomPosition],
+  ): number {
+    // Figure out when/where the transporter will be free
+    let busyUntil: number;
+    let newPos: RoomPosition;
+    if (!nextAvailability) {
+      [busyUntil, newPos] = this.nextAvailability(transporter);
+    } else {
+      [busyUntil, newPos] = nextAvailability;
+    }
+    // let eta = busyUntil + Pathing.distance(newPos, request.target.pos);
+    const eta =
+      busyUntil +
+      LogisticsNetwork.settings.rangeToPathHeuristic *
+        roomPositionGetMultiRoomRangeTo(newPos, request.target.pos);
+    const predictedDifference = request.dAmountdt * eta; // dAmountdt has same sign as amount
+    // Account for other transporters targeting the target
+    const otherTargetingTransporters = LogisticsNetwork.targetingTransporters(
+      request.target,
+      transporter,
+    );
+    // let closerTargetingTransporters = _.filter(otherTargetingTransporters,
+    // 										   transporter => this.nextAvailability(transporter)[0] < eta);
+    if (request.amount > 0) {
+      // input state, resources into target
+      let predictedAmount = request.amount + predictedDifference;
+      // if (isStoreStructure(request.target)) { 	// cap predicted amount at storeCapacity
+      // 	predictedAmount = Math.min(predictedAmount, request.target.storeCapacity);
+      // } else if (isEnergyStructure(request.target)) {
+      // 	predictedAmount = Math.min(predictedAmount, request.target.energyCapacity);
+      // }
 
-	/**
-	 * Returns the predicted state of the transporter's carry after completing its task
-	 */
-	private predictedTransporterCarry(transporter: Zerg): ResourceAmounts {
-		if (!this.cache.predictedTransporterCarry[transporter.name]) {
-			this.cache.predictedTransporterCarry[transporter.name] = this.computePredictedTransporterCarry(transporter);
-		}
-		return this.cache.predictedTransporterCarry[transporter.name];
-	}
+      if (!isResource(request.target)) {
+        predictedAmount = minMax(
+          predictedAmount,
+          0,
+          // @ts-ignore
+          request.target.store.getCapacity(request.resourceType),
+        );
+      }
+      // TODO: this is incorrect; should incorporate request amount
+      const resourceInflux = sum(
+        otherTargetingTransporters,
+        (other) => other.carry[<ResourceConstant>request.resourceType] || 0,
+      );
+      predictedAmount = Math.max(predictedAmount - resourceInflux, 0);
+      return predictedAmount;
+    } else {
+      // output state, resources withdrawn from target
+      let predictedAmount = request.amount + predictedDifference;
+      // if (isStoreStructure(request.target)) { 	// cap predicted amount at -1 * storeCapacity
+      // 	predictedAmount = Math.max(predictedAmount, -1 * request.target.storeCapacity);
+      // } else if (isEnergyStructure(request.target)) {
+      // 	predictedAmount = Math.min(predictedAmount, -1 * request.target.energyCapacity);
+      // }
+      if (!isResource(request.target)) {
+        predictedAmount = minMax(
+          predictedAmount,
+          // @ts-ignore
+          -1 * request.target.store.getCapacity(request.resourceType),
+          0,
+        );
+      }
+      const resourceOutflux = sum(
+        otherTargetingTransporters,
+        (other) => other.carryCapacity - sum(other.carry),
+      );
+      predictedAmount = Math.min(predictedAmount + resourceOutflux, 0);
+      return predictedAmount;
+    }
+  }
 
-	/**
-	 * Returns the effective amount that a transporter will see upon arrival, accounting for other targeting creeps
-	 */
-	predictedRequestAmount(transporter: Zerg, request: LogisticsRequest,
-						   nextAvailability?: [number, RoomPosition]): number {
-		// Figure out when/where the transporter will be free
-		let busyUntil: number;
-		let newPos: RoomPosition;
-		if (!nextAvailability) {
-			[busyUntil, newPos] = this.nextAvailability(transporter);
-		} else {
-			[busyUntil, newPos] = nextAvailability;
-		}
-		// let eta = busyUntil + Pathing.distance(newPos, request.target.pos);
-		const eta = busyUntil + LogisticsNetwork.settings.rangeToPathHeuristic *
-					roomPositionGetMultiRoomRangeTo(newPos, request.target.pos);
-		const predictedDifference = request.dAmountdt * eta; // dAmountdt has same sign as amount
-		// Account for other transporters targeting the target
-		const otherTargetingTransporters = LogisticsNetwork.targetingTransporters(request.target, transporter);
-		// let closerTargetingTransporters = _.filter(otherTargetingTransporters,
-		// 										   transporter => this.nextAvailability(transporter)[0] < eta);
-		if (request.amount > 0) { // input state, resources into target
-			let predictedAmount = request.amount + predictedDifference;
-			// if (isStoreStructure(request.target)) { 	// cap predicted amount at storeCapacity
-			// 	predictedAmount = Math.min(predictedAmount, request.target.storeCapacity);
-			// } else if (isEnergyStructure(request.target)) {
-			// 	predictedAmount = Math.min(predictedAmount, request.target.energyCapacity);
-			// }
+  // Functions for computing resource change rate ====================================================================
 
-			if (!isResource(request.target)) {
-				// @ts-ignore
-				predictedAmount = minMax(predictedAmount, 0, request.target.store.getCapacity(request.resourceType));
-			}
-			// TODO: this is incorrect; should incorporate request amount
-			const resourceInflux = sum(otherTargetingTransporters,
-				other => (other.carry[<ResourceConstant>request.resourceType] || 0));
-			predictedAmount = Math.max(predictedAmount - resourceInflux, 0);
-			return predictedAmount;
-		} else { // output state, resources withdrawn from target
-			let predictedAmount = request.amount + predictedDifference;
-			// if (isStoreStructure(request.target)) { 	// cap predicted amount at -1 * storeCapacity
-			// 	predictedAmount = Math.max(predictedAmount, -1 * request.target.storeCapacity);
-			// } else if (isEnergyStructure(request.target)) {
-			// 	predictedAmount = Math.min(predictedAmount, -1 * request.target.energyCapacity);
-			// }
-			if (!isResource(request.target)) {
-				// @ts-ignore
-				predictedAmount = minMax(predictedAmount, -1 * request.target.store.getCapacity(request.resourceType), 0);
-			}
-			const resourceOutflux = sum(otherTargetingTransporters, other => other.carryCapacity - sum(other.carry));
-			predictedAmount = Math.min(predictedAmount + resourceOutflux, 0);
-			return predictedAmount;
-		}
-	}
+  /**
+   * Consider all possibilities of buffer structures to visit on the way to fulfilling the request
+   */
+  bufferChoices(
+    transporter: Zerg,
+    request: LogisticsRequest,
+  ): {
+    dQ: number; // Absolute value of amount of resource transported with the choice
+    dt: number; // Amount of time to execute the choice
+    targetRef: string; // Reference of the immediate target
+  }[] {
+    const [ticksUntilFree, newPos] = this.nextAvailability(transporter);
+    const choices: { dQ: number; dt: number; targetRef: string }[] = [];
+    const amount = this.predictedRequestAmount(transporter, request, [ticksUntilFree, newPos]);
+    let carry: ResourceAmounts;
+    if (!transporter.task || transporter.task.target != request.target) {
+      // If you are not targeting the requestor, use predicted carry after completing current task
+      carry = this.predictedTransporterCarry(transporter);
+    } else {
+      // If you are targeting the requestor, use current carry for computations
+      carry = transporter.carry;
+    }
 
-	// Functions for computing resource change rate ====================================================================
+    // requestInput instance, needs refilling
+    if (amount > 0) {
+      if (request.resourceType == "all") {
+        log.warning(
+          `Improper resourceType in bufferChoices! Type 'all' is only allowable for outputs!`,
+        );
+        return [];
+      }
+      // Change in resources if transporter goes straight to the input
+      const dQ_direct = Math.min(amount, carry[request.resourceType] || 0);
+      // let dt_direct = Pathing.distance(newPos, request.target.pos) + ticksUntilFree;
+      const dt_direct =
+        ticksUntilFree +
+        roomPositionGetMultiRoomRangeTo(newPos, request.target.pos) *
+          LogisticsNetwork.settings.rangeToPathHeuristic;
+      choices.push({
+        dQ: dQ_direct,
+        dt: dt_direct,
+        targetRef: getRoomObjectRef(request.target),
+      });
+      if ((carry[request.resourceType] || 0) > amount || sum(carry) == transporter.carryCapacity) {
+        return choices; // Return early if you already have enough resources to go direct or are already full
+      }
+      // Change in resources if transporter picks up resources from a buffer first
+      for (const buffer of this.buffers) {
+        const dQ_buffer = Math.min(
+          amount,
+          transporter.carryCapacity,
+          buffer.store[request.resourceType] || 0,
+        );
+        const dt_buffer =
+          roomPositionGetMultiRoomRangeTo(newPos, buffer.pos) *
+            LogisticsNetwork.settings.rangeToPathHeuristic +
+          (Pathing.distance(buffer.pos, request.target.pos) || Infinity) +
+          ticksUntilFree;
+        choices.push({
+          dQ: dQ_buffer,
+          dt: dt_buffer,
+          targetRef: getRoomObjectRef(buffer),
+        });
+      }
+    }
 
-	/**
-	 * Consider all possibilities of buffer structures to visit on the way to fulfilling the request
-	 */
-	bufferChoices(transporter: Zerg, request: LogisticsRequest): {
-		dQ: number,			// Absolute value of amount of resource transported with the choice
-		dt: number,			// Amount of time to execute the choice
-		targetRef: string	// Reference of the immediate target
-	}[] {
-		const [ticksUntilFree, newPos] = this.nextAvailability(transporter);
-		const choices: { dQ: number, dt: number, targetRef: string }[] = [];
-		const amount = this.predictedRequestAmount(transporter, request, [ticksUntilFree, newPos]);
-		let carry: ResourceAmounts;
-		if (!transporter.task || transporter.task.target != request.target) {
-			// If you are not targeting the requestor, use predicted carry after completing current task
-			carry = this.predictedTransporterCarry(transporter);
-		} else {
-			// If you are targeting the requestor, use current carry for computations
-			carry = transporter.carry;
-		}
+    // requestOutput instance, needs pickup
+    else if (amount < 0) {
+      // Change in resources if transporter goes straight to the output
+      const remainingCarryCapacity = transporter.carryCapacity - sum(carry);
+      const dQ_direct = Math.min(Math.abs(amount), remainingCarryCapacity);
+      const dt_direct =
+        roomPositionGetMultiRoomRangeTo(newPos, request.target.pos) *
+          LogisticsNetwork.settings.rangeToPathHeuristic +
+        ticksUntilFree;
+      choices.push({
+        dQ: dQ_direct,
+        dt: dt_direct,
+        targetRef: getRoomObjectRef(request.target),
+      });
+      if (
+        remainingCarryCapacity >= Math.abs(amount) ||
+        remainingCarryCapacity == transporter.carryCapacity
+      ) {
+        return choices; // Return early you have sufficient free space or are empty
+      }
+      // Change in resources if transporter drops off resources at a buffer first
+      for (const buffer of this.buffers) {
+        const dQ_buffer = Math.min(
+          Math.abs(amount),
+          transporter.carryCapacity,
+          buffer.storeCapacity - sum(buffer.store),
+        );
+        const dt_buffer =
+          roomPositionGetMultiRoomRangeTo(newPos, buffer.pos) *
+            LogisticsNetwork.settings.rangeToPathHeuristic +
+          (Pathing.distance(buffer.pos, request.target.pos) || Infinity) +
+          ticksUntilFree;
+        choices.push({
+          dQ: dQ_buffer,
+          dt: dt_buffer,
+          targetRef: getRoomObjectRef(buffer),
+        });
+      }
+      // if (store.resourceType == RESOURCE_ENERGY) {
+      // 	// Only for when you're picking up more energy: check to see if you can put to available links
+      // 	for (let link of this.colony.dropoffLinks) {
+      // 		let linkDeltaResource = Math.min(Math.abs(amount), transporter.carryCapacity,
+      // 			2 * link.energyCapacity);
+      // 		let ticksUntilDropoff = Math.max(Pathing.distance(newPos, link.pos),
+      // 										 this.colony.linkNetwork.getDropoffAvailability(link));
+      // 		let linkDistance = ticksUntilDropoff +
+      // 						   Pathing.distance(link.pos, store.target.pos) + ticksUntilFree;
+      // 		choices.push({
+      // 						 deltaResource: linkDeltaResource,
+      // 						 deltaTicks   : linkDistance,
+      // 						 targetRef    : link.ref
+      // 					 });
+      // 	}
+      // }
+    }
+    return choices;
+  }
 
-		// requestInput instance, needs refilling
-		if (amount > 0) {
-			if (request.resourceType == 'all') {
-				log.warning(`Improper resourceType in bufferChoices! Type 'all' is only allowable for outputs!`);
-				return [];
-			}
-			// Change in resources if transporter goes straight to the input
-			const dQ_direct = Math.min(amount, carry[request.resourceType] || 0);
-			// let dt_direct = Pathing.distance(newPos, request.target.pos) + ticksUntilFree;
-			const dt_direct = ticksUntilFree + roomPositionGetMultiRoomRangeTo(newPos, request.target.pos)
-							  * LogisticsNetwork.settings.rangeToPathHeuristic;
-			choices.push({
-							 dQ       : dQ_direct,
-							 dt       : dt_direct,
-							 targetRef: getRoomObjectRef(request.target)
-						 });
-			if ((carry[request.resourceType] || 0) > amount || sum(carry) == transporter.carryCapacity) {
-				return choices; // Return early if you already have enough resources to go direct or are already full
-			}
-			// Change in resources if transporter picks up resources from a buffer first
-			for (const buffer of this.buffers) {
-				const dQ_buffer = Math.min(amount, transporter.carryCapacity, buffer.store[request.resourceType] || 0);
-				const dt_buffer = roomPositionGetMultiRoomRangeTo(newPos, buffer.pos) * LogisticsNetwork.settings.rangeToPathHeuristic
-								  + (Pathing.distance(buffer.pos, request.target.pos) || Infinity) + ticksUntilFree;
-				choices.push({
-								 dQ       : dQ_buffer,
-								 dt       : dt_buffer,
-								 targetRef: getRoomObjectRef(buffer)
-							 });
-			}
-		}
+  /**
+   * Compute the best possible value of |dResource / dt|
+   */
+  private resourceChangeRate(transporter: Zerg, request: LogisticsRequest): number {
+    if (!this.cache.resourceChangeRate[request.id]) {
+      this.cache.resourceChangeRate[request.id] = {};
+    }
+    if (!this.cache.resourceChangeRate[request.id][transporter.name]) {
+      const choices = this.bufferChoices(transporter, request);
+      const dQ_dt = choices.map(
+        (choice) => (request.multiplier * choice.dQ) / Math.max(choice.dt, 0.1),
+      );
+      this.cache.resourceChangeRate[request.id][transporter.name] = max(dQ_dt);
+    }
+    return this.cache.resourceChangeRate[request.id][transporter.name];
+  }
 
-		// requestOutput instance, needs pickup
-		else if (amount < 0) {
-			// Change in resources if transporter goes straight to the output
-			const remainingCarryCapacity = transporter.carryCapacity - sum(carry);
-			const dQ_direct = Math.min(Math.abs(amount), remainingCarryCapacity);
-			const dt_direct = roomPositionGetMultiRoomRangeTo(newPos, request.target.pos)
-							  * LogisticsNetwork.settings.rangeToPathHeuristic + ticksUntilFree;
-			choices.push({
-							 dQ       : dQ_direct,
-							 dt       : dt_direct,
-							 targetRef: getRoomObjectRef(request.target)
-						 });
-			if (remainingCarryCapacity >= Math.abs(amount) || remainingCarryCapacity == transporter.carryCapacity) {
-				return choices; // Return early you have sufficient free space or are empty
-			}
-			// Change in resources if transporter drops off resources at a buffer first
-			for (const buffer of this.buffers) {
-				const dQ_buffer = Math.min(Math.abs(amount), transporter.carryCapacity,
-										   buffer.storeCapacity - sum(buffer.store));
-				const dt_buffer = roomPositionGetMultiRoomRangeTo(newPos, buffer.pos) * LogisticsNetwork.settings.rangeToPathHeuristic
-								  + (Pathing.distance(buffer.pos, request.target.pos) || Infinity) + ticksUntilFree;
-				choices.push({
-								 dQ       : dQ_buffer,
-								 dt       : dt_buffer,
-								 targetRef: getRoomObjectRef(buffer)
-							 });
-			}
-			// if (store.resourceType == RESOURCE_ENERGY) {
-			// 	// Only for when you're picking up more energy: check to see if you can put to available links
-			// 	for (let link of this.colony.dropoffLinks) {
-			// 		let linkDeltaResource = Math.min(Math.abs(amount), transporter.carryCapacity,
-			// 			2 * link.energyCapacity);
-			// 		let ticksUntilDropoff = Math.max(Pathing.distance(newPos, link.pos),
-			// 										 this.colony.linkNetwork.getDropoffAvailability(link));
-			// 		let linkDistance = ticksUntilDropoff +
-			// 						   Pathing.distance(link.pos, store.target.pos) + ticksUntilFree;
-			// 		choices.push({
-			// 						 deltaResource: linkDeltaResource,
-			// 						 deltaTicks   : linkDistance,
-			// 						 targetRef    : link.ref
-			// 					 });
-			// 	}
-			// }
-		}
-		return choices;
-	}
+  /**
+   * Generate requestor preferences in terms of transporters
+   */
+  requestPreferences(request: LogisticsRequest, transporters: Zerg[]): Zerg[] {
+    // Requestors priortize transporters by change in resources per tick until pickup/delivery
+    return sortBy(
+      transporters,
+      (transporter) => -1 * this.resourceChangeRate(transporter, request),
+    ); // -1 -> desc
+  }
 
-	/**
-	 * Compute the best possible value of |dResource / dt|
-	 */
-	private resourceChangeRate(transporter: Zerg, request: LogisticsRequest): number {
-		if (!this.cache.resourceChangeRate[request.id]) {
-			this.cache.resourceChangeRate[request.id] = {};
-		}
-		if (!this.cache.resourceChangeRate[request.id][transporter.name]) {
-			const choices = this.bufferChoices(transporter, request);
-			const dQ_dt = choices.map(choice => request.multiplier * choice.dQ / Math.max(choice.dt, 0.1));
-			this.cache.resourceChangeRate[request.id][transporter.name] = max(dQ_dt);
-		}
-		return this.cache.resourceChangeRate[request.id][transporter.name];
-	}
+  /**
+   * Generate transporter preferences in terms of store structures
+   */
+  transporterPreferences(transporter: Zerg): LogisticsRequest[] {
+    // Transporters prioritize requestors by change in resources per tick until pickup/delivery
+    return sortBy(this.requests, (request) => -1 * this.resourceChangeRate(transporter, request)); // -1 -> desc
+  }
 
-	/**
-	 * Generate requestor preferences in terms of transporters
-	 */
-	requestPreferences(request: LogisticsRequest, transporters: Zerg[]): Zerg[] {
-		// Requestors priortize transporters by change in resources per tick until pickup/delivery
-		return sortBy(transporters, transporter => -1 * this.resourceChangeRate(transporter, request)); // -1 -> desc
-	}
+  /**
+   * Invalidates relevant portions of the cache once a transporter is assigned to a task
+   */
+  invalidateCache(transporter: Zerg, request: LogisticsRequest): void {
+    delete this.cache.nextAvailability[transporter.name];
+    delete this.cache.predictedTransporterCarry[transporter.name];
+    // A singleton preference list need not score its request, so its rate cache may not exist yet.
+    delete this.cache.resourceChangeRate[request.id]?.[transporter.name];
+  }
 
-	/**
-	 * Generate transporter preferences in terms of store structures
-	 */
-	transporterPreferences(transporter: Zerg): LogisticsRequest[] {
-		// Transporters prioritize requestors by change in resources per tick until pickup/delivery
-		return sortBy(this.requests, request => -1 * this.resourceChangeRate(transporter, request)); // -1 -> desc
-	}
+  /**
+   * Logs the output of the stable matching result
+   */
+  summarizeMatching(): void {
+    const requests = this.requests.slice();
+    const transporters = this.colony
+      .getCreepsByRole(Roles.transport)
+      .filter((creep) => !creep.spawning);
+    const matchedTransporters = new Set(Object.keys(this._matching ?? {}));
+    const matchedRequests = new Set(Object.values(this._matching ?? {}));
+    const unmatchedTransporters = remove(
+      transporters,
+      (transporter) => !matchedTransporters.has(transporter.name),
+    );
+    const unmatchedRequests = remove(requests, (request) => !matchedRequests.has(request));
+    console.log(`Stable matching for ${this.colony.name} at ${Game.time}`);
+    for (const transporter of transporters) {
+      const transporterStr = transporter.name + " " + transporter.pos;
+      const request = this._matching![transporter.name]!;
+      const requestStr =
+        getRoomObjectRef(request.target) + " " + getRoomPositionPrint(request.target.pos);
+      console.log(`${transporterStr.padEnd(30)} : ${requestStr}`);
+    }
+    for (const transporter of unmatchedTransporters) {
+      const transporterStr = transporter.name + " " + transporter.pos;
+      console.log(`${transporterStr.padEnd(30)} : ${""}`);
+    }
+    for (const request of unmatchedRequests) {
+      const requestStr = getRoomObjectRef(request.target) + " " + request.target.pos;
+      console.log(`${"".padEnd(30)} : ${requestStr}`);
+    }
+    console.log();
+  }
 
-	/**
-	 * Invalidates relevant portions of the cache once a transporter is assigned to a task
-	 */
-	invalidateCache(transporter: Zerg, request: LogisticsRequest): void {
-		delete this.cache.nextAvailability[transporter.name];
-		delete this.cache.predictedTransporterCarry[transporter.name];
-		// A singleton preference list need not score its request, so its rate cache may not exist yet.
-		delete this.cache.resourceChangeRate[request.id]?.[transporter.name];
-	}
+  /**
+   * Logs the current state of the logistics group to the console; useful for debugging
+   */
+  summarize(): void {
+    // console.log(`Summary of logistics group for ${this.colony.name} at time ${Game.time}`);
+    let info = [];
+    for (const request of this.requests) {
+      let targetType: string;
+      if (isDirective(request.target)) {
+        targetType = "directive";
+      } else if (isAnyZerg(request.target)) {
+        targetType = "zerg";
+      } else if (isResource(request.target)) {
+        targetType = "resource";
+      } else if (isTombstone(request.target)) {
+        targetType = "tombstone";
+      } else if (isRuin(request.target)) {
+        targetType = "ruin";
+      } else {
+        targetType = request.target.structureType;
+      }
+      let amount = 0;
+      if (isResource(request.target)) {
+        amount = request.target.amount;
+      } else {
+        if (request.resourceType == "all") {
+          if (!isResource(request.target)) {
+            amount = sum(request.target.store);
+          } else {
+            amount = -0.001;
+          }
+        } else {
+          if (isResource(request.target)) {
+            amount = request.target.amount;
+          } else {
+            amount = request.target.store[request.resourceType] || 0;
+          }
+        }
+      }
+      const targetingTprtrNames = LogisticsNetwork.targetingTransporters(request.target).map(
+        (c) => c.name,
+      );
+      info.push({
+        target: targetType,
+        resourceType: request.resourceType,
+        requestAmount: request.amount,
+        currentAmount: amount,
+        targetedBy: targetingTprtrNames,
+        pos: getRoomPositionPrint(request.target.pos),
+      });
+    }
+    console.log("Requests: \n" + columnify(info) + "\n");
+    info = [];
+    for (const transporter of this.colony.overlords.logistics.transporters) {
+      const task = transporter.task ? transporter.task.name : "none";
+      const target = transporter.task
+        ? transporter.task.proto._target.ref +
+          " " +
+          getRoomPositionPrintPlain(transporter.task.targetPos)
+        : "none";
+      const nextAvailability = this.nextAvailability(transporter);
+      info.push({
+        creep: transporter.name,
+        pos: getRoomPositionPrintPlain(transporter.pos),
+        task: task,
+        target: target,
+        availability: `available in ${nextAvailability[0]} ticks at ${getRoomPositionPrint(nextAvailability[1])}`,
+      });
+    }
+    console.log("Transporters: \n" + columnify(info) + "\n");
+  }
 
-	/**
-	 * Logs the output of the stable matching result
-	 */
-	summarizeMatching(): void {
-		const requests = this.requests.slice();
-		const transporters = this.colony.getCreepsByRole(Roles.transport).filter(creep => !creep.spawning);
-		const matchedTransporters = new Set(Object.keys(this._matching ?? {}));
-		const matchedRequests = new Set(Object.values(this._matching ?? {}));
-		const unmatchedTransporters = remove(transporters,
-										   transporter => !matchedTransporters.has(transporter.name));
-		const unmatchedRequests = remove(requests, request => !matchedRequests.has(request));
-		console.log(`Stable matching for ${this.colony.name} at ${Game.time}`);
-		for (const transporter of transporters) {
-			const transporterStr = transporter.name + ' ' + transporter.pos;
-			const request = this._matching![transporter.name]!;
-			const requestStr = getRoomObjectRef(request.target) + ' ' + getRoomPositionPrint(request.target.pos);
-			console.log(`${transporterStr.padEnd(30)} : ${requestStr}`);
-		}
-		for (const transporter of unmatchedTransporters) {
-			const transporterStr = transporter.name + ' ' + transporter.pos;
-			console.log(`${transporterStr.padEnd(30)} : ${''}`);
-		}
-		for (const request of unmatchedRequests) {
-			const requestStr = getRoomObjectRef(request.target) + ' ' + request.target.pos;
-			console.log(`${''.padEnd(30)} : ${requestStr}`);
-		}
-		console.log();
-	}
+  get matching(): { [creepName: string]: LogisticsRequest | undefined } {
+    if (!this._matching) {
+      this._matching = this.stableMatching(this.colony.overlords.logistics.transporters);
+    }
+    return this._matching;
+  }
 
-	/**
-	 * Logs the current state of the logistics group to the console; useful for debugging
-	 */
-	summarize(): void {
-		// console.log(`Summary of logistics group for ${this.colony.name} at time ${Game.time}`);
-		let info = [];
-		for (const request of this.requests) {
-			let targetType: string;
-			if (isDirective(request.target)) {
-				targetType = 'directive';
-			} else if (isAnyZerg(request.target)) {
-				targetType = 'zerg';
-			} else if (isResource(request.target)) {
-				targetType = 'resource';
-			} else if (isTombstone(request.target)) {
-				targetType = 'tombstone';
-			} else if (isRuin(request.target)) {
-				targetType = 'ruin';
-			} else {
-				targetType = request.target.structureType;
-			}
-			let amount = 0;
-			if (isResource(request.target)) {
-				amount = request.target.amount;
-			} else {
-				if (request.resourceType == 'all') {
-					if (!isResource(request.target)) {
-						amount = sum(request.target.store);
-					} else {
-						amount = -0.001;
-					}
-				} else {
-					if (isResource(request.target)) {
-						amount = request.target.amount;
-					} else {
-						amount = request.target.store[request.resourceType] || 0;
-					}
-				}
-			}
-			const targetingTprtrNames = LogisticsNetwork.targetingTransporters(request.target).map(c => c.name);
-			info.push({
-						  target       : targetType,
-						  resourceType : request.resourceType,
-						  requestAmount: request.amount,
-						  currentAmount: amount,
-						  targetedBy   : targetingTprtrNames,
-						  pos          : getRoomPositionPrint(request.target.pos),
-					  });
-		}
-		console.log('Requests: \n' + columnify(info) + '\n');
-		info = [];
-		for (const transporter of this.colony.overlords.logistics.transporters) {
-			const task = transporter.task ? transporter.task.name : 'none';
-			const target = transporter.task ?
-						   transporter.task.proto._target.ref + ' ' + getRoomPositionPrintPlain(transporter.task.targetPos) : 'none';
-			const nextAvailability = this.nextAvailability(transporter);
-			info.push({
-						  creep       : transporter.name,
-						  pos         : getRoomPositionPrintPlain(transporter.pos),
-						  task        : task,
-						  target      : target,
-						  availability: `available in ${nextAvailability[0]} ticks at ${getRoomPositionPrint(nextAvailability[1])}`,
-					  });
-		}
-		console.log('Transporters: \n' + columnify(info) + '\n');
-	}
-
-	get matching(): { [creepName: string]: LogisticsRequest | undefined } {
-		if (!this._matching) {
-			this._matching = this.stableMatching(this.colony.overlords.logistics.transporters);
-		}
-		return this._matching;
-	}
-
-	/**
-	 * Generate a stable matching of transporters to requests with Gale-Shapley algorithm
-	 */
-	private stableMatching(transporters: Zerg[]): { [creepName: string]: LogisticsRequest | undefined } {
-		const tPrefs: { [transporterName: string]: string[] } = {};
-		for (const transporter of transporters) {
-			tPrefs[transporter.name] = this.transporterPreferences(transporter).map(request => request.id);
-		}
-		const rPrefs: { [requestID: string]: string[] } = {};
-		for (const request of this.requests) {
-			rPrefs[request.id] = this.requestPreferences(request, transporters).map(transporter => transporter.name);
-		}
-		const stableMatching = new Matcher(tPrefs, rPrefs).match();
-		const requestMatch = mapValues(stableMatching, reqID => this.requests.find(request => request.id == reqID));
-		return requestMatch;
-	}
-
+  /**
+   * Generate a stable matching of transporters to requests with Gale-Shapley algorithm
+   */
+  private stableMatching(transporters: Zerg[]): {
+    [creepName: string]: LogisticsRequest | undefined;
+  } {
+    const tPrefs: { [transporterName: string]: string[] } = {};
+    for (const transporter of transporters) {
+      tPrefs[transporter.name] = this.transporterPreferences(transporter).map(
+        (request) => request.id,
+      );
+    }
+    const rPrefs: { [requestID: string]: string[] } = {};
+    for (const request of this.requests) {
+      rPrefs[request.id] = this.requestPreferences(request, transporters).map(
+        (transporter) => transporter.name,
+      );
+    }
+    const stableMatching = new Matcher(tPrefs, rPrefs).match();
+    const requestMatch = mapValues(stableMatching, (reqID) =>
+      this.requests.find((request) => request.id == reqID),
+    );
+    return requestMatch;
+  }
 }
-

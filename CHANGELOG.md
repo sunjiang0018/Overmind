@@ -1,27 +1,29 @@
 # Overmind Patch Notes
+
 Changelog format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ### Added
+
 - Added structure type guards which help clean up the `RoomPlanner` code substantially.
 - Changed `LogisticsRequestTarget` to include directives and `Zerg` objects. Now workers can directly request energy from transporters at low RCL.
 - Added `DirectiveDrop` logistics directive. At low RCL this causes transporters to pick up energy and place it in a stockpile on the ground before containers are built.
-- Added memorized path vizualition to `Movement` which integrates with the `Zerg` debugger. 
+- Added memorized path vizualition to `Movement` which integrates with the `Zerg` debugger.
 - Improved Zerg debugger to show task and target. Use `debug(queen_0)` (or Zerg name) to activate the debugger to see what your creep is doing. Only works for standard Zerg which primarily use tasks.
 
 ### Changed
+
 - Spun up Overmind for the first time in almost 4 years. Had to make a lot of modernization changes to the codebase to get it to run. Good luck merging these into your forks!
 - Entered Season 6 of Screeps! This is my first time running Overmind from scratch in a long time, and it's a little rough around the edges in the early game. I've included a large number of early game optimizations:
-    - Changed the calculations which determine the number of workers to spawn at early levels to incorporate transporter capacity. This should result in a smoother early game.
-    - Number of requested workers varies on energy consumption and takes into account whether workers are primarily building (cost 5 per part) or repairing/upgrading (cost 1 per part).
-    - Upgrade site energy requests now account for dQ/dt at low RCL.
+  - Changed the calculations which determine the number of workers to spawn at early levels to incorporate transporter capacity. This should result in a smoother early game.
+  - Number of requested workers varies on energy consumption and takes into account whether workers are primarily building (cost 5 per part) or repairing/upgrading (cost 1 per part).
+  - Upgrade site energy requests now account for dQ/dt at low RCL.
 
 ### Fixed
+
 - `Zerg.task` validation bugfix.
 - Fixed a bug where `Room.sources` wasn't using the cached values which was costing some CPU. (Thanks @zGeneral for pointing this out!)
-
-
 
 ## Overmind [0.6.0] - 2020.12.9
 
@@ -30,105 +32,107 @@ This was the last release before I took a 3 year break from Screeps after I star
 (!) NOTE: This release of Overmind now requires Node 10+ and Rollup 2+ to deploy. You will need to check `node --version` to verify that you have at least 10.0, then you need to run `npm install` to update Rollup and several other key deployment packages.
 
 ### Added
+
 - Added `MatrixLib` class that performs a variety of cost matrix manupulations. Many methods from `Pathing` have been moved to this class.
 - Added `Zerg.avoidDanger()` method for use primarily by non-combat zerg which will replace the current `Zerg.flee()` logic as the default retreating response when working in a room which becomes unsafe.
 - Added a new `packrat.ts` module for compressing and retrieving room positions, ids, and coordinates as utf-16 characters. The methods are quite performant, taking about 100ns per RoomPosition and 500ns per id to execute on shard2 public server, and reduce memory impact by up to 95% in the case of packed room position lists. Plugging this in to many places where I had previously stored coordinates or room positions in Memory reduced total memory impact by about 70%. Exported packrat functions:
-    - packId, unpackId, packIdList, unpackIdList: Convert a standard 24-character hex id in screeps to a compressed UTF-16 encoded string of length 6. Benchmarking: average of 500ns to pack, 1.2us to unpack per id on shard2 public server, reduce stringified size by up to 81% (packIdList)
-    - packCoord, unpackCoord, packCoordList, unpackCoordList, unpackCoordAsPos, unpackCoordListAsPosList: Packs a coord as a single utf-16 character. Benchmarking: average of 150ns to pack, 100ns to unpack per coord on shard2 public server, reduce stringified size by up to 94% (packCoordList)
-    - packPos, unpackPos, packPosList, unpackPosList: Packs a RoomPosition as a pair utf-16 characters. Benchmarking: average of 100-200ns per position to pack, 500-1000ns to unpack on shard2 public server, reduce stringified size by 95% (packPosList)
+  - packId, unpackId, packIdList, unpackIdList: Convert a standard 24-character hex id in screeps to a compressed UTF-16 encoded string of length 6. Benchmarking: average of 500ns to pack, 1.2us to unpack per id on shard2 public server, reduce stringified size by up to 81% (packIdList)
+  - packCoord, unpackCoord, packCoordList, unpackCoordList, unpackCoordAsPos, unpackCoordListAsPosList: Packs a coord as a single utf-16 character. Benchmarking: average of 150ns to pack, 100ns to unpack per coord on shard2 public server, reduce stringified size by up to 94% (packCoordList)
+  - packPos, unpackPos, packPosList, unpackPosList: Packs a RoomPosition as a pair utf-16 characters. Benchmarking: average of 100-200ns per position to pack, 500-1000ns to unpack on shard2 public server, reduce stringified size by 95% (packPosList)
 - @Davaned: Added `Colony.suspendOutpost` methods which allow a colony to temporarily cease operations in an outpost which is currently not viable, such as having an invader core spawn in the room
 - Added a global PERMACACHE object which is used to track immutable properties such as Cartographer.roomType or creep body compositions. Plugged into several points in the codebase, and working on further integration.
 - Added a remote upgrading directive and overlord: will spawn haulers and upgraders to quickly upgrade a far-away room and integrates with the new portal code. Carriers will also haul valuable resources from un-owned store structures on their return trip to the parent colony.
 - Refactored the Zerg class to extend AnyZerg and added a PowerZerg class which also extends AnyZerg. A number of methods throughout the codebase (especially on Movement) have been changed to take AnyZerg as an argument.
 - Lots of new methods on RoomIntel:
-    - `RoomIntel.retrieveRoomObjectData` retrieves and de-compresses the stored data on room layouts, including saved owned structures, portals, sources, minerals, SKlairs, and controller info
-    - `RoomIntel.getRoomStatus` provides a cached version of Game.map.getRoomStatus
-    - `RoomIntel.findPortalsInRange` searches for open portals within a certain range of any colony
-    - `RoomIntel.getMyZoneStatus` returns the type of zone that you are currently spawned in. I will use this method to implement novice zone restrictions in the near future
-    - Methods for working with stored room memory data in human-readable format:
-        - `RoomIntel.getExpansionData`
-        - `RoomIntel.setExpansionData`
-        - `RoomIntel.getPortalInfo`
-        - `RoomIntel.getSourceInfo`
-        - `RoomIntel.getControllerInfo`
-        - `RoomIntel.getImportantStructureInfo`
-        - `RoomIntel.getAllRoomObjectInfo`
+  - `RoomIntel.retrieveRoomObjectData` retrieves and de-compresses the stored data on room layouts, including saved owned structures, portals, sources, minerals, SKlairs, and controller info
+  - `RoomIntel.getRoomStatus` provides a cached version of Game.map.getRoomStatus
+  - `RoomIntel.findPortalsInRange` searches for open portals within a certain range of any colony
+  - `RoomIntel.getMyZoneStatus` returns the type of zone that you are currently spawned in. I will use this method to implement novice zone restrictions in the near future
+  - Methods for working with stored room memory data in human-readable format:
+    - `RoomIntel.getExpansionData`
+    - `RoomIntel.setExpansionData`
+    - `RoomIntel.getPortalInfo`
+    - `RoomIntel.getSourceInfo`
+    - `RoomIntel.getControllerInfo`
+    - `RoomIntel.getImportantStructureInfo`
+    - `RoomIntel.getAllRoomObjectInfo`
 - Merged and modified pull request #156 from @zGeneral, which adds "room poisoner" functionality to wall off sources and controllers in unused rooms
 - Added portal capabilities and automatic portal pathing to the `Pathing` module!
 - Added and plugged in new `CombatCreepSetup` class which creates more flexible creep bodies based on the desired boost types. If lower tier move boosts are the best available, the body ratios are adjusted accordingly to maintain a target move speed.
 - Improvements to the `EvolutionChamber` to utilize the new terminal network and use a wider variety of boosts, not just T3.
-    - `EvolutionChamber.bestBoostAvailable` takes a BoostType ('attack', 'tough', 'move', etc.) and amount and returns the highest tier boost that is either available in the colony or obtainable throught the terminal network to boost that type of part.
-    - The evo chamber locks resources from the terminal network that it is about to use to prevent them from being transported elsewhere
+  - `EvolutionChamber.bestBoostAvailable` takes a BoostType ('attack', 'tough', 'move', etc.) and amount and returns the highest tier boost that is either available in the colony or obtainable throught the terminal network to boost that type of part.
+  - The evo chamber locks resources from the terminal network that it is about to use to prevent them from being transported elsewhere
 - Colonies now have a `Colony.state` property which consolidates all behavior-altering hooks which can be modified by directives
 - Rewrote a large portion of the `ManagerOverlord` to allow for more flexible transfer between storage and terminal.
-    - Previously, storage was usable only for energy, which resulted in terminals operating near capacity and wasted a lot of the capacity of a room
-    - The new system seeks to maintain LAB_MIENRAL_CAPACITY + 500 +/- 500 mineral compounds of each type (more for base resources) and 50000 +/- 5000 energy within the terminal (other resources treated similarly) and will offload everything else into storage
+  - Previously, storage was usable only for energy, which resulted in terminals operating near capacity and wasted a lot of the capacity of a room
+  - The new system seeks to maintain LAB_MIENRAL_CAPACITY + 500 +/- 500 mineral compounds of each type (more for base resources) and 50000 +/- 5000 energy within the terminal (other resources treated similarly) and will offload everything else into storage
 - Huge changes to `TraderJoe`. The new version employs the `Game.market.getHistory()` functionality, and should be much better about utilizing buy and sell orders for resources. It should also be better at computing competitive but sensible prices to place orders at, and will seek to make its orders more competitive by adjusting the price if the order is not selling in a timely manner.
 - Completely rewrote the `TerminalNetwork` system. The new version should have much better resource acquisition latency and is inspired by Factorio's logistics system. It works like this:
-    - Each colony with a terminal can be in one of 5 states for each resource depending on how much of the resource it has and on other conditions:
-        - Active providers will actively push resources from the room into other rooms in the terminal network which are requestors or will sell the resource on the market no receiving rooms are available
-        - Passive providers will place their resources at the disposal of the terminal network but don't actively want to get rid of stuff
-        - Equilibrium nodes are rooms which are near their desired amount for the resource and prefer to stay there
-        - Passive requestors are rooms which have less than their desired amount of the resource but don't have an immediate need for it; they will request resources from activeProviders and passiveProviders
-        - Active requestors are rooms which have an immediate need for and insufficient amounts of a resource; they will request resources from any room which is not also an activeRequestor
-    - The state of each room is determined by a `Thresholds` object, which has `target`, `tolerance`, and (posisbly undefined) `surplus` properties. Conditions for each state are based on `amount` of resource in a colony:
-        - Active provider: `amount > surplus` (if defined) or `amont > target + tolerance` and room is near capacity
-        - Passive provider: `surplus >= amount > target + tolerance`
-        - Equilibrium: `target + tolerance >= amount >= target - tolerance`
-        - Passive requestor: `target - tolerance > amount`
-        - Active requestor: can only be placed in this state by an active call to `TerminalNetwork.requestResource` while `target > amount`
-    - To determine which room to request/provide resources from/to, a heuristic is used which tries to minimize transaction cost while accounting for:
-    	- If a terminal has a high output load (often on cooldown), receivers will de-prioritize it
-    	- If a terminal is far away, receivers will wait longer to find a less expensive sender
-    	- Bigger transactions with higher costs will wait longer for a closer colony, while smaller transactions are less picky
-    - The new system uses `Colony` in place of many arguments which were `StructureTerminal`, as it looks only at `colony.assets` when determining what to send; this fits with the new changes to the `ManagerOverlord` to allow for more flexible transfer between storage and terminal
-    - New `TerminalNetwork.canObtainResource(resource, amount)` method simulates a resource transfer (or purchase via market) using a `dryRun` option to be able to tell with near 100% certainty whether a certain resource will be available through the network.
-    - `TerminalNetwork.lockResource(resource, amount)` prevents a specified amount of a resource from being withdrawn from the room via the network. Useful for preventing ingredients or boosts which will soon be used from leaving the colony.
+  - Each colony with a terminal can be in one of 5 states for each resource depending on how much of the resource it has and on other conditions:
+    - Active providers will actively push resources from the room into other rooms in the terminal network which are requestors or will sell the resource on the market no receiving rooms are available
+    - Passive providers will place their resources at the disposal of the terminal network but don't actively want to get rid of stuff
+    - Equilibrium nodes are rooms which are near their desired amount for the resource and prefer to stay there
+    - Passive requestors are rooms which have less than their desired amount of the resource but don't have an immediate need for it; they will request resources from activeProviders and passiveProviders
+    - Active requestors are rooms which have an immediate need for and insufficient amounts of a resource; they will request resources from any room which is not also an activeRequestor
+  - The state of each room is determined by a `Thresholds` object, which has `target`, `tolerance`, and (posisbly undefined) `surplus` properties. Conditions for each state are based on `amount` of resource in a colony:
+    - Active provider: `amount > surplus` (if defined) or `amont > target + tolerance` and room is near capacity
+    - Passive provider: `surplus >= amount > target + tolerance`
+    - Equilibrium: `target + tolerance >= amount >= target - tolerance`
+    - Passive requestor: `target - tolerance > amount`
+    - Active requestor: can only be placed in this state by an active call to `TerminalNetwork.requestResource` while `target > amount`
+  - To determine which room to request/provide resources from/to, a heuristic is used which tries to minimize transaction cost while accounting for:
+    - If a terminal has a high output load (often on cooldown), receivers will de-prioritize it
+    - If a terminal is far away, receivers will wait longer to find a less expensive sender
+    - Bigger transactions with higher costs will wait longer for a closer colony, while smaller transactions are less picky
+  - The new system uses `Colony` in place of many arguments which were `StructureTerminal`, as it looks only at `colony.assets` when determining what to send; this fits with the new changes to the `ManagerOverlord` to allow for more flexible transfer between storage and terminal
+  - New `TerminalNetwork.canObtainResource(resource, amount)` method simulates a resource transfer (or purchase via market) using a `dryRun` option to be able to tell with near 100% certainty whether a certain resource will be available through the network.
+  - `TerminalNetwork.lockResource(resource, amount)` prevents a specified amount of a resource from being withdrawn from the room via the network. Useful for preventing ingredients or boosts which will soon be used from leaving the colony.
 - Added CPU/resource profiling to `Overlord`s. Use the `profileOverlord()` console command to activate this.
 - Merged a lot of additions from @Davaned's branch(es)
-    - Initial support for power mining and power processing
-    - Preliminary programs for dealing with strongholds (level 1-4)
-    - Lots of defensive improvements
-    - Harassment overlords periodically spawn creeps to skirmish in enemy outposts
+  - Initial support for power mining and power processing
+  - Preliminary programs for dealing with strongholds (level 1-4)
+  - Lots of defensive improvements
+  - Harassment overlords periodically spawn creeps to skirmish in enemy outposts
 - Added modules for use in the reinforcement learning side project:
-    - The `ActionParser` module provides a line of direct interaction for the external Python optimizers to control creep actions via the `Memory.reinforcementLearning` object.
-    - The `TrainingOpponents` file provides a set of rudimentary opponents to train the RL models against.
+  - The `ActionParser` module provides a line of direct interaction for the external Python optimizers to control creep actions via the `Memory.reinforcementLearning` object.
+  - The `TrainingOpponents` file provides a set of rudimentary opponents to train the RL models against.
 - Created a [documentation site](https://bencbartlett.github.io/overmind-docs/) using TypeDoc!
-    - Added/reformatted docstring-comments throughout the codebase
+  - Added/reformatted docstring-comments throughout the codebase
 - Added the `RemoteDebugger` module, which lets me remotely debug other Overmind players' code in real-time by communicating through public memory segments.
-    - You can start and end a debug session with the `startRemoteDebugSession()` and `endRemoteDebugSession()` commands
-    - Debug sessions automatically time out after 1000 ticks unless extended
-    - Ping me on Slack #overmind if you want me to debug something for you
-        - I can only remotely debug players on a shard that I have a presence in (currently only `shard2`)
-    - This allows for me to remotely execute arbitrary code, but I promise not to be evil! <3 
+  - You can start and end a debug session with the `startRemoteDebugSession()` and `endRemoteDebugSession()` commands
+  - Debug sessions automatically time out after 1000 ticks unless extended
+  - Ping me on Slack #overmind if you want me to debug something for you
+    - I can only remotely debug players on a shard that I have a presence in (currently only `shard2`)
+  - This allows for me to remotely execute arbitrary code, but I promise not to be evil! <3
 - `DirectiveRoomClear`, which claims a room, destroys all hostile structures in the room (by default, keeping store structures and roads intact), then unclaims the room. This is useful for cleaning out remote outposts which were previously claimed rooms
 - Added room layout analysis to `CombatPlanner`, which classifies rooms to one of the four most common types of rooms:
-    - Bunkers: most structures in the rooms are covered by ramparts
-    - EdgeWall: barriers placed as close as possible to all room exits
-    - InnerWall: barriers placed to enclose structures but are recessed from the room exits
-    - Exposed: key structures are pathable to from some room exit
+  - Bunkers: most structures in the rooms are covered by ramparts
+  - EdgeWall: barriers placed as close as possible to all room exits
+  - InnerWall: barriers placed to enclose structures but are recessed from the room exits
+  - Exposed: key structures are pathable to from some room exit
 - Added lots of data tracking methods to `RoomIntel`:
-    - Harvesting data computes a variety of rollinga verages for energy harvesting in rooms to evaluate effectiveness of mining operations
-    - Casualty data computes effective energy and spawn costs of lost creeps
-    - These methods have been temporarily disabled to relieve room memory pressure, as they are not currently plugged in to anything
+  - Harvesting data computes a variety of rollinga verages for energy harvesting in rooms to evaluate effectiveness of mining operations
+  - Casualty data computes effective energy and spawn costs of lost creeps
+  - These methods have been temporarily disabled to relieve room memory pressure, as they are not currently plugged in to anything
 - Added additional heap cleaning routines to prevent periodic bucket crashes. At low bucket, the global cache will periodically be cleared, and at even lower buckets, `Game.cpu.halt()` will occasionally be called.
 - `Visualizer` content:
-    - Added `displayCostMatrix` method, which is useful for debugging pathfinding operations
-        - Added `displayCostMatrix` option to combat and swarm `MoveOptions`
+  - Added `displayCostMatrix` method, which is useful for debugging pathfinding operations
+    - Added `displayCostMatrix` option to combat and swarm `MoveOptions`
 - Added logic to suspend and unsuspend a colony. Suspended colonies will not be run, and their associated directives/overlords will not be handled either.
-    - Use `suspendColony(roomName)` and `unsuspendColony(roomName)` in the console to do this.
+  - Use `suspendColony(roomName)` and `unsuspendColony(roomName)` in the console to do this.
 - Added `in/out` terminal exception states, which seek to set the terminal contents to exactly the specified amounts, pushing everything else from the terminal to the network
-    - Changed `TerminalState_Rebuild` to an `in/out` state
+  - Changed `TerminalState_Rebuild` to an `in/out` state
 - Nuke defense behavioral improvements:
-    - Boosted workers will be spawned to fortify ramparts with incoming nukes
-    - Towers will not repair nuked ramparts unless they calculate that fortifications will not finish in time
-    - Workers now prioritize fortifying ramparts covering important structures first
+  - Boosted workers will be spawned to fortify ramparts with incoming nukes
+  - Towers will not repair nuked ramparts unless they calculate that fortifications will not finish in time
+  - Workers now prioritize fortifying ramparts covering important structures first
 - Market improvements:
-    - New console method: `cancelMarketOrders(filter?)`: cancels all market orders matching filter (if provided)
-    - Will now place and maintain buy orders for energy if average colony energy is too low and player has sufficient credits
-    - Reduced terminal equilibrium energy from 100k to 50k
+  - New console method: `cancelMarketOrders(filter?)`: cancels all market orders matching filter (if provided)
+  - Will now place and maintain buy orders for energy if average colony energy is too low and player has sufficient credits
+  - Reduced terminal equilibrium energy from 100k to 50k
 
 ### Changed
+
 - Changed the signature of Mem.wrap to take a memory defaults generator instead of an object. This will avoid future bugs which are caused by _.defaults(memObject, defaultMemObject) copying references of the default memory object and subsequent modifications to memory mutating the defaults object.
 - Another massive memory size reduction: plugged in `packrat.ts` methods to many places in the codebase where coordinates and positions are serialized. This, along with other changes to memory and logged stats, reduced memory impact by about 70% (1760kB -> 570kB)
 - Lots of changes to logistics systems to account for the recent(ish) changes to Structure.store and Creep.carry -> Creep.store
@@ -136,7 +140,7 @@ This was the last release before I took a 3 year break from Screeps after I star
 - Updated many of the deployment dependencies in package.json. You will need to `npm install` to update these packages.
 - Rewrote the extractor overlord to be more CPU efficient
 - Massive memory size reduction: many common memory keys have been aliased to single-character names using a set of constant enums in `memory.d.ts`. For example, `memory.colony` is now `memory.C` and is referenced in code as `memory[_MEM.COLONY]`.
-    - You can expect your memory usage to drop by about half(!) after applying this change.
+  - You can expect your memory usage to drop by about half(!) after applying this change.
 - `MiningOverlord` will now suicide old miners when their replacements arrive, preventing excess CPU use
 - Major improvements to swarm target finding/avoiding logic
 - `Directive`s no longer have a `requiredRCL` property and now take more general `colonyFilter` optional arguments in their constructor
@@ -147,6 +151,7 @@ This was the last release before I took a 3 year break from Screeps after I star
 - Project now complies with tslint standards specified in the configuration file; lint checks have been added to the CI scripts
 
 ### Fixed
+
 - Fixed a critical issue which caused the CPU reset routine to repeat indefinitely in low-CPU environments like shard3 (#65)
 - Security patch for `Assimilator`
 - Fixed a bug in `WorkerOverlord` where workers would not fortify ramparts to the needed hits to withstand multiple stacked nuclear strikes
@@ -163,51 +168,51 @@ This was the last release before I took a 3 year break from Screeps after I star
 - Various `CombatIntel` and `RoomIntel` bugfixes
 - No longer calls `Directive.spawnMoarOverlords()` if directive instantiation is aborted (in lieu of #82)
 
-
 ## Overmind [0.5.2.1] - 2019.2.8
 
 This patch fixes a critical bug with the `RoomIntel` module.
 
 ### Fixed
+
 - Fixed an unprotected access error with `RoomIntel.getSafetyData()`
-
-
 
 ## Overmind [0.5.2] - 2019.2.1
 
 This release adds improvements to Overmind's performance at lower RCL, fixes boosting logic to account for the removal of pre-boosting, and improves road planning, room intel, and swarms. This release is the version running in botarena 202.
 
 ### Added
+
 - Visualizer improvements:
-    - Added a dashboard section for the evolution chamber
-    - Labs now display their mineralTypes overlaid as a room visual
-    - Added version update messages to the notifications board when available
+  - Added a dashboard section for the evolution chamber
+  - Labs now display their mineralTypes overlaid as a room visual
+  - Added version update messages to the notifications board when available
 - Improvements to swarms:
-    - All overlords controlling swarms are now extended from the `SwarmOverlord <- CombatOverlord <- Overlord` class
-        - New `swarmWishlist` method prevents swarms from spawning "out of sync"
-    - Improvements to swarm assembly point calculations; supports multiple swarms now
-    - `Swarm.pivot()` provides more reliable in-place rotation without breaking formation
+  - All overlords controlling swarms are now extended from the `SwarmOverlord <- CombatOverlord <- Overlord` class
+    - New `swarmWishlist` method prevents swarms from spawning "out of sync"
+  - Improvements to swarm assembly point calculations; supports multiple swarms now
+  - `Swarm.pivot()` provides more reliable in-place rotation without breaking formation
 - New console methods:
-    - `notifications()` will print out a list of notifications shown in the GUI with links to rooms
-    - `listDirectives()` now takes an optional functional-style filter, such as `listDirectives(dir => dir.color == COLOR_PURPLE && !!dir.overlords.colonize)`
-    - `listConstructionSites()`, which takes an optional functional filter
+  - `notifications()` will print out a list of notifications shown in the GUI with links to rooms
+  - `listDirectives()` now takes an optional functional-style filter, such as `listDirectives(dir => dir.color == COLOR_PURPLE && !!dir.overlords.colonize)`
+  - `listConstructionSites()`, which takes an optional functional filter
 - Smarter behavior when dealing with over-stressed hatcheries
-    - New `overload` stat tracks the rolling average of ticks where the hatchery is idle, wants to spawn something, but is unable to because it is being loaded
+  - New `overload` stat tracks the rolling average of ticks where the hatchery is idle, wants to spawn something, but is unable to because it is being loaded
 - RoadPlanner improvements:
-    - New routing algorithm allows for tunnel placement, although this will be relatively rare due to very high maintenance costs
-    - Changes to `Colony.destinations` ensures more determinism when recomputing road networks; you should notice a decrease in roads which become deprecated as levels grow or outposts are added
-    - `RoadPlanner.roadCoverage` property tracks paving completion throughout a colony; transporter bodies will now use this stat rather than colony level to determine when to switch between setups with 1:1 and 2:1 carry:move ratios
+  - New routing algorithm allows for tunnel placement, although this will be relatively rare due to very high maintenance costs
+  - Changes to `Colony.destinations` ensures more determinism when recomputing road networks; you should notice a decrease in roads which become deprecated as levels grow or outposts are added
+  - `RoadPlanner.roadCoverage` property tracks paving completion throughout a colony; transporter bodies will now use this stat rather than colony level to determine when to switch between setups with 1:1 and 2:1 carry:move ratios
 - New information tracked with `RoomIntel`:
-    - (Approximate) harvesting data and rolling averages of energy/tick over 10k, 100k, and 1M ticks
-    - Casualty data, with effective energy costs and rolling average of cost/tick over 10k, 100k, 1M ticks
-    - Creep occupancy data over the last 25 ticks (computed only in owned rooms)
-    - Safety data, tracking consecutive safe, unsafe ticks and rolling average of safety over last 1k and 10k ticks
+  - (Approximate) harvesting data and rolling averages of energy/tick over 10k, 100k, and 1M ticks
+  - Casualty data, with effective energy costs and rolling average of cost/tick over 10k, 100k, 1M ticks
+  - Creep occupancy data over the last 25 ticks (computed only in owned rooms)
+  - Safety data, tracking consecutive safe, unsafe ticks and rolling average of safety over last 1k and 10k ticks
 - `CombatIntel.isEdgeDancing` uses creep occupancy data tracked in `RoomIntel` to determine if a likely tower drain attack is occurring; towers will adjust their firing patterns accordingly.
 - Initial (incomplete) implementation of `CombatPlanner`, which will coordinate automatic offensive and defensive actions betweeen colonies.
 
 ### Changed
+
 - Rewrote the boosting protocol to account for the removal of [pre-boosting capabilities](https://blog.screeps.com/2018/12/changelog-2018-12-14/#Other-changes). RIP in-spawn boosting, you will be missed... :'(
-    - Instead of three booster labs (one adjacent to each spawn), each applying every boost to their respective creeps, the new system allows up to 8 boosting labs, which will contain the total current amount of each distinct resource needed by all creeps currently being spawned by the colony.
+  - Instead of three booster labs (one adjacent to each spawn), each applying every boost to their respective creeps, the new system allows up to 8 boosting labs, which will contain the total current amount of each distinct resource needed by all creeps currently being spawned by the colony.
 - Improvements to keeping newly-constructed ramparts alive at low RCL: towers will repair critical ramparts below RCL5, and workers will prioritize fortifying critical ramparts above repairs
 - Overlords are now instantiated immeditely after a directive is placed rather than having to wait for the next full `rebuild()`
 - Pioneers will remove structures blocking a controller from being claimed, and claimers won't spawn until controller is reachable
@@ -221,9 +226,11 @@ This release adds improvements to Overmind's performance at lower RCL, fixes boo
 - Consolidated mutalisk and hydralisk body plans
 
 ### Removed
+
 - Deprecated directives and overlords for old siege and healpoint logic
 
 ### Fixed
+
 - Security patches and bugfixes for the `Assimilator`
 - Pioneers and claimers should no longer navigate through dangerous source keeper territory
 - Fixed an issue in `TaskRecharge` which could cause some creeps, like pioneers, to not harvest from a fully-surrounded source that they were adjacent to, causing gridlock situations
@@ -236,68 +243,69 @@ This release adds improvements to Overmind's performance at lower RCL, fixes boo
 - Fixed a bug where `RoomPlanner` would not properly demolish hostile structures in a newly claimed room
 - Extraction directives now remove themselves if colony downgrades below RCL6
 - Fixed a bug where low-level min-cut barriers for a bunker placed too close to the edge would not fully enclose the base (#43)
-    - This bug has not been fixed for the older two-part base style, which will soon be deprecated
-
-
+  - This bug has not been fixed for the older two-part base style, which will soon be deprecated
 
 ## Overmind [0.5.1] - 2019.1.2
 
 This patch changes the architecture of Overmind to be much more CPU efficient by introducing a cache-friendly `refresh()` phase to the main loop. See [this blog post](https://bencbartlett.wordpress.com/2019/01/02/screeps-6-verifiably-refreshed/) for more details. Additionally, the `Visualizer` system has been rewritten, and prelimiary support for assimilation and swarms has been added.
 
 ### Added
+
 - Huge persistence update: much of the Overmind architecture now persists on global between ticks! This saves a ton of CPU that was previously used toward garbage collection.
-    - The global `Overmind` object is now rebuilt every 20 ticks; in the meantime, `refresh()` is called
-    - Colonies, HiveClusters, Directives, Overlords, and Zerg are also persistent
-    - Parsed memory is saved each tick and restored the following tick to avoid `JSON.parse()` costs
-    - You can expect massive CPU savings, along with decreased CPU variabiity from this update
+  - The global `Overmind` object is now rebuilt every 20 ticks; in the meantime, `refresh()` is called
+  - Colonies, HiveClusters, Directives, Overlords, and Zerg are also persistent
+  - Parsed memory is saved each tick and restored the following tick to avoid `JSON.parse()` costs
+  - You can expect massive CPU savings, along with decreased CPU variabiity from this update
 - Added caching methods `$.set()` and `$.refresh()`
 - Lots of new content added to the `Visualizer`!
-    - Overmind logo now gets drawn in upper left corner
-        - This was a fun little project to do in Mathematica; I made a curve simplification algorithm to look at an image and give the minimum number of points to describe its perimeter within a given tolerance (those are all the hard-coded arrays in `logos.ts`)
-    - CPU, bucket, and GCL meters drawn
-    - Updates to colony creep count visuals
-    - Displays bar graphs for command center and hatchery statistics
+  - Overmind logo now gets drawn in upper left corner
+    - This was a fun little project to do in Mathematica; I made a curve simplification algorithm to look at an image and give the minimum number of points to describe its perimeter within a given tolerance (those are all the hard-coded arrays in `logos.ts`)
+  - CPU, bucket, and GCL meters drawn
+  - Updates to colony creep count visuals
+  - Displays bar graphs for command center and hatchery statistics
 - New `Segmenter` module manages asynchronous memory segments
 - Added some under-the-hood content for assimilation
-    - Completed the "key exchange protocol" that the assimilator uses to periodically validate codebases
+  - Completed the "key exchange protocol" that the assimilator uses to periodically validate codebases
 - Preliminary support for formation-based movement and pathfinding using `Swarm`s
-    - Added behavioral locks to prevent usage of this feature for non-assimilated codebases
+  - Added behavioral locks to prevent usage of this feature for non-assimilated codebases
 
 ### Changed
+
 - Improvements to `RangedDefenseOverlord` which utilize some of the new combat logic developed for SK mining
 - Queens now are prespawned 100 ticks in advance of when they are needed (up from 50) until there are multiple spawns in the room
 - Tweaks to bootstrapping
-    - Triggers if there is no queen and not enough energy to spawn a new one, regardless of presence of miners
-    - Will now reassign a transporter to become a queen if one is available
+  - Triggers if there is no queen and not enough energy to spawn a new one, regardless of presence of miners
+  - Will now reassign a transporter to become a queen if one is available
 - CPU improvements
-    - `Colony.registerRoomObjects` now uses more caching and is less expensive
-    - Improvements to `MiningSite`, `ExtractionSite`, and `UpgradeSite` to make them more CPU friendly
+  - `Colony.registerRoomObjects` now uses more caching and is less expensive
+  - Improvements to `MiningSite`, `ExtractionSite`, and `UpgradeSite` to make them more CPU friendly
 - Separated `Overlord` abstract class into `Overlord` and `CombatOverlord` classes
 - Standardized creep setups and role names into a single library for greater consistency and exchangeability
 - Boosts are now assigned by overlords in the constructor phase by passing a `boostWishlist` option in the `zerg()` and `combatZerg()` methods
 - Improvements to destroyer pairs
 - Better timeout functions for terminal state directives
 - Changes to flag color codes and directory structure to make directive types more consistent:
-    - Changed primary color classifications:
-        - Red: offsensive combat (previously all combat)
-        - Blue: defensive combat (new)
-        - Yellow: resource collection and transport (previously logistics)
-        - Brown: terminal state directives (new)
-    - Specific color code changes:
-        - Guard: red/blue -> blue/blue
-        - Invasion defense: orange/red -> blue/purple
-        - Evacuate terminal state: yellow/red -> brown/red
-        - Emergency terminal state: yellow/orange -> brown/orange
-        - Rebuild terminal state: yellow/brown -> brown/yellow
-    - New console method will assist in this migration: `removeErrantFlags()` removes all flags which do not match a directive color code
+  - Changed primary color classifications:
+    - Red: offsensive combat (previously all combat)
+    - Blue: defensive combat (new)
+    - Yellow: resource collection and transport (previously logistics)
+    - Brown: terminal state directives (new)
+  - Specific color code changes:
+    - Guard: red/blue -> blue/blue
+    - Invasion defense: orange/red -> blue/purple
+    - Evacuate terminal state: yellow/red -> brown/red
+    - Emergency terminal state: yellow/orange -> brown/orange
+    - Rebuild terminal state: yellow/brown -> brown/yellow
+  - New console method will assist in this migration: `removeErrantFlags()` removes all flags which do not match a directive color code
 - Colonies now no longer have an `Overseer` property. The Overseer has been moved to the `Overmind` and now handles all directives and overlords for all colonies
-    - Overlords are now initialized and run in order of their priority
+  - Overlords are now initialized and run in order of their priority
 - Changed routine to deal with critically low CPU bucket. Reaching the critical bucket threshold suspends operation until the entire bucket has replenished. This avoids entering a bucket "limbo state" where extra memory parsing costs are ever-present, increasing the total cost of operations.
 - Quick garbage collection is now explicitly called when the Overmind is re-instantiated
 - Limits the number of owned rooms you can own on CPU-limited `shard3` to three
-    - Adjustable value in `~settings.ts`; will implement a more sophisticated CPU-based limiter in future
+  - Adjustable value in `~settings.ts`; will implement a more sophisticated CPU-based limiter in future
 
 ### Fixed
+
 - Bugfix with pioneer recharging behavior to include dropped resources in recharging options
 - Bugfix for incorrectly initialized terminalNetwork memory not logging transfer costs correctly (#38, thanks @MaggNorway!)
 - Various SpawnGroup bugfixes
@@ -311,9 +319,8 @@ This patch changes the architecture of Overmind to be much more CPU efficient by
 - Fixed a bug where queens could get idle indefinitely at early RCL if minerals ended up in Hatchery battery
 
 ### Removed
+
 - `MiningSite`s and `ExtractionSite`s have been removed; their functionalities have been split among the mining/extraction directives and overlords
-
-
 
 ## Overmind [0.5.0]: "Evolution" - 2018.8.10
 
@@ -322,37 +329,40 @@ This release adds a huge set of new features to Overmind, described in more deta
 This is also the first release capable of fully automatic operation! By default, the operational mode is set to fully automatic; you can change the level of autonomy with the `setMode()` console command. Other added features include a new `Movement` library which allows creeps to fluidly glide past each other even in confined bunker alleys, support for Source Keeper mining, more advanced terminal logic, distributed spawning structures, and a lot of improvements to caching methods.
 
 Important notes as of this release:
+
 - Overmind no longer supports shared-vm. Isolated-vm is now required; you can set this in your account runtime settings.
 - The codebase can no longer be deployed using `rollup -c --dest main` or `rollup -c --dest pserver`. Use `npm run push-main` or `npm run push-pserver` instead.
 
 ### Added
+
 - Overmind is now capable of fully automatic operation! This patch added functionality to automatically reserve and claim rooms without any user input required. These are turned on by default; you can use the `setMode()` console commands to change the degree of autonomy.
-    - Added the `Strategist` module, instantiated as `Overmind.strategist` is bot mode is enabled. Strategist is currently responsible for choosing the next room to colonize, but will contain more high-level decision making functionality in the future.
-    - Added the `ExpansionPlanner` module to generate numerical scores for rooms to determine outpost/expansion preferences
-    - Added several methods to the `Cartographer` module (formerly `WorldMap`)
+  - Added the `Strategist` module, instantiated as `Overmind.strategist` is bot mode is enabled. Strategist is currently responsible for choosing the next room to colonize, but will contain more high-level decision making functionality in the future.
+  - Added the `ExpansionPlanner` module to generate numerical scores for rooms to determine outpost/expansion preferences
+  - Added several methods to the `Cartographer` module (formerly `WorldMap`)
 - Added the `Assimilator` module, which verifies the integrity of an Overmind codebase. This will be used for the upcoming assimilation patch. The source code for this module is obfuscated; see the obfuscated file comments in `/src/assimilation/Assimilator_obfuscated.js` for details.
-    - Added an implementation of sha256 hashing for use by this module
-    - Anything marked with `@assimilationLocked` or registered with `Assimilator.validate()` cannot be modified without invalidating assimilated status
+  - Added an implementation of sha256 hashing for use by this module
+  - Anything marked with `@assimilationLocked` or registered with `Assimilator.validate()` cannot be modified without invalidating assimilated status
 - Added the `Movement` library, which replaces Traveler as the default method of moving creeps around in Overmind
-    - Added (and improved multiple times) creep pushing behavior that moves idling creeps out of the way
-        - Creeps have move priorities, which characterize how important their assignment is. Creeps will yield to other creeps with more important priorities.
-    - Added recursive pushing to allow spawns to shove blocking creeps out of the way to make room for a spawning creep.
-    - Added methods for pathing around a room while kiting enemies and a `Movement.combatMove()` method which will be used more in the upcoming combat update
+  - Added (and improved multiple times) creep pushing behavior that moves idling creeps out of the way
+    - Creeps have move priorities, which characterize how important their assignment is. Creeps will yield to other creeps with more important priorities.
+  - Added recursive pushing to allow spawns to shove blocking creeps out of the way to make room for a spawning creep.
+  - Added methods for pathing around a room while kiting enemies and a `Movement.combatMove()` method which will be used more in the upcoming combat update
 - Lots of additions to `CombatIntel` and `CombatTargeting` modules, including predictive damage calculations and automatic siege target calculations. These will be used in the upcoming combat update.
 - New `CombatZerg` methods `autoMelee`, `autoHeal`, `autoRanged`, and `autoSkirmish` which provide general-purpose combat routines for small skirmishes
-    - Added a `GoalFinder` module to generate lists of `PathFinderGoal`s representing positions and ranges that creeps should approach and avoid
+  - Added a `GoalFinder` module to generate lists of `PathFinderGoal`s representing positions and ranges that creeps should approach and avoid
 - Added a `SourceKeeperReaper` overlord to facilitate source keeper mining (finally!)
 - Added `SpawnGroup`s, which allow for decentralized creep spawning distributed among nearby colonies (work in progress)
 - Room planner updates:
-    - Room planner will now destroy or dismantle incorrectly-placed structures allowing you to change your room plan after it is built
-    - Finished support for bunkers
+  - Room planner will now destroy or dismantle incorrectly-placed structures allowing you to change your room plan after it is built
+  - Finished support for bunkers
 - New `BunkerQueen` overlord which has a lot of hard-coded optimizations built specifically for the bunker layout
 - New `ControllerAttacker` overlord which spawns groups of controller attackers ("infestors") distributed across nearby colonies to attack a room controller. (Thanks @rooklion/@Sarrick for this contribution!)
 - Added terminal exception states to account for various abnormal conditions, such as rebuilding a room or evacuating a room which is about to be breached. Terminals that are in an exception state will maintain a small, tightly controlled set of resources in their store and will not engage in normal terminal activity.
 - Added a `GlobalCache` module to store expensive calculations yielding RoomObjects on global; this has been integrated in various points in the codebase to improve CPU usage.
-    - Renamed `GlobalCache` to `$` ($ -> cash -> cache) for maximum brevity and punnyness
+  - Renamed `GlobalCache` to `$` ($ -> cash -> cache) for maximum brevity and punnyness
 
 ### Changed
+
 - The Overmind object now `try...catch` evaluates `init` and `run` methods for each colony / network. If an exceptions are caught, they are added to a queue and thrown at the end of the tick, preventing a global deadlock from occurring due to a problem in a single colony.
 - Zerg are now instantiated in constructor phase by their overlords rather than by the Overmind object.
 - All Overlords are now instantiated in a `spawnMoarOverlords()` method, which all `Colonies`, `HiveClusters`, and `Directives` now have. This is primarily in preparation for future restructuring to improve CPU usage.
@@ -360,21 +370,22 @@ Important notes as of this release:
 - Refactored Hatchery spawning code to allow for greater flexibility in spawning creeps, such as requesting a specific spawn (useful for spawning the now-stationary manager)
 - Refactored incubation logic to use the new `SpawnGroup` objects. Colonies no longer have `incubator` or `incubatingColonies` properties.
 - Logistics network improvements:
-    - `LogisticsNetwork.requestOutputAll()` has been replaced by `requestOutput({resourceType: 'all'})` and now generates a single request for the sum amount of all resourceTypes in the target. This improves performance and CPU cost.
-    - Added cache invalidation methods to fix an issue where too many transporters could be assigned to the same logistics target during a single tick
-    - Dropped resources and tombstones now directly request collection from the logistics network rather than using a logistics directive
-    - Changed order of operations in `predictedRequestAmount` to yield more accurate results when near target store/energy capacity
+  - `LogisticsNetwork.requestOutputAll()` has been replaced by `requestOutput({resourceType: 'all'})` and now generates a single request for the sum amount of all resourceTypes in the target. This improves performance and CPU cost.
+  - Added cache invalidation methods to fix an issue where too many transporters could be assigned to the same logistics target during a single tick
+  - Dropped resources and tombstones now directly request collection from the logistics network rather than using a logistics directive
+  - Changed order of operations in `predictedRequestAmount` to yield more accurate results when near target store/energy capacity
 - RoadLogistics now uses about 80% less CPU. Workers now get a chained task object to work more efficiently when repairing remote roads.
 - TerminalNetwork now equalizes all base resources (energy, power, all base minerals)
 - Workers now include dropped energy in list of objects they can recharge from and pick their recharge target more intelligently, accounting for other targeting workers
 - Workers and pioneers now will use energy from available unowned storage structures if available
 - Improvements to room planner demolishing behavior:
-    - Added some safeguards on destroying misplaced spawns to ensure that there are enough workers to rebuild the spawns
-    - Room planner is now better at detecting gridlocked situations and will destroy structures as needed to make room for construction sites
+  - Added some safeguards on destroying misplaced spawns to ensure that there are enough workers to rebuild the spawns
+  - Room planner is now better at detecting gridlocked situations and will destroy structures as needed to make room for construction sites
 - Reorganized some memory structures, consolidating things into `Memory.settings`
 - Various CPU improvements
 
 ### Fixed
+
 - Fixed a bug where mining sites could get clogged if invaders died on the container outputs and dropped minerals which would not get withdrawn
 - Fixed a bug in approximate path length caculations in `LogisticsNetwork.bufferChoices`
 - Room planner now correctly restores flag memories when reopening a session
@@ -383,34 +394,34 @@ Important notes as of this release:
 - Fixed (?) a really weird bug where Colonies would sometimes incorrectly compute assets. The bug was fixed by adding print statements and I have no idea why.
 
 ### Removed
+
 - Removed dependencies for `Traveler`, replacing with in-house `Movement` and `Pathing` libraries
 - Deprecated `DirectiveLogisticsRequest`
 - Removed `lodash.minBy` dependencies to reduce compiled codebase size
-
-
 
 ## Overmind [0.4.1] - 2018.6.15
 
 This patch makes Abathur a little smarter in which reactions he chooses and fixes some bugs accidentally introduced by changes in the last release.
 
 ### Added
+
 - Initial (incomplete) room planner support for bunkers; this will be finished in a later release
 - UpgradeSite inputs now actively request that minerals be removed from them in case they get in there somehow (such as a transporter dying on top of the container)
 
 ### Changed
+
 - Abathur now checks to see if a colony can acquire the necessary base ingredients for a reaction queue through terminal transfers or via trading before assigning it to the evolutionChamber
 - Renamed `LogisticsNetwork.request()` and `LogisticsNetwork.provide()` to `LogisticsNetwork.requestInput()` and `LogisticsNetwork.requestOutput()` to be less confusing
 
 ### Fixed
+
 - Fixed a bug where colony substrings in a flag name could cause a directive to reference the wrong colony, e.g. "E11S12" directs to "E11S1"
 - Fixed a bug introduced when CreepSetups were refactored in the last release that could cause bootstrapping directives to fail to run
 - Fixed a bug in LogisticsNetwork where predicted carry amounts could exceed carry capacity
 
-
-
 ## Overmind [0.4.0]: "require('more-minerals')" - 2018.6.14
 
-*"We require more minerals."* Well finally, we now have them! This long-overdue release (the largest update to date by additions/deletions) adds fully automatic mineral mining, processing, trading, and boosting capabilities to Overmind!
+_"We require more minerals."_ Well finally, we now have them! This long-overdue release (the largest update to date by additions/deletions) adds fully automatic mineral mining, processing, trading, and boosting capabilities to Overmind!
 
 Colonies now automatically start mining minerals once an extractor is built. Minerals are stored in the terminal and are transferred between colonies as needed for resource production. Excess minerals are sold on the market and once a player reaches a credit threshold (currently >10k credits), missing base minerals required for resource production are purchased from the market. Labs will automatically cycle through reaction queues to try to build up a stockpile of prioritized resources. When creeps request to get boosted, the necessary resources are transferred to the appropriate colony automatically, or, if the player has sufficient credits (>15k), they will be bought on the market if not present.
 
@@ -419,32 +430,33 @@ Although most of the planned combat features will be implemented in v0.5, this r
 Finally, we now have a [feature request](https://github.com/bencbartlett/Overmind/issues/new?template=feature_request.md) template! If you have a suggestion for something you'd like added or changed to Overmind, feel free to submit a request there.
 
 ### Added
+
 - Added support for mineral mining and processing (finally)!
-    - Reaction cycles planned by the `Abathur` module, which makes decisions related to the global production of resources, guiding the evolution of the swarm
-        - Module `Abathur` incompatible with pronouns
-    - New hiveCluter to manage boosting and mineral production: `EvolutionChamber`
-        - `EvolutionChamber` is run by the colony manager and produces batches of resources as needed to meet a target amount
-        - You might not see mineral production for the first few days while your colonies sell resources to gain sufficient market credits
-    - New hiveCluster for mineral mining: `ExtractionSite` (based on @rooklion's pull request #12)
+  - Reaction cycles planned by the `Abathur` module, which makes decisions related to the global production of resources, guiding the evolution of the swarm
+    - Module `Abathur` incompatible with pronouns
+  - New hiveCluter to manage boosting and mineral production: `EvolutionChamber`
+    - `EvolutionChamber` is run by the colony manager and produces batches of resources as needed to meet a target amount
+    - You might not see mineral production for the first few days while your colonies sell resources to gain sufficient market credits
+  - New hiveCluster for mineral mining: `ExtractionSite` (based on @rooklion's pull request #12)
 - Fully automatic support for creep boosting!
-    - Boosts are used when `Overlord.boosts[creepRoleName]` is set to a list of minerals
-    - Some overlords, like `RangedDefense`, will automatically boost creeps when needed
-    - Boosts will only be used if (1) you have the boosts already, (2) other colonies have a sufficient total amount, or (3) you have >15k credits with which to buy the compounds
+  - Boosts are used when `Overlord.boosts[creepRoleName]` is set to a list of minerals
+  - Some overlords, like `RangedDefense`, will automatically boost creeps when needed
+  - Boosts will only be used if (1) you have the boosts already, (2) other colonies have a sufficient total amount, or (3) you have >15k credits with which to buy the compounds
 - RoomPlanner now includes automatic barrier planning
-    - `roomPlanner.barrierPlanner` uses a modified min-cut algorithm to compute the best location to place ramparts
-    - Opening and closing the roomPlanner for a colony which already has walls will create duplicate walls. Use `destroyAllBarriers(roomName)` if you wish to get rid of your old barriers.
+  - `roomPlanner.barrierPlanner` uses a modified min-cut algorithm to compute the best location to place ramparts
+  - Opening and closing the roomPlanner for a colony which already has walls will create duplicate walls. Use `destroyAllBarriers(roomName)` if you wish to get rid of your old barriers.
 - New `TraderJoe` module with lots of built in market functions:
-    - Labs will attempt to buy resources they need if there are sufficient (>10k) credits
-    - Sells excess resources on the market
+  - Labs will attempt to buy resources they need if there are sufficient (>10k) credits
+  - Sells excess resources on the market
 - New directives, all placed automatically by colony overseer:
-    - `DirectiveNukeResponse` will automatically build ramparts using workers to block incoming nuke damage
-    - `DirectiveAbandon` will evacuate resources from a terminal if overseer detects that the colony has been breached (also prevents terminal from receiving resources)
+  - `DirectiveNukeResponse` will automatically build ramparts using workers to block incoming nuke damage
+  - `DirectiveAbandon` will evacuate resources from a terminal if overseer detects that the colony has been breached (also prevents terminal from receiving resources)
 - Added flee response to miners in outpost rooms (EDIT: this functionality is still present, but has been disabled while I tune the sensitivity)
-    - Miners in colony rooms will also retreat to the safety of the controller if there is a large invasion happening
-    - Workers will no longer attempt to work in unsafe remote rooms
+  - Miners in colony rooms will also retreat to the safety of the controller if there is a large invasion happening
+  - Workers will no longer attempt to work in unsafe remote rooms
 - Preliminary DEFCON system to classify colony safety levels; this will be expanded in the next (combat-focused) update
 - Room signatures can now be changed via the console command `setSignature('newSignature')`
-    - Added a behavioral lock in `Overmind.ts -> Overmind_obfuscated.js` which enforces that controller signatures must contain the string "overmind" (not case-sensitive)
+  - Added a behavioral lock in `Overmind.ts -> Overmind_obfuscated.js` which enforces that controller signatures must contain the string "overmind" (not case-sensitive)
 - New melee defense overlord spawns zerglings in rooms with a sufficiently high rampart/walls ratio and defend against melee attacks
 - Improvements to the ranged defense overlord, which now spawns hydralisks which have better pathing
 - New `combatIntel` module, which contains an assortment of methods related to making combat-related decisions and calculations
@@ -453,15 +465,16 @@ Finally, we now have a [feature request](https://github.com/bencbartlett/Overmin
 - Added a [feature request template](https://github.com/bencbartlett/Overmind/issues/new?template=feature_request.md) and streamlined the existing issue and pull request templates
 
 ### Changed
+
 - Lots of under-the-hood improvements to the logistics system!
-    - You should see about a 60% reduction in CPU usage from `LogisticsNetwork` due to better internal caching
-    - Tweaks to the predictive functions reduce the chance that transporters occasionally get stuck in an oscillatory pattern
+  - You should see about a 60% reduction in CPU usage from `LogisticsNetwork` due to better internal caching
+  - Tweaks to the predictive functions reduce the chance that transporters occasionally get stuck in an oscillatory pattern
 - Refactored `TransportRequestGroup` to be more like `LogisticsNetwork`
-    - CommandCenter (and EvolutionChamber) now submit resource requests via a shared `transportRequest` object
+  - CommandCenter (and EvolutionChamber) now submit resource requests via a shared `transportRequest` object
 - Lots of under-the-hood memory tweaks:
-    - You should see about a 30% reduction in overall memory usage!
-    - Improved memory footprint of stats collection and shortened hiveCluster names in memory
-    - `Mem.wrap()` now initializes new properties to defaults within the target object (previously, would only initialize if target was undefined)
+  - You should see about a 30% reduction in overall memory usage!
+  - Improved memory footprint of stats collection and shortened hiveCluster names in memory
+  - `Mem.wrap()` now initializes new properties to defaults within the target object (previously, would only initialize if target was undefined)
 - Rewrote most of the manager overlord to account for the new resource production features
 - `TerminalNetwork` now uses an `equalize()` routine to distribute resources between colonies
 - Several creep role names have been renamed, resulting in a reduction of the number of unique names. For example, miners and the new mineral miners are now both called "drone"s
@@ -471,10 +484,11 @@ Finally, we now have a [feature request](https://github.com/bencbartlett/Overmin
 - Lots of file renaming to be more concise
 - Colonies now register a shorthand reference on `global` for console use: 'E4S41' and 'e4s41' both refer to `Overmind.colonies.E4S41`
 - Updates to the Grafana dashboard:
-    - Several new logged statistics, including expansion ranking, miningSite usage/downtime, and energy income per tick by colony
-    - Fixed several null datasource issues and made some tweaks to GCL graphs suggested by @coolfeather2
+  - Several new logged statistics, including expansion ranking, miningSite usage/downtime, and energy income per tick by colony
+  - Fixed several null datasource issues and made some tweaks to GCL graphs suggested by @coolfeather2
 
 ### Fixed
+
 - Fixed a longstanding bug with `RoomObject.targetedBy` returning incorrect results because of faulty cache updating when switching tasks
 - Made link allocation less buggy; hiveClusters now claim their link, preventing others from registering the same link
 - Fixed a bug where the roadPlanner would plan roads for incomplete paths
@@ -483,22 +497,22 @@ Finally, we now have a [feature request](https://github.com/bencbartlett/Overmin
 - Workers will no longer attempt to build sites for structures over the max amount for current room level (for example, after a controller downgrade)
 
 ### Removed
+
 - Removed all contents from `src/deprecated`
-
-
 
 ## Overmind [0.3.1] - 2018.5.12
 
 ### Added
+
 - Workers sign controllers at low RCL
 
 ### Fixed
+
 - Bugfix with workers being idle due to being unable to find a valid paving target
 
 ### Removed
+
 - Removed `LabMineralType` directive as it is no longer relevant
-
-
 
 ## Overmind [0.3.0]: "Back to base-ics" - 2018.5.9
 
@@ -506,34 +520,36 @@ This release adds a ton of new automation features to base planning, partially o
 
 The terminal network has been improved as well, and now tracks transfers between locations within the network (Grafana support available in the [updated dashboard](https://github.com/bencbartlett/Overmind/blob/master/assets/Grafana%20Dashboards/Overmind.json).) Colonies now produce more upgraders while near full energy, and have a low-power mode that scales back transporters to save on CPU. Additional resource management assets, including directives for scavenging and for integrating with the logistics system, have been added but will be enabled in a future release.
 
-### Added 
+### Added
+
 - Lots of new content added to the [Wiki](https://github.com/bencbartlett/Overmind/wiki)!
 - TerminalNetwork stat collection, which accumulates all `send()` calls and transfer costs by resourceType between origin and destination
-    - Added Grafana dashboard support for new stats (in /assets)
+  - Added Grafana dashboard support for new stats (in /assets)
 - Lots of automation improvements to the room planner! Now once you create a room plan at RCL 1, you can dynamically add and remove outposts without needing to open/close the planner.
-    - Road planning is now done with the RoadPlanner, which is instantiated from a room planner, and provides a much higher degree of automation:
-        - Road network is continuously recalculated every 1000 ticks with a heuristic that encourages road merging at minimal expense to path length
-        - Roads which become deprecated (no longer in the optimal road plan) are allowed to decay
-        - Road routing hints (white/white flags) no longer have any effect. (The new routing algorithm uses a variant of this idea to merge roads more intelligently.)
-    - UpgradeSites now automatically calculate input location and no longer need to be placed in room planner
-    - MiningSites at outposts now automatically build container outputs without you needing to reboot room planner
-    - Automatic link placement
-        - MiningSites will replace their containers with links if above 10 path length from storage (prioritizing farthest)
-        - UpgradeSites will add a link if above 10 path length from storage if miningSites already have links
-            - UpgradeSites now have `link` and `battery` properties which request energy independently
+  - Road planning is now done with the RoadPlanner, which is instantiated from a room planner, and provides a much higher degree of automation:
+    - Road network is continuously recalculated every 1000 ticks with a heuristic that encourages road merging at minimal expense to path length
+    - Roads which become deprecated (no longer in the optimal road plan) are allowed to decay
+    - Road routing hints (white/white flags) no longer have any effect. (The new routing algorithm uses a variant of this idea to merge roads more intelligently.)
+  - UpgradeSites now automatically calculate input location and no longer need to be placed in room planner
+  - MiningSites at outposts now automatically build container outputs without you needing to reboot room planner
+  - Automatic link placement
+    - MiningSites will replace their containers with links if above 10 path length from storage (prioritizing farthest)
+    - UpgradeSites will add a link if above 10 path length from storage if miningSites already have links
+      - UpgradeSites now have `link` and `battery` properties which request energy independently
 - Added some version migration code in `sandbox.ts` which will reboot the room planner for each colony one at a time to account for the new changes
 - Hauling directives and overlords for hauling large amounts of resources long distances (e.g. scavenging from abandoned storage)
 - Finished coding LogisticsRequestDirectives: these flags act as requestor or provider targets and have a `store` property
-    - `provider == false`: requests energy to be dropped at a positiion
-    - `provider == true`: resources dropped at position or in a tombstone to be collected
-    - These directives are functional, but their automatic placement has been disabled until a future patch while I continue to improve the logistics system performance
+  - `provider == false`: requests energy to be dropped at a positiion
+  - `provider == true`: resources dropped at position or in a tombstone to be collected
+  - These directives are functional, but their automatic placement has been disabled until a future patch while I continue to improve the logistics system performance
 - Preliminary contract module for making deals between players
 - `Energetics` module, which will make high-level decisions based on energy distributions
-    - Colonies now have a `lowPowerMode` operational state, which scales back production of miners and transporters at RCL8 with full storage/terminal
+  - Colonies now have a `lowPowerMode` operational state, which scales back production of miners and transporters at RCL8 with full storage/terminal
 - New version updater system alerts you when a new release of Overmind is available
-    - Currently only available on shard2; shard1 and shard0 support coming soon
+  - Currently only available on shard2; shard1 and shard0 support coming soon
 
 ### Changed
+
 - Transporters now use a single-sided greedy selection at RCL<4, since stable matching only works well when the transporter carry is a significant fraction of the logisticsRequest target's capacity
 - Workers and queens include tombstones in their recharge target list
 - `Task.creep` once again points to a `Zerg` object rather than a `Creep` object (Tasks are still hosted on creep prototypes, however)
@@ -544,43 +560,45 @@ The terminal network has been improved as well, and now tracks transfers between
 - Disabled stack tracing for all logging except errors; removed some annoying alerts ("transporter chooses request with 0 amount!")
 
 ### Removed
+
 - Deprecated `TaskDeposit`; use `TaskTransfer` instead
 - `TaskWithdrawResource` has replaced `TaskWithdraw`
 - Removed the source for `Overmind.ts` and replaced it with an obfuscated, pre-compiled `Overmind_obfuscated.js`
-    - This is in preparation for implementing behavioral locks which will make Overmind more fair to new players
-        - See the header in `Overmind_obfuscated.js` for more details
+  - This is in preparation for implementing behavioral locks which will make Overmind more fair to new players
+    - See the header in `Overmind_obfuscated.js` for more details
 
-### Fixed 
+### Fixed
+
 - Bugfixes with `TaskDrop`, `TaskGoTo`, `TaskGoToRoom`
 - Even more bugfixes with `TaskDrop`
 - Fixed bug (hopefully) with creeps not approaching to range 1 in `TaskAttack` and `TaskHeal`
 - Fixed bugs where claimers and reservers would get stuck trying to sign a room that was perma-signed by Screeps as a future newbie zone
 - Fixed a bug where upgradeSites could misidentify their input in some pathological room layouts
 
-
-
 ## Overmind [0.2.1] - 2018.3.22
 
 ### Added
+
 - Memory stat collection and `User` variable (#3 - thanks CoolFeather2!)
 - Brief setup instructions for dashboard
 - Assets for possible future bunker layout
 
 ### Changed
+
 - Added adaptive thresholds to logistics system requests, should slightly improve CPU usage
 - Switched dependency to personal fork of `typed-screeps`
 
-### Fixed 
+### Fixed
+
 - Bugfixes with rollup and screeps-profiler
 - Moved changelog to root
-
-
 
 ## Overmind [0.2.0]: "Logistics Logic" - 2018.3.15
 
 This release completely overhauls the logistics system in Overmind, replacing haulers, suppliers, and mineralSuppliers, which functioned on a rigid rules-based system, with a more flexible universal "transport" creep. `LogisticsGroup`s employ a stable matching algorithm to efficiently assign resource collection and supply tasks to transporters, seeking to maximize aggregate change in resources per tick.
 
 ### Added
+
 - Logistic groups, tranport overlords have now been enabled after being present in the previous few commits
 - `RoadLogistics` class more efficiently schedules road maintenance
 - `Zerg.actionLog` and `Zerg.canExecute()` functionality for simultaneous execution of creep actions
@@ -591,24 +609,24 @@ This release completely overhauls the logistics system in Overmind, replacing ha
 - Added this changelog
 
 ### Removed
+
 - Haulers, suppliers, and mineralSuppliers have been deprecated in favor of transporters
 - `TerminalSettings` deprecated; remaining functionality moved to `TerminalNetwork`
 - Removed use of `screeps-typescript-profiler` due to inaccuracies in readout
 
 ### Changed
+
 - Modified Bootstrapping logic to fit new transport system
-- Tasks now exist on `Creep` prototype, mirrored in `Zerg` properties (in preparation for a future stand-alone 
-release of the Task system)
-
-
+- Tasks now exist on `Creep` prototype, mirrored in `Zerg` properties (in preparation for a future stand-alone
+  release of the Task system)
 
 ## Overmind [0.1.0]: "GL HF" - 2018.3.2
 
 (This release was initially deployed on 2018.3.2 but was re-versioned on 2018.3.15.)
 
 ### Added
-- Initial pre-release of Overmind after 190 commits and about 80,000 additions.
 
+- Initial pre-release of Overmind after 190 commits and about 80,000 additions.
 
 [Unreleased]: https://github.com/bencbartlett/Overmind/compare/v0.5.2.1...HEAD
 [0.5.2.1]: https://github.com/bencbartlett/Overmind/compare/v0.5.2...v0.5.2.1

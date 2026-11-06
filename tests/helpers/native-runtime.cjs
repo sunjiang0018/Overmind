@@ -1,5 +1,5 @@
-const {installGameFixtures} = require('./game-fixtures.cjs');
-const native = require('./native-helpers.cjs');
+const { installGameFixtures } = require("./game-fixtures.cjs");
+const native = require("./native-helpers.cjs");
 
 /**
  * Exposes the compiled native helper functions to a VM-based test scope.
@@ -10,7 +10,7 @@ function installNative(context) {
   Object.assign(context, native);
   const originalRequire = context.require;
   context.require = function (name, ...args) {
-    if (typeof name === 'string' && name.endsWith('utilities/native')) {
+    if (typeof name === "string" && name.endsWith("utilities/native")) {
       return native;
     }
     return originalRequire ? originalRequire(name, ...args) : {};
@@ -18,4 +18,4 @@ function installNative(context) {
   return installGameFixtures(context);
 }
 
-module.exports = {native, installNative};
+module.exports = { native, installNative };

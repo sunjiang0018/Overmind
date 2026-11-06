@@ -1,6 +1,6 @@
-import {createTickCache} from './cache';
+import { createTickCache } from "./cache";
 
-export const getTerminalState = createTickCache((terminal: StructureTerminal) => ({
-	notReady: false,
-	hasReceived: undefined as boolean | undefined,
+export const getTerminalState = createTickCache((_terminal: StructureTerminal) => ({
+  notReady: false,
+  hasReceived: undefined as boolean | undefined,
 }));

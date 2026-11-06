@@ -1,21 +1,21 @@
-import {getRoomContainers} from '../../game/RoomStructures';
+import { getRoomContainers } from "../../game/RoomStructures";
 import {
-	getRoomPositionPrint,
-	isPositionOnEdge,
-	roomPositionAvailableNeighbors,
-	roomPositionFindClosestByLimitedRange,
-	roomPositionInRangeToPos,
-	roomPositionLookForStructure,
-} from '../../game/RoomPosition';
-import {$} from '../../caching/GlobalCache';
-import {log} from '../../console/log';
-import {Roles, Setups} from '../../creepSetups/setups';
-import {DirectiveExtract} from '../../directives/resource/extract';
-import {Pathing} from '../../movement/Pathing';
-import {OverlordPriority} from '../../priorities/priorities_overlords';
-import {profile} from '../../profiler/decorator';
-import {Zerg} from '../../zerg/Zerg';
-import {Overlord} from '../Overlord';
+  getRoomPositionPrint,
+  isPositionOnEdge,
+  roomPositionAvailableNeighbors,
+  roomPositionFindClosestByLimitedRange,
+  roomPositionInRangeToPos,
+  roomPositionLookForStructure,
+} from "../../game/RoomPosition";
+import { $ } from "../../caching/GlobalCache";
+import { log } from "../../console/log";
+import { Roles, Setups } from "../../creepSetups/setups";
+import { DirectiveExtract } from "../../directives/resource/extract";
+import { Pathing } from "../../movement/Pathing";
+import { OverlordPriority } from "../../priorities/priorities_overlords";
+import { profile } from "../../profiler/decorator";
+import { Zerg } from "../../zerg/Zerg";
+import { Overlord } from "../Overlord";
 
 const BUILD_OUTPUT_FREQUENCY = 15;
 
@@ -24,143 +24,159 @@ const BUILD_OUTPUT_FREQUENCY = 15;
  */
 @profile
 export class ExtractorOverlord extends Overlord {
+  directive: DirectiveExtract;
+  room: Room | undefined;
+  extractor: StructureExtractor | undefined;
+  mineral: Mineral | undefined;
+  container: StructureContainer | undefined;
+  drones: Zerg[];
 
-	directive: DirectiveExtract;
-	room: Room | undefined;
-	extractor: StructureExtractor | undefined;
-	mineral: Mineral | undefined;
-	container: StructureContainer | undefined;
-	drones: Zerg[];
+  static settings = {
+    maxDrones: 2,
+  };
 
-	static settings = {
-		maxDrones: 2,
-	};
+  constructor(directive: DirectiveExtract, priority: number) {
+    super(directive, "mineral", priority);
+    this.directive = directive;
+    this.priority += this.outpostIndex * OverlordPriority.remoteSKRoom.roomIncrement;
+    this.drones = this.zerg(Roles.drone);
+    // Populate structures
+    this.populateStructures();
+  }
 
-	constructor(directive: DirectiveExtract, priority: number) {
-		super(directive, 'mineral', priority);
-		this.directive = directive;
-		this.priority += this.outpostIndex * OverlordPriority.remoteSKRoom.roomIncrement;
-		this.drones = this.zerg(Roles.drone);
-		// Populate structures
-		this.populateStructures();
-	}
+  // If mineral is ready to be mined, make a container
+  private shouldHaveContainer() {
+    return (
+      this.mineral &&
+      (this.mineral.mineralAmount > 0 || (this.mineral.ticksToRegeneration || 0) < 2000)
+    );
+  }
 
-	// If mineral is ready to be mined, make a container
-	private shouldHaveContainer() {
-		return this.mineral && (this.mineral.mineralAmount > 0 || (this.mineral.ticksToRegeneration || 0) < 2000);
-	}
+  private populateStructures() {
+    if (Game.rooms[this.pos.roomName]) {
+      this.extractor = roomPositionLookForStructure(this.pos, STRUCTURE_EXTRACTOR) as
+        | StructureExtractor
+        | undefined;
+      this.mineral = this.pos.lookFor(LOOK_MINERALS)[0];
+      this.container = roomPositionFindClosestByLimitedRange(
+        this.pos,
+        getRoomContainers(Game.rooms[this.pos.roomName]),
+        1,
+      );
+    }
+  }
 
-	private populateStructures() {
-		if (Game.rooms[this.pos.roomName]) {
-			this.extractor = roomPositionLookForStructure(this.pos, STRUCTURE_EXTRACTOR) as StructureExtractor | undefined;
-			this.mineral = this.pos.lookFor(LOOK_MINERALS)[0];
-			this.container = roomPositionFindClosestByLimitedRange(this.pos, getRoomContainers(Game.rooms[this.pos.roomName]), 1);
-		}
-	}
+  refresh() {
+    if (!this.room && Game.rooms[this.pos.roomName]) {
+      // if you just gained vision of this room
+      this.populateStructures();
+    }
+    super.refresh();
+    $.refresh(this, "extractor", "mineral", "container");
+  }
 
-	refresh() {
-		if (!this.room && Game.rooms[this.pos.roomName]) { // if you just gained vision of this room
-			this.populateStructures();
-		}
-		super.refresh();
-		$.refresh(this, 'extractor', 'mineral', 'container');
-	}
+  private registerOutputRequests(): void {
+    if (this.container) {
+      const outputThreshold = this.drones.length == 0 ? this.container.store.getCapacity() : 0;
+      if (this.container.store.getUsedCapacity() > outputThreshold) {
+        this.colony.logisticsNetwork.requestOutput(this.container, { resourceType: "all" });
+      }
+    }
+  }
 
-	private registerOutputRequests(): void {
-		if (this.container) {
-			const outputThreshold = this.drones.length == 0 ? this.container.store.getCapacity() : 0;
-			if (this.container.store.getUsedCapacity() > outputThreshold) {
-				this.colony.logisticsNetwork.requestOutput(this.container, {resourceType: 'all'});
-			}
-		}
-	}
+  /* Calculate where the container output will be built for this site */
+  private calculateContainerPos(): RoomPosition {
+    // log.debug(`Computing container position for mining overlord at ${this.pos.print}...`);
+    let originPos: RoomPosition | undefined;
+    if (this.colony.storage) {
+      originPos = this.colony.storage.pos;
+    } else if (this.colony.roomPlanner.storagePos) {
+      originPos = this.colony.roomPlanner.storagePos;
+    }
+    if (originPos) {
+      const path = Pathing.findShortestPath(this.pos, originPos).path;
+      const pos = path.find((pos) => pos.getRangeTo(this) == 1);
+      if (pos) return pos;
+    }
+    // Shouldn't ever get here
+    log.warning(`Last resort container position calculation for ${this.print}!`);
+    return roomPositionAvailableNeighbors(this.pos, true)[0];
+  }
 
-	/* Calculate where the container output will be built for this site */
-	private calculateContainerPos(): RoomPosition {
-		// log.debug(`Computing container position for mining overlord at ${this.pos.print}...`);
-		let originPos: RoomPosition | undefined;
-		if (this.colony.storage) {
-			originPos = this.colony.storage.pos;
-		} else if (this.colony.roomPlanner.storagePos) {
-			originPos = this.colony.roomPlanner.storagePos;
-		}
-		if (originPos) {
-			const path = Pathing.findShortestPath(this.pos, originPos).path;
-			const pos = path.find(pos => pos.getRangeTo(this) == 1);
-			if (pos) return pos;
-		}
-		// Shouldn't ever get here
-		log.warning(`Last resort container position calculation for ${this.print}!`);
-		return roomPositionAvailableNeighbors(this.pos, true)[0];
-	}
+  private buildOutputIfNeeded(): void {
+    // Create container if there is not already one being built
+    if (!this.container && this.shouldHaveContainer()) {
+      const containerSite = this.pos
+        .findInRange(FIND_MY_CONSTRUCTION_SITES, 2)
+        .filter((site) => site.structureType == STRUCTURE_CONTAINER)[0];
+      if (!containerSite) {
+        const containerPos = this.calculateContainerPos();
+        log.info(`${this.print}: building container at ${getRoomPositionPrint(containerPos)}`);
+        const result = containerPos.createConstructionSite(STRUCTURE_CONTAINER);
+        if (result != OK) {
+          log.error(
+            `${this.print}: cannot build container at ${getRoomPositionPrint(containerPos)}! Result: ${result}`,
+          );
+        }
+        return;
+      }
+    }
+  }
 
-	private buildOutputIfNeeded(): void {
-		// Create container if there is not already one being built
-		if (!this.container && this.shouldHaveContainer()) {
-			const containerSite = this.pos.findInRange(FIND_MY_CONSTRUCTION_SITES, 2).filter(
-												   site => site.structureType == STRUCTURE_CONTAINER)[0];
-			if (!containerSite) {
-				const containerPos = this.calculateContainerPos();
-				log.info(`${this.print}: building container at ${getRoomPositionPrint(containerPos)}`);
-				const result = containerPos.createConstructionSite(STRUCTURE_CONTAINER);
-				if (result != OK) {
-					log.error(`${this.print}: cannot build container at ${getRoomPositionPrint(containerPos)}! Result: ${result}`);
-				}
-				return;
-			}
-		}
-	}
+  init() {
+    this.registerOutputRequests();
 
-	init() {
-		this.registerOutputRequests();
+    const amount =
+      this.mineral && this.mineral.mineralAmount > 0 && this.extractor && this.container
+        ? Math.min(
+            roomPositionAvailableNeighbors(this.mineral.pos).length,
+            ExtractorOverlord.settings.maxDrones,
+          )
+        : 0;
+    this.wishlist(amount, Setups.drones.extractor);
+  }
 
-		const amount = this.mineral && this.mineral.mineralAmount > 0 && this.extractor && this.container
-					   ? Math.min(roomPositionAvailableNeighbors(this.mineral.pos).length, ExtractorOverlord.settings.maxDrones)
-					   : 0;
-		this.wishlist(amount, Setups.drones.extractor);
-	}
+  private handleDrone(drone: Zerg) {
+    // Stay safe out there!
+    if (drone.avoidDanger({ timer: 10, dropEnergy: true })) {
+      return;
+    }
+    // Ensure you are in the assigned room
+    if (drone.room == this.room && !isPositionOnEdge(drone.pos)) {
+      if (this.mineral && !roomPositionInRangeToPos(drone.pos, this.mineral.pos, 1)) {
+        return drone.goTo(this.mineral.pos);
+      }
+      if (this.mineral) {
+        // Do harvest first - needs to check if in range anyway so this is more CPU efficient
+        const ret = drone.harvest(this.mineral);
+        if (ret == ERR_NOT_IN_RANGE) {
+          return drone.goTo(this.mineral);
+        }
+        if (this.container) {
+          // Transfer to container if you need to (can do at same tick as harvest)
+          if (drone.store.getUsedCapacity() > 0.9 * drone.store.getCapacity()) {
+            const transfer = drone.transferAll(this.container);
+            if (transfer == ERR_NOT_IN_RANGE) {
+              return drone.goTo(this.container, { range: 1 });
+            }
+          }
+          // Move onto the container pos if you need to
+          if (this.drones.length == 1 && !drone.pos.isEqualTo(this.container.pos)) {
+            return drone.goTo(this.container, { range: 0 });
+          }
+        }
+      } else {
+        log.error(`${this.print}: room defined and no mineral! (Why?)`);
+      }
+    } else {
+      drone.goTo(this);
+    }
+  }
 
-	private handleDrone(drone: Zerg) {
-		// Stay safe out there!
-		if (drone.avoidDanger({timer: 10, dropEnergy: true})) {
-			return;
-		}
-		// Ensure you are in the assigned room
-		if (drone.room == this.room && !isPositionOnEdge(drone.pos)) {
-			if (this.mineral && !roomPositionInRangeToPos(drone.pos, this.mineral.pos, 1)) {
-				return drone.goTo(this.mineral.pos);
-			}
-			if (this.mineral) {
-				// Do harvest first - needs to check if in range anyway so this is more CPU efficient
-				const ret = drone.harvest(this.mineral);
-				if (ret == ERR_NOT_IN_RANGE) {
-					return drone.goTo(this.mineral);
-				}
-				if (this.container) {
-					// Transfer to container if you need to (can do at same tick as harvest)
-					if (drone.store.getUsedCapacity() > 0.9 * drone.store.getCapacity()) {
-						const transfer = drone.transferAll(this.container);
-						if (transfer == ERR_NOT_IN_RANGE) {
-							return drone.goTo(this.container, {range: 1});
-						}
-					}
-					// Move onto the container pos if you need to
-					if (this.drones.length == 1 && !drone.pos.isEqualTo(this.container.pos)) {
-						return drone.goTo(this.container, {range: 0});
-					}
-				}
-			} else {
-				log.error(`${this.print}: room defined and no mineral! (Why?)`);
-			}
-		} else {
-			drone.goTo(this);
-		}
-	}
-
-	run() {
-		this.drones.forEach(drone => this.handleDrone(drone));
-		if (this.room && Game.time % BUILD_OUTPUT_FREQUENCY == 2) {
-			this.buildOutputIfNeeded();
-		}
-	}
+  run() {
+    this.drones.forEach((drone) => this.handleDrone(drone));
+    if (this.room && Game.time % BUILD_OUTPUT_FREQUENCY == 2) {
+      this.buildOutputIfNeeded();
+    }
+  }
 }

@@ -1,85 +1,83 @@
-import {log} from '../console/log';
-import {printRoomName} from '../utilities/utils';
-import {Visualizer} from '../visuals/Visualizer';
-import {sortBy} from '../utilities/native';
+import { log } from "../console/log";
+import { printRoomName } from "../utilities/utils";
+import { Visualizer } from "../visuals/Visualizer";
+import { sortBy } from "../utilities/native";
 
 export enum NotifierPriority {
-	SystemUpdate = -1,
-	Critical     = 0,
-	High         = 1,
-	Normal       = 2,
-	Low          = 3,
+  SystemUpdate = -1,
+  Critical = 0,
+  High = 1,
+  Normal = 2,
+  Low = 3,
 }
 
 // An alert is a one-tick notification which must be refreshed every tick, e.g. while a directive is up
 interface Alert {
-	message: string;
-	priority: number;
-	roomName?: string;
+  message: string;
+  priority: number;
+  roomName?: string;
 }
 
 // A notification lasts for a specified length of time and does not need to be refreshed, e.g. colony levels up
 interface Notification {
-	message: string;
-	roomName: string;
-	duration: number;
+  message: string;
+  roomName: string;
+  duration: number;
 }
 
 interface NotifierMemory {
-	notifications: Notification[];
+  notifications: Notification[];
 }
 
 /**
  * Records one-time and persistent notifications from various in-game events
  */
 export class Notifier {
+  memory: NotifierMemory;
+  alerts: Alert[];
+  notifications: Notification[];
 
-	memory: NotifierMemory;
-	alerts: Alert[];
-	notifications: Notification[];
+  constructor() {
+    this.alerts = [];
+    this.notifications = [];
+  }
 
-	constructor() {
-		this.alerts = [];
-		this.notifications = [];
-	}
+  clear() {
+    this.alerts = [];
+  }
 
-	clear() {
-		this.alerts = [];
-	}
+  alert(message: string, roomName?: string | undefined, priority = NotifierPriority.Normal) {
+    // Register an alert to be displayed this in the notifications visual box
+    const alert: Alert = { message, roomName, priority };
+    this.alerts.push(alert);
+  }
 
-	alert(message: string, roomName?: string | undefined, priority = NotifierPriority.Normal) {
-		// Register an alert to be displayed this in the notifications visual box
-		const alert: Alert = {message, roomName, priority};
-		this.alerts.push(alert);
-	}
+  // TODO: finish
+  email(message: string, roomName: string, _duration = 100, _email = false) {
+    log.alert(printRoomName(roomName) + ": " + message);
+  }
 
-	// TODO: finish
-	email(message: string, roomName: string, duration = 100, email = false) {
-		log.alert(printRoomName(roomName) + ': ' + message);
-	}
+  // init() {
+  //
+  // }
+  //
+  // run() {
+  //
+  // }
 
-	// init() {
-	//
-	// }
-	//
-	// run() {
-	//
-	// }
+  generateNotificationsList(links = false): string[] {
+    const sortedAlerts = sortBy(this.alerts, (alert) => alert.priority);
+    return sortedAlerts.map((alert) => {
+      if (alert.roomName) {
+        return (links ? printRoomName(alert.roomName) : alert.roomName) + ": " + alert.message;
+      } else {
+        return alert.message;
+      }
+    });
+  }
 
-	generateNotificationsList(links = false): string[] {
-		const sortedAlerts = sortBy(this.alerts, alert => alert.priority);
-		return sortedAlerts.map(alert => {
-			if (alert.roomName) {
-				return (links ? printRoomName(alert.roomName) : alert.roomName) + ': ' + alert.message;
-			} else {
-				return alert.message;
-			}
-		});
-	}
-
-	visuals(): void {
-		const notificationMessages = this.generateNotificationsList();
-		Visualizer.drawNotifications(notificationMessages);
-	}
-
+  visuals(): void {
+    const notificationMessages = this.generateNotificationsList();
+    Visualizer.drawNotifications(notificationMessages);
+  }
 }

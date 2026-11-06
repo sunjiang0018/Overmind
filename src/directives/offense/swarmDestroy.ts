@@ -1,46 +1,49 @@
-import {getRoomHostileStructures, getRoomHostiles} from '../../game/Room';
-import {log} from '../../console/log';
-import {SwarmDestroyerOverlord} from '../../overlords/offense/swarmDestroyer';
-import {profile} from '../../profiler/decorator';
-import {Visualizer} from '../../visuals/Visualizer';
-import {Directive} from '../Directive';
+import { getRoomHostileStructures, getRoomHostiles } from "../../game/Room";
+import { log } from "../../console/log";
+import { SwarmDestroyerOverlord } from "../../overlords/offense/swarmDestroyer";
+import { profile } from "../../profiler/decorator";
+import { Visualizer } from "../../visuals/Visualizer";
+import { Directive } from "../Directive";
 
 /**
  * Spawns a 2x2 squad of coordinated creeps to destroy a room
  */
 @profile
 export class DirectiveSwarmDestroy extends Directive {
+  static directiveName = "destroy";
+  static color = COLOR_RED;
+  static secondaryColor = COLOR_RED;
+  static requiredRCL = 6;
 
-	static directiveName = 'destroy';
-	static color = COLOR_RED;
-	static secondaryColor = COLOR_RED;
-	static requiredRCL = 6;
+  overlords: {
+    destroy: SwarmDestroyerOverlord;
+  };
 
-	overlords: {
-		destroy: SwarmDestroyerOverlord;
-	};
+  constructor(flag: Flag) {
+    super(flag, (colony) => colony.level >= DirectiveSwarmDestroy.requiredRCL);
+  }
 
-	constructor(flag: Flag) {
-		super(flag, colony => colony.level >= DirectiveSwarmDestroy.requiredRCL);
-	}
+  spawnMoarOverlords() {
+    this.overlords.destroy = new SwarmDestroyerOverlord(this);
+  }
 
-	spawnMoarOverlords() {
-		this.overlords.destroy = new SwarmDestroyerOverlord(this);
-	}
+  init(): void {
+    this.alert(`Swarm destroyer directive active`);
+  }
 
-	init(): void {
-		this.alert(`Swarm destroyer directive active`);
-	}
+  run(): void {
+    // If there are no hostiles left in the room then remove the flag and associated healpoint
+    if (
+      this.room &&
+      getRoomHostiles(this.room).length == 0 &&
+      getRoomHostileStructures(this.room).length == 0
+    ) {
+      log.notify(`Swarm destroyer mission at ${this.pos.roomName} completed successfully.`);
+      this.remove();
+    }
+  }
 
-	run(): void {
-		// If there are no hostiles left in the room then remove the flag and associated healpoint
-		if (this.room && getRoomHostiles(this.room).length == 0 && getRoomHostileStructures(this.room).length == 0) {
-			log.notify(`Swarm destroyer mission at ${this.pos.roomName} completed successfully.`);
-			this.remove();
-		}
-	}
-
-	visuals(): void {
-		Visualizer.marker(this.pos, {color: 'red'});
-	}
+  visuals(): void {
+    Visualizer.marker(this.pos, { color: "red" });
+  }
 }

@@ -1,22 +1,21 @@
 import {
-	roomVisualAnimatedPosition,
-	roomVisualBox,
-	roomVisualConnectRoads,
-	roomVisualInfoBox,
-	roomVisualMultitext,
-	roomVisualStructure,
-} from '../game/RoomVisual';
-import {MatrixLib} from '../matrix/MatrixLib';
-import {profile} from '../profiler/decorator';
-import {StructureLayout, StructureMap} from '../roomPlanner/RoomPlanner';
-import {rgbToHex} from '../utilities/utils';
-import {asciiLogo, logoComponents, logoText} from './logos';
-import {ENABLE_VISUALS} from '../~settings';
-import {groupBy, defaults, max} from '../utilities/native';
+  roomVisualAnimatedPosition,
+  roomVisualBox,
+  roomVisualConnectRoads,
+  roomVisualInfoBox,
+  roomVisualMultitext,
+  roomVisualStructure,
+} from "../game/RoomVisual";
+import { MatrixLib } from "../matrix/MatrixLib";
+import { profile } from "../profiler/decorator";
+import { StructureLayout, StructureMap } from "../roomPlanner/RoomPlanner";
+import { rgbToHex } from "../utilities/utils";
+import { asciiLogo, logoComponents, logoText } from "./logos";
+import { ENABLE_VISUALS } from "../~settings";
+import { groupBy, defaults, max } from "../utilities/native";
 
-
-const TEXT_COLOR = '#c9c9c9';
-const TEXT_SIZE = .8;
+const TEXT_COLOR = "#c9c9c9";
+const TEXT_SIZE = 0.8;
 const CHAR_WIDTH = TEXT_SIZE * 0.4;
 const CHAR_HEIGHT = TEXT_SIZE * 0.9;
 
@@ -25,337 +24,384 @@ const CHAR_HEIGHT = TEXT_SIZE * 0.9;
  */
 @profile
 export class Visualizer {
+  static get enabled(): boolean {
+    return ENABLE_VISUALS && Memory.settings.enableVisuals;
+  }
 
-	static get enabled(): boolean {
-		return ENABLE_VISUALS && Memory.settings.enableVisuals;
-	}
+  private static textStyle(size = 1, style: TextStyle = {}) {
+    return defaults(style, {
+      color: TEXT_COLOR,
+      align: "left",
+      font: `${size * TEXT_SIZE} Trebuchet MS`,
+      opacity: 0.8,
+    });
+  }
 
-	private static textStyle(size = 1, style: TextStyle = {}) {
-		return defaults(style, {
-			color  : TEXT_COLOR,
-			align  : 'left',
-			font   : `${size * TEXT_SIZE} Trebuchet MS`,
-			opacity: 0.8,
-		});
-	}
+  static circle(pos: RoomPosition, color = "red", opts = {}): RoomVisual | undefined {
+    if (!this.enabled) return;
+    defaults(opts, {
+      fill: color,
+      radius: 0.35,
+      opacity: 0.5,
+    });
+    return new RoomVisual(pos.roomName).circle(pos.x, pos.y, opts);
+  }
 
-	static circle(pos: RoomPosition, color = 'red', opts = {}): RoomVisual | undefined {
-		if (!this.enabled) return;
-		defaults(opts, {
-			fill   : color,
-			radius : 0.35,
-			opacity: 0.5,
-		});
-		return new RoomVisual(pos.roomName).circle(pos.x, pos.y, opts);
-	}
+  static rect(pos: RoomPosition, color = "red", opts = {}): RoomVisual | undefined {
+    if (!this.enabled) return;
+    defaults(opts, {
+      fill: color,
+      opacity: 0.5,
+    });
+    return new RoomVisual(pos.roomName).rect(pos.x, pos.y, 1, 1, opts);
+  }
 
-	static rect(pos: RoomPosition, color = 'red', opts = {}): RoomVisual | undefined {
-		if (!this.enabled) return;
-		defaults(opts, {
-			fill   : color,
-			opacity: 0.5,
-		});
-		return new RoomVisual(pos.roomName).rect(pos.x, pos.y, 1, 1, opts);
-	}
+  static marker(pos: RoomPosition, opts = {}): RoomVisual | undefined {
+    if (!this.enabled) return;
+    return roomVisualAnimatedPosition(new RoomVisual(pos.roomName), pos.x, pos.y, opts);
+  }
 
-	static marker(pos: RoomPosition, opts = {}): RoomVisual | undefined {
-		if (!this.enabled) return;
-		return roomVisualAnimatedPosition(new RoomVisual(pos.roomName), pos.x, pos.y, opts);
-	}
+  static drawStructureMap(structureMap: StructureMap): void {
+    if (!this.enabled) return;
+    const vis: { [roomName: string]: RoomVisual } = {};
+    for (const structureType in structureMap) {
+      for (const pos of structureMap[structureType]) {
+        if (!vis[pos.roomName]) {
+          vis[pos.roomName] = new RoomVisual(pos.roomName);
+        }
+        roomVisualStructure(vis[pos.roomName], pos.x, pos.y, structureType);
+      }
+    }
+    for (const roomName in vis) {
+      roomVisualConnectRoads(vis[roomName]);
+    }
+  }
 
-	static drawStructureMap(structureMap: StructureMap): void {
-		if (!this.enabled) return;
-		const vis: { [roomName: string]: RoomVisual } = {};
-		for (const structureType in structureMap) {
-			for (const pos of structureMap[structureType]) {
-				if (!vis[pos.roomName]) {
-					vis[pos.roomName] = new RoomVisual(pos.roomName);
-				}
-				roomVisualStructure(vis[pos.roomName], pos.x, pos.y, structureType);
-			}
-		}
-		for (const roomName in vis) {
-			roomVisualConnectRoads(vis[roomName]);
-		}
-	}
+  static drawLayout(layout: StructureLayout, anchor: RoomPosition, opts = {}): void {
+    defaults(opts, { opacity: 0.5 });
+    if (!this.enabled) return;
+    const vis = new RoomVisual(anchor.roomName);
+    for (const structureType in layout[8]!.buildings) {
+      for (const pos of layout[8]!.buildings[structureType].pos) {
+        const dx = pos.x - layout.data.anchor.x;
+        const dy = pos.y - layout.data.anchor.y;
+        roomVisualStructure(vis, anchor.x + dx, anchor.y + dy, structureType, opts);
+      }
+    }
+    roomVisualConnectRoads(vis, opts);
+  }
 
-	static drawLayout(layout: StructureLayout, anchor: RoomPosition, opts = {}): void {
-		defaults(opts, {opacity: 0.5});
-		if (!this.enabled) return;
-		const vis = new RoomVisual(anchor.roomName);
-		for (const structureType in layout[8]!.buildings) {
-			for (const pos of layout[8]!.buildings[structureType].pos) {
-				const dx = pos.x - layout.data.anchor.x;
-				const dy = pos.y - layout.data.anchor.y;
-				roomVisualStructure(vis, anchor.x + dx, anchor.y + dy, structureType, opts);
-			}
-		}
-		roomVisualConnectRoads(vis, opts);
-	}
+  static drawRoads(positoins: RoomPosition[]): void {
+    if (!this.enabled) return;
+    const pointsByRoom = groupBy(positoins, (pos) => pos.roomName);
+    for (const roomName in pointsByRoom) {
+      const vis = new RoomVisual(roomName);
+      for (const pos of pointsByRoom[roomName]) {
+        roomVisualStructure(vis, pos.x, pos.y, STRUCTURE_ROAD);
+      }
+      roomVisualConnectRoads(vis);
+    }
+  }
 
-	static drawRoads(positoins: RoomPosition[]): void {
-		if (!this.enabled) return;
-		const pointsByRoom = groupBy(positoins, pos => pos.roomName);
-		for (const roomName in pointsByRoom) {
-			const vis = new RoomVisual(roomName);
-			for (const pos of pointsByRoom[roomName]) {
-				roomVisualStructure(vis, pos.x, pos.y, STRUCTURE_ROAD);
-			}
-			roomVisualConnectRoads(vis);
-		}
-	}
+  static drawPath(path: RoomPosition[], style?: PolyStyle): void {
+    if (!this.enabled) return;
+    const pointsByRoom = groupBy(path, (pos) => pos.roomName);
+    for (const roomName in pointsByRoom) {
+      new RoomVisual(roomName).poly(pointsByRoom[roomName], style);
+    }
+  }
 
-	static drawPath(path: RoomPosition[], style?: PolyStyle): void {
-		if (!this.enabled) return;
-		const pointsByRoom = groupBy(path, pos => pos.roomName);
-		for (const roomName in pointsByRoom) {
-			new RoomVisual(roomName).poly(pointsByRoom[roomName], style);
-		}
-	}
+  static displayCostMatrix(
+    matrix: CostMatrix,
+    roomName?: string,
+    opts = { dots: true, displayZero: true },
+  ): void {
+    if (!this.enabled) return;
 
-	static displayCostMatrix(matrix: CostMatrix, roomName?: string,
-							 opts = {dots: true, displayZero: true}): void {
-		if (!this.enabled) return;
+    opts = defaults(opts, { dots: true, displayZero: true });
 
-		opts = defaults(opts, {dots: true, displayZero: true});
+    const vis = new RoomVisual(roomName);
+    let x, y, cost, percentOfMax: number;
+    let color: string;
 
-		const vis = new RoomVisual(roomName);
-		let x, y, cost, percentOfMax: number;
-		let color: string;
+    const maxVal = MatrixLib.getMaxValue(matrix) + 1;
 
-		const maxVal = MatrixLib.getMaxValue(matrix) + 1;
+    if (opts.dots) {
+      for (y = 0; y < 50; ++y) {
+        for (x = 0; x < 50; ++x) {
+          cost = matrix.get(x, y);
+          if (cost > 0) {
+            percentOfMax = Math.round((255 * cost) / maxVal);
+            color = rgbToHex(255, 255 - percentOfMax, 255 - percentOfMax);
+            vis.circle(x, y, { radius: matrix.get(x, y) / maxVal / 2, fill: color });
+          }
+        }
+      }
+    } else {
+      for (y = 0; y < 50; ++y) {
+        for (x = 0; x < 50; ++x) {
+          cost = matrix.get(x, y);
+          if (opts.displayZero || cost != 0) {
+            percentOfMax = Math.round((255 * cost) / maxVal);
+            color = rgbToHex(255, 255 - percentOfMax, 255 - percentOfMax);
+            vis.text(matrix.get(x, y).toString(), x, y, { color: color });
+          }
+        }
+      }
+    }
+  }
 
-		if (opts.dots) {
-			for (y = 0; y < 50; ++y) {
-				for (x = 0; x < 50; ++x) {
-					cost = matrix.get(x, y);
-					if (cost > 0) {
-						percentOfMax = Math.round(255 * cost / maxVal);
-						color = rgbToHex(255, 255 - percentOfMax, 255 - percentOfMax);
-						vis.circle(x, y, {radius: matrix.get(x, y) / maxVal / 2, fill: color});
-					}
-				}
-			}
-		} else {
-			for (y = 0; y < 50; ++y) {
-				for (x = 0; x < 50; ++x) {
-					cost = matrix.get(x, y);
-					if (opts.displayZero || cost != 0) {
-						percentOfMax = Math.round(255 * cost / maxVal);
-						color = rgbToHex(255, 255 - percentOfMax, 255 - percentOfMax);
-						vis.text(matrix.get(x, y).toString(), x, y, {color: color});
-					}
-				}
-			}
-		}
+  static showInfo(
+    info: string[],
+    calledFrom: { room: Room | undefined; pos: RoomPosition },
+    opts = {},
+  ): RoomVisual | undefined {
+    if (!this.enabled) return;
+    if (calledFrom.room) {
+      return roomVisualInfoBox(
+        calledFrom.room.visual,
+        info,
+        calledFrom.pos.x,
+        calledFrom.pos.y,
+        opts,
+      );
+    } else {
+      return roomVisualInfoBox(
+        new RoomVisual(calledFrom.pos.roomName),
+        info,
+        calledFrom.pos.x,
+        calledFrom.pos.y,
+        opts,
+      );
+    }
+  }
 
-	}
+  static section(
+    title: string,
+    pos: { x: number; y: number; roomName?: string },
+    width: number,
+    height: number,
+  ): { x: number; y: number } {
+    if (!this.enabled) return { x: pos.x + 0.25, y: pos.y + 1.1 * CHAR_HEIGHT };
+    const vis = new RoomVisual(pos.roomName);
+    vis.rect(pos.x, pos.y - CHAR_HEIGHT, width, 1.1 * CHAR_HEIGHT, { opacity: 0.15 });
+    roomVisualBox(vis, pos.x, pos.y - CHAR_HEIGHT, width, height + (1.1 + 0.25) * CHAR_HEIGHT, {
+      color: TEXT_COLOR,
+    });
+    vis.text(title, pos.x + 0.25, pos.y - 0.05, this.textStyle());
+    return { x: pos.x + 0.25, y: pos.y + 1.1 * CHAR_HEIGHT };
+  }
 
-	static showInfo(info: string[], calledFrom: { room: Room | undefined, pos: RoomPosition }, opts = {}):
-		RoomVisual | undefined {
-		if (!this.enabled) return;
-		if (calledFrom.room) {
-			return roomVisualInfoBox(calledFrom.room.visual, info, calledFrom.pos.x, calledFrom.pos.y, opts);
-		} else {
-			return roomVisualInfoBox(new RoomVisual(calledFrom.pos.roomName), info, calledFrom.pos.x, calledFrom.pos.y, opts);
-		}
-	}
+  static infoBox(
+    header: string,
+    content: string[] | string[][],
+    pos: { x: number; y: number; roomName?: string },
+    width: number,
+  ): number {
+    if (!this.enabled) return pos.y + (1.1 + (content.length || 1)) * CHAR_HEIGHT + 0.5;
+    // const vis = new RoomVisual(pos.roomName);
+    // vis.rect(pos.x, pos.y - charHeight, width, 1.1 * charHeight, {opacity: 0.15});
+    // vis.box(pos.x, pos.y - charHeight, width, ((content.length || 1) + 1.1 + .25) * charHeight,
+    // 		{color: textColor});
+    // vis.text(header, pos.x + .25, pos.y - .05, this.textStyle());
+    const height = CHAR_HEIGHT * (content.length || 1);
+    const { x, y } = this.section(header, pos, width, height);
+    if (content.length > 0) {
+      if (Array.isArray(content[0])) {
+        this.table(<string[][]>content, {
+          x: x,
+          y: y,
+          roomName: pos.roomName,
+        });
+      } else {
+        this.multitext(<string[]>content, {
+          x: x,
+          y: y,
+          roomName: pos.roomName,
+        });
+      }
+    }
+    // return pos.y - charHeight + ((content.length || 1) + 1.1 + .25) * charHeight + 0.1;
+    const spaceBuffer = 0.5;
+    return y + height + spaceBuffer;
+  }
 
-	static section(title: string, pos: { x: number, y: number, roomName?: string }, width: number,
-				   height: number): { x: number, y: number } {
-		if (!this.enabled) return {x: pos.x + 0.25, y: pos.y + 1.1 * CHAR_HEIGHT};
-		const vis = new RoomVisual(pos.roomName);
-		vis.rect(pos.x, pos.y - CHAR_HEIGHT, width, 1.1 * CHAR_HEIGHT, {opacity: 0.15});
-		roomVisualBox(vis, pos.x, pos.y - CHAR_HEIGHT, width, height + (1.1 + .25) * CHAR_HEIGHT, {color: TEXT_COLOR});
-		vis.text(title, pos.x + .25, pos.y - .05, this.textStyle());
-		return {x: pos.x + 0.25, y: pos.y + 1.1 * CHAR_HEIGHT};
-	}
+  static text(
+    text: string,
+    pos: { x: number; y: number; roomName?: string },
+    size = 1,
+    style: TextStyle = {},
+  ): void {
+    if (!this.enabled) return;
+    new RoomVisual(pos.roomName).text(text, pos.x, pos.y, this.textStyle(size, style));
+  }
 
-	static infoBox(header: string, content: string[] | string[][], pos: { x: number, y: number, roomName?: string },
-				   width: number): number {
-		if (!this.enabled) return pos.y + (1.1 + (content.length || 1)) * CHAR_HEIGHT + 0.5;
-		// const vis = new RoomVisual(pos.roomName);
-		// vis.rect(pos.x, pos.y - charHeight, width, 1.1 * charHeight, {opacity: 0.15});
-		// vis.box(pos.x, pos.y - charHeight, width, ((content.length || 1) + 1.1 + .25) * charHeight,
-		// 		{color: textColor});
-		// vis.text(header, pos.x + .25, pos.y - .05, this.textStyle());
-		const height = CHAR_HEIGHT * (content.length || 1);
-		const {x, y} = this.section(header, pos, width, height);
-		if (content.length > 0) {
-			if (Array.isArray(content[0])) {
-				this.table(<string[][]>content, {
-					x       : x,
-					y       : y,
-					roomName: pos.roomName
-				});
-			} else {
-				this.multitext(<string[]>content, {
-					x       : x,
-					y       : y,
-					roomName: pos.roomName
-				});
-			}
-		}
-		// return pos.y - charHeight + ((content.length || 1) + 1.1 + .25) * charHeight + 0.1;
-		const spaceBuffer = 0.5;
-		return y + height + spaceBuffer;
-	}
+  static barGraph(
+    progress: number | [number, number],
+    pos: { x: number; y: number; roomName?: string },
+    width = 7,
+    scale = 1,
+  ): void {
+    if (!this.enabled) return;
+    const vis = new RoomVisual(pos.roomName);
+    let percent: number;
+    let mode: "percent" | "fraction";
+    if (typeof progress === "number") {
+      percent = progress;
+      mode = "percent";
+    } else {
+      percent = progress[0] / progress[1];
+      mode = "fraction";
+    }
+    // Draw frame
+    roomVisualBox(vis, pos.x, pos.y - CHAR_HEIGHT * scale, width, 1.1 * scale * CHAR_HEIGHT, {
+      color: TEXT_COLOR,
+    });
+    vis.rect(pos.x, pos.y - CHAR_HEIGHT * scale, percent * width, 1.1 * scale * CHAR_HEIGHT, {
+      fill: TEXT_COLOR,
+      opacity: 0.4,
+      strokeWidth: 0,
+    });
+    // Draw text
+    if (mode == "percent") {
+      vis.text(
+        `${Math.round(100 * percent)}%`,
+        pos.x + width / 2,
+        pos.y - 0.1 * CHAR_HEIGHT,
+        this.textStyle(1, { align: "center" }),
+      );
+    } else {
+      const [num, den] = <[number, number]>progress;
+      vis.text(
+        `${num}/${den}`,
+        pos.x + width / 2,
+        pos.y - 0.1 * CHAR_HEIGHT,
+        this.textStyle(1, { align: "center" }),
+      );
+    }
+  }
 
-	static text(text: string, pos: { x: number, y: number, roomName?: string }, size = 1, style: TextStyle = {}): void {
-		if (!this.enabled) return;
-		new RoomVisual(pos.roomName).text(text, pos.x, pos.y, this.textStyle(size, style));
-	}
+  static table(data: string[][], pos: { x: number; y: number; roomName?: string }): void {
+    if (!this.enabled) return;
+    if (data.length == 0) {
+      return;
+    }
+    const colPadding = 4;
+    const vis = new RoomVisual(pos.roomName);
 
-	static barGraph(progress: number | [number, number], pos: { x: number, y: number, roomName?: string },
-					width = 7, scale = 1): void {
-		if (!this.enabled) return;
-		const vis = new RoomVisual(pos.roomName);
-		let percent: number;
-		let mode: 'percent' | 'fraction';
-		if (typeof progress === 'number') {
-			percent = progress;
-			mode = 'percent';
-		} else {
-			percent = progress[0] / progress[1];
-			mode = 'fraction';
-		}
-		// Draw frame
-		roomVisualBox(vis, pos.x, pos.y - CHAR_HEIGHT * scale, width, 1.1 * scale * CHAR_HEIGHT, {color: TEXT_COLOR});
-		vis.rect(pos.x, pos.y - CHAR_HEIGHT * scale, percent * width, 1.1 * scale * CHAR_HEIGHT, {
-			fill       : TEXT_COLOR,
-			opacity    : 0.4,
-			strokeWidth: 0
-		});
-		// Draw text
-		if (mode == 'percent') {
-			vis.text(`${Math.round(100 * percent)}%`, pos.x + width / 2, pos.y - .1 * CHAR_HEIGHT,
-					 this.textStyle(1, {align: 'center'}));
-		} else {
-			const [num, den] = <[number, number]>progress;
-			vis.text(`${num}/${den}`, pos.x + width / 2, pos.y - .1 * CHAR_HEIGHT,
-					 this.textStyle(1, {align: 'center'}));
-		}
+    const style = this.textStyle();
 
-	}
+    // Determine column locations
+    const columns = Array(data[0].length).fill(0);
+    for (const entries of data) {
+      for (let i = 0; i < entries.length - 1; i++) {
+        columns[i] = Math.max(columns[i], entries[i].length);
+      }
+    }
 
-	static table(data: string[][], pos: { x: number, y: number, roomName?: string }): void {
-		if (!this.enabled) return;
-		if (data.length == 0) {
-			return;
-		}
-		const colPadding = 4;
-		const vis = new RoomVisual(pos.roomName);
+    // // Draw header and underline
+    // vis.text(header, pos.x, pos.y, style);
+    // vis.line(pos.x, pos.y + .3 * charHeight,
+    // 	pos.x + charWidth * _.sum(columns) + colPadding * columns.length, pos.y + .25 * charHeight, {
+    // 			 color: textColor
+    // 		 });
 
-		const style = this.textStyle();
+    // Draw text
+    // let dy = 1.5 * charHeight;
+    let dy = 0;
+    for (const entries of data) {
+      let dx = 0;
+      for (const i in entries) {
+        vis.text(entries[i], pos.x + dx, pos.y + dy, style);
+        dx += CHAR_WIDTH * (columns[i] + colPadding);
+      }
+      dy += CHAR_HEIGHT;
+    }
+  }
 
-		// Determine column locations
-		const columns = Array(data[0].length).fill(0);
-		for (const entries of data) {
-			for (let i = 0; i < entries.length - 1; i++) {
-				columns[i] = Math.max(columns[i], entries[i].length);
-			}
-		}
+  static multitext(lines: string[], pos: { x: number; y: number; roomName?: string }): void {
+    if (!this.enabled) return;
+    if (lines.length == 0) {
+      return;
+    }
+    const vis = new RoomVisual(pos.roomName);
+    const style = this.textStyle();
+    // Draw text
+    let dy = 0;
+    for (const line of lines) {
+      vis.text(line, pos.x, pos.y + dy, style);
+      dy += CHAR_HEIGHT;
+    }
+  }
 
-		// // Draw header and underline
-		// vis.text(header, pos.x, pos.y, style);
-		// vis.line(pos.x, pos.y + .3 * charHeight,
-		// 	pos.x + charWidth * _.sum(columns) + colPadding * columns.length, pos.y + .25 * charHeight, {
-		// 			 color: textColor
-		// 		 });
+  static drawHUD(): void {
+    if (!this.enabled) return;
+    // Draw Overmind logo
+    roomVisualMultitext(new RoomVisual(), asciiLogo, 0, 0, { textfont: "monospace" });
+    // // Display CPU Information
+    // new RoomVisual().text('CPU:' + ' bucket:' + Game.cpu.bucket +
+    // 					  ' tickLimit:' + Game.cpu.tickLimit, column, row, style);
+  }
 
-		// Draw text
-		// let dy = 1.5 * charHeight;
-		let dy = 0;
-		for (const entries of data) {
-			let dx = 0;
-			for (const i in entries) {
-				vis.text(entries[i], pos.x + dx, pos.y + dy, style);
-				dx += CHAR_WIDTH * (columns[i] + colPadding);
-			}
-			dy += CHAR_HEIGHT;
-		}
-	}
+  /* Draws the Overmind logo using component coordinates extracted with Mathematica. This  uses about 0.2 CPU/tick */
+  static drawLogo(): void {
+    if (!this.enabled) return;
+    new RoomVisual()
+      .poly(logoComponents.black.points, logoComponents.black.style)
+      .poly(logoComponents.dgray.points, logoComponents.dgray.style)
+      .poly(logoComponents.lgray.points, logoComponents.lgray.style)
+      .poly(logoComponents.blue.points, logoComponents.blue.style)
+      .poly(logoComponents.red.points, logoComponents.red.style)
+      .poly(logoComponents.purple.points, logoComponents.purple.style)
+      .poly(logoComponents.pink.points, logoComponents.pink.style)
+      .poly(logoText.V.points, logoText.V.style)
+      .poly(logoText.E.points, logoText.E.style)
+      .poly(logoText.R1.points, logoText.R1.style)
+      .poly(logoText.R2.points, logoText.R2.style)
+      .poly(logoText.M.points, logoText.M.style)
+      .poly(logoText.I.points, logoText.I.style)
+      .poly(logoText.N.points, logoText.N.style)
+      .poly(logoText.D.points, logoText.D.style);
+    Visualizer.text(
+      `Colonies: ${Object.keys(Overmind.colonies ?? {}).length} | Creeps: ${Object.keys(Game.creeps ?? {}).length}`,
+      { x: 1, y: 10 },
+      0.93,
+    );
+  }
 
-	static multitext(lines: string[], pos: { x: number, y: number, roomName?: string }): void {
-		if (!this.enabled) return;
-		if (lines.length == 0) {
-			return;
-		}
-		const vis = new RoomVisual(pos.roomName);
-		const style = this.textStyle();
-		// Draw text
-		let dy = 0;
-		for (const line of lines) {
-			vis.text(line, pos.x, pos.y + dy, style);
-			dy += CHAR_HEIGHT;
-		}
-	}
+  static drawNotifications(notificationMessages: string[]): void {
+    if (!this.enabled) return;
+    // const vis = new RoomVisual();
+    const x = 10.5;
+    const y = 7;
+    if (notificationMessages.length == 0) {
+      notificationMessages = ["No notifications"];
+    }
+    const maxStringLength = max(notificationMessages, (msg) => msg.length);
+    const width = Math.max(11, 1.2 * CHAR_WIDTH * maxStringLength);
+    this.infoBox("Notifications", notificationMessages, { x, y }, width);
+  }
 
-	static drawHUD(): void {
-		if (!this.enabled) return;
-		// Draw Overmind logo
-		roomVisualMultitext(new RoomVisual(), asciiLogo, 0, 0, {textfont: 'monospace'});
-		// // Display CPU Information
-		// new RoomVisual().text('CPU:' + ' bucket:' + Game.cpu.bucket +
-		// 					  ' tickLimit:' + Game.cpu.tickLimit, column, row, style);
-	}
+  // static colonyReport(colonyName: string, text: string[]) {
+  // 	if (!this.enabled) return;
+  // 	new RoomVisual(colonyName).multitext(text, 0, 4, {textfont: 'monospace', textsize: 0.75});
+  // }
 
-	/* Draws the Overmind logo using component coordinates extracted with Mathematica. This  uses about 0.2 CPU/tick */
-	static drawLogo(): void {
-		if (!this.enabled) return;
-		new RoomVisual().poly(logoComponents.black.points, logoComponents.black.style)
-						.poly(logoComponents.dgray.points, logoComponents.dgray.style)
-						.poly(logoComponents.lgray.points, logoComponents.lgray.style)
-						.poly(logoComponents.blue.points, logoComponents.blue.style)
-						.poly(logoComponents.red.points, logoComponents.red.style)
-						.poly(logoComponents.purple.points, logoComponents.purple.style)
-						.poly(logoComponents.pink.points, logoComponents.pink.style)
-						.poly(logoText.V.points, logoText.V.style)
-						.poly(logoText.E.points, logoText.E.style)
-						.poly(logoText.R1.points, logoText.R1.style)
-						.poly(logoText.R2.points, logoText.R2.style)
-						.poly(logoText.M.points, logoText.M.style)
-						.poly(logoText.I.points, logoText.I.style)
-						.poly(logoText.N.points, logoText.N.style)
-						.poly(logoText.D.points, logoText.D.style);
-		Visualizer.text(`Colonies: ${Object.keys(Overmind.colonies ?? {}).length} | Creeps: ${Object.keys(Game.creeps ?? {}).length}`,
-						{x: 1, y: 10}, .93);
-	}
+  static drawGraphs(): void {
+    if (!this.enabled) return;
+    this.text(`CPU`, { x: 1, y: 7 });
+    this.barGraph(Memory.stats.persistent.avgCPU / Game.cpu.limit, { x: 2.75, y: 7 });
+    this.text(`BKT`, { x: 1, y: 8 });
+    this.barGraph(Game.cpu.bucket / 10000, { x: 2.75, y: 8 });
+    this.text(`GCL`, { x: 1, y: 9 });
+    this.barGraph(Game.gcl.progress / Game.gcl.progressTotal, { x: 2.75, y: 9 });
+  }
 
-	static drawNotifications(notificationMessages: string[]): void {
-		if (!this.enabled) return;
-		// const vis = new RoomVisual();
-		const x = 10.5;
-		const y = 7;
-		if (notificationMessages.length == 0) {
-			notificationMessages = ['No notifications'];
-		}
-		const maxStringLength = max(notificationMessages, msg => msg.length);
-		const width = Math.max(11, 1.2 * CHAR_WIDTH * maxStringLength);
-		this.infoBox('Notifications', notificationMessages, {x, y}, width);
-	}
-
-	// static colonyReport(colonyName: string, text: string[]) {
-	// 	if (!this.enabled) return;
-	// 	new RoomVisual(colonyName).multitext(text, 0, 4, {textfont: 'monospace', textsize: 0.75});
-	// }
-
-	static drawGraphs(): void {
-		if (!this.enabled) return;
-		this.text(`CPU`, {x: 1, y: 7});
-		this.barGraph(Memory.stats.persistent.avgCPU / Game.cpu.limit, {x: 2.75, y: 7});
-		this.text(`BKT`, {x: 1, y: 8});
-		this.barGraph(Game.cpu.bucket / 10000, {x: 2.75, y: 8});
-		this.text(`GCL`, {x: 1, y: 9});
-		this.barGraph(Game.gcl.progress / Game.gcl.progressTotal, {x: 2.75, y: 9});
-	}
-
-
-	// This typically takes about 0.3-0.6 CPU in total
-	static visuals(): void {
-		if (!this.enabled) return;
-		this.drawLogo();
-		this.drawGraphs();
-		// this.drawNotifications();
-	}
+  // This typically takes about 0.3-0.6 CPU in total
+  static visuals(): void {
+    if (!this.enabled) return;
+    this.drawLogo();
+    this.drawGraphs();
+    // this.drawNotifications();
+  }
 }

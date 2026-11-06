@@ -1,230 +1,251 @@
-import {getRoomPositionRangeToEdge} from '../game/RoomPosition';
-import {getRoomRamparts, getRoomRoads} from '../game/RoomStructures';
-import {getRoomCreeps, getRoomHostiles} from '../game/Room';
-import {$} from '../caching/GlobalCache';
-import {Colony} from '../Colony';
-import {log} from '../console/log';
-import {CombatIntel} from '../intel/CombatIntel';
-import {WorkerOverlord} from '../overlords/core/worker';
-import {profile} from '../profiler/decorator';
-import {CombatTargeting} from '../targeting/CombatTargeting';
-import {HiveCluster} from './_HiveCluster';
-import {sample, sum, min} from '../utilities/native';
-
+import { getRoomPositionRangeToEdge } from "../game/RoomPosition";
+import { getRoomRamparts, getRoomRoads } from "../game/RoomStructures";
+import { getRoomCreeps, getRoomHostiles } from "../game/Room";
+import { $ } from "../caching/GlobalCache";
+import { Colony } from "../Colony";
+import { log } from "../console/log";
+import { CombatIntel } from "../intel/CombatIntel";
+import { WorkerOverlord } from "../overlords/core/worker";
+import { profile } from "../profiler/decorator";
+import { CombatTargeting } from "../targeting/CombatTargeting";
+import { HiveCluster } from "./_HiveCluster";
+import { sample, sum, min } from "../utilities/native";
 
 /**
  * The spore crawler is the hive cluster for controlling towers within a room
  */
 @profile
 export class SporeCrawler extends HiveCluster {
+  towers: StructureTower[];
+  memory: undefined;
 
-	towers: StructureTower[];
-	memory: undefined;
+  static settings = {
+    requestThreshold: 500,
+    criticalEnergyThreshold: 250,
+  };
 
-	static settings = {
-		requestThreshold       : 500,
-		criticalEnergyThreshold: 250,
-	};
+  constructor(colony: Colony, tower: StructureTower) {
+    super(colony, tower, "sporeCrawler");
+    // Register structure components
+    this.towers = this.colony.towers;
+  }
 
-	constructor(colony: Colony, tower: StructureTower) {
-		super(colony, tower, 'sporeCrawler');
-		// Register structure components
-		this.towers = this.colony.towers;
-	}
+  refresh() {
+    $.refreshRoom(this);
+    $.refresh(this, "towers");
+  }
 
-	refresh() {
-		$.refreshRoom(this);
-		$.refresh(this, 'towers');
-	}
+  spawnMoarOverlords() {}
 
-	spawnMoarOverlords() {
+  private registerEnergyRequests() {
+    // Request energy from transporters if below request threshold
+    for (const tower of this.towers) {
+      if (tower.energy < SporeCrawler.settings.requestThreshold) {
+        const multiplier = tower.energy < SporeCrawler.settings.criticalEnergyThreshold ? 2 : 1;
+        const dAmountdt = getRoomHostiles(this.room).length > 0 ? 10 : 0;
+        this.colony.logisticsNetwork.requestInput(tower, {
+          multiplier: multiplier,
+          dAmountdt: dAmountdt,
+        });
+      }
+    }
+  }
 
-	}
+  init() {
+    this.registerEnergyRequests();
+  }
 
-	private registerEnergyRequests() {
-		// Request energy from transporters if below request threshold
-		for (const tower of this.towers) {
-			if (tower.energy < SporeCrawler.settings.requestThreshold) {
-				const multiplier = tower.energy < SporeCrawler.settings.criticalEnergyThreshold ? 2 : 1;
-				const dAmountdt = getRoomHostiles(this.room).length > 0 ? 10 : 0;
-				this.colony.logisticsNetwork.requestInput(tower, {multiplier: multiplier, dAmountdt: dAmountdt});
-			}
-		}
-	}
+  private attack(target: Creep): void {
+    for (const tower of this.towers) {
+      const result = tower.attack(target);
+      if (result == OK) {
+        if (target.hitsPredicted == undefined) target.hitsPredicted = target.hits;
+        target.hitsPredicted -= CombatIntel.singleTowerDamage(target.pos.getRangeTo(tower));
+      }
+    }
+  }
 
-	init() {
-		this.registerEnergyRequests();
-	}
+  private scatterShot(targets: Creep[]): void {
+    for (const tower of this.towers) {
+      const target = sample(targets);
+      const result = tower.attack(target);
+      if (result == OK) {
+        if (target.hitsPredicted == undefined) target.hitsPredicted = target.hits;
+        target.hitsPredicted -= CombatIntel.singleTowerDamage(target.pos.getRangeTo(tower));
+      }
+    }
+  }
 
-	private attack(target: Creep): void {
-		for (const tower of this.towers) {
-			const result = tower.attack(target);
-			if (result == OK) {
-				if (target.hitsPredicted == undefined) target.hitsPredicted = target.hits;
-				target.hitsPredicted -= CombatIntel.singleTowerDamage(target.pos.getRangeTo(tower));
-			}
-		}
-	}
+  // private attackNearestEnemy(prioritizeHealers = false) {
+  // 	if (prioritizeHealers) {
+  // 		let healers = _.filter(this.room.hostiles, creep => creep.getActiveBodyparts(HEAL) > 0);
+  // 		if (healers.length > 0) {
+  // 			let healer = this.pos.findClosestByRange(healers);
+  // 			if (healer) {
+  // 				return this.tower.attack(healer);
+  // 			}
+  // 		}
+  // 	}
+  // 	let closestHostile = this.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
+  // 	if (closestHostile) {
+  // 		return this.tower.attack(closestHostile);
+  // 	}
+  // }
 
-	private scatterShot(targets: Creep[]): void {
-		for (const tower of this.towers) {
-			const target = sample(targets);
-			const result = tower.attack(target);
-			if (result == OK) {
-				if (target.hitsPredicted == undefined) target.hitsPredicted = target.hits;
-				target.hitsPredicted -= CombatIntel.singleTowerDamage(target.pos.getRangeTo(tower));
-			}
-		}
-	}
+  // private healNearestAlly() {
+  // 	var closestDamagedAlly = this.pos.findClosestByRange(FIND_MY_CREEPS, {
+  // 		filter: (c: Creep) => c.hits < c.hitsMax,
+  // 	});
+  // 	if (closestDamagedAlly) {
+  // 		return this.tower.heal(closestDamagedAlly);
+  // 	}
+  // }
 
-	// private attackNearestEnemy(prioritizeHealers = false) {
-	// 	if (prioritizeHealers) {
-	// 		let healers = _.filter(this.room.hostiles, creep => creep.getActiveBodyparts(HEAL) > 0);
-	// 		if (healers.length > 0) {
-	// 			let healer = this.pos.findClosestByRange(healers);
-	// 			if (healer) {
-	// 				return this.tower.attack(healer);
-	// 			}
-	// 		}
-	// 	}
-	// 	let closestHostile = this.pos.findClosestByRange(FIND_HOSTILE_CREEPS);
-	// 	if (closestHostile) {
-	// 		return this.tower.attack(closestHostile);
-	// 	}
-	// }
+  private preventStructureDecay(includeRoads = true) {
+    if (this.towers.length > 0) {
+      // expensive to check all rampart hits; only run in intermediate RCL
+      const dyingRamparts = getRoomRamparts(this.room).filter(
+        (rampart) =>
+          rampart.hits < WorkerOverlord.settings.barrierHits.critical &&
+          this.colony.roomPlanner.barrierPlanner.barrierShouldBeHere(rampart.pos),
+      );
+      if (dyingRamparts.length > 0) {
+        for (const tower of this.towers) {
+          tower.repair(tower.pos.findClosestByRange(dyingRamparts)!);
+        }
+        return;
+      }
+      // repair roads
+      if (includeRoads) {
+        const decayingRoads = getRoomRoads(this.room).filter(
+          (road) => road.hits < 0.2 * road.hitsMax,
+        );
+        if (decayingRoads.length > 0) {
+          const roadsToRepair = sample(decayingRoads, this.towers.length);
+          // ^ if |towers| > |roads| then this will have length of |roads|
+          for (const i in roadsToRepair) {
+            this.towers[i].repair(roadsToRepair[i]);
+          }
+        }
+      }
+    }
+  }
 
-	// private healNearestAlly() {
-	// 	var closestDamagedAlly = this.pos.findClosestByRange(FIND_MY_CREEPS, {
-	// 		filter: (c: Creep) => c.hits < c.hitsMax,
-	// 	});
-	// 	if (closestDamagedAlly) {
-	// 		return this.tower.heal(closestDamagedAlly);
-	// 	}
-	// }
+  // private repairNearestStructure() {
+  // 	var closestDamagedStructure = this.pos.findClosestByRange(FIND_STRUCTURES, {
+  // 		filter: (s: Structure) => s.hits < s.hitsMax &&
+  // 								  s.structureType != STRUCTURE_WALL &&
+  // 								  s.structureType != STRUCTURE_RAMPART,
+  // 	});
+  // 	if (closestDamagedStructure) {
+  // 		return this.tower.repair(closestDamagedStructure);
+  // 	}
+  // }
 
-	private preventStructureDecay(includeRoads=true) {
-		if (this.towers.length > 0) {
-			// expensive to check all rampart hits; only run in intermediate RCL
-			const dyingRamparts = getRoomRamparts(this.room).filter(rampart =>
-				rampart.hits < WorkerOverlord.settings.barrierHits.critical
-				&& this.colony.roomPlanner.barrierPlanner.barrierShouldBeHere(rampart.pos));
-			if (dyingRamparts.length > 0) {
-				for (const tower of this.towers) {
-					tower.repair(tower.pos.findClosestByRange(dyingRamparts)!);
-				}
-				return;
-			}
-			// repair roads
-			if (includeRoads) {
-				const decayingRoads = getRoomRoads(this.room).filter(road => road.hits < 0.2 * road.hitsMax);
-				if (decayingRoads.length > 0) {
-					const roadsToRepair = sample(decayingRoads, this.towers.length);
-					// ^ if |towers| > |roads| then this will have length of |roads|
-					for (const i in roadsToRepair) {
-						this.towers[i].repair(roadsToRepair[i]);
-					}
-				}
-			}
-		}
-	}
+  run() {
+    if (getRoomHostiles(this.room).length > 0) {
+      const myDefenders = getRoomCreeps(this.room).filter(
+        (creep) => creep.getActiveBodyparts(ATTACK) > 1,
+      );
+      const myRangedDefenders = getRoomCreeps(this.room).filter(
+        (creep) => creep.getActiveBodyparts(RANGED_ATTACK) > 1,
+      );
+      const myCreepDamage =
+        ATTACK_POWER * sum(myDefenders, (creep) => CombatIntel.getAttackPotential(creep)) +
+        RANGED_ATTACK_POWER *
+          sum(myRangedDefenders, (creep) => CombatIntel.getRangedAttackPotential(creep));
+      const HEAL_FUDGE_FACTOR = 1.0;
+      const avgHealing =
+        HEAL_FUDGE_FACTOR * CombatIntel.avgHostileHealingTo(getRoomHostiles(this.room));
+      let possibleTargets = getRoomHostiles(this.room).filter((hostile) => {
+        // let healing = HEAL_FUDGE_FACTOR * CombatIntel.maxHostileHealingTo(hostile);
+        const damageTaken = CombatIntel.towerDamageAtPos(hostile.pos)! + myCreepDamage;
+        const damageMultiplier = CombatIntel.minimumDamageTakenMultiplier(hostile);
+        return damageTaken * damageMultiplier > avgHealing;
+      });
+      // Only attack dancing targets (drain attack) which are far enough in rooms to be killed off by towers
+      possibleTargets = possibleTargets.filter((hostile) => {
+        if (CombatIntel.isEdgeDancing(hostile)) {
+          const netDPS =
+            CombatIntel.towerDamageAtPos(hostile.pos)! +
+            myCreepDamage -
+            HEAL_FUDGE_FACTOR * CombatIntel.maxHostileHealingTo(hostile);
+          const isKillable = netDPS * getRoomPositionRangeToEdge(hostile.pos) > hostile.hits;
+          if (isKillable) {
+            return true;
+          } else {
+            // Shoot if they get close enough
+            if (
+              this.colony.bunker &&
+              this.colony.bunker.anchor &&
+              hostile.pos.getRangeTo(this.colony.bunker.anchor) <= 6 + 2
+            ) {
+              return true;
+            }
+          }
+        } else {
+          // const netDPS = CombatIntel.towerDamageAtPos(hostile.pos)! + myCreepDamage
+          // 	- (HEAL_FUDGE_FACTOR * CombatIntel.maxHostileHealingTo(hostile));
+          // const isKillable = netDPS * hostile.pos.rangeToEdge > hostile.hits/2;
+          // return isKillable;
+          return true;
+        }
+      });
+      if (
+        Game.time % 21 == 0 &&
+        possibleTargets.filter((target) => target.hits < target.hitsMax / 2).length == 0
+      ) {
+        // console.log('Scattershotting!');
+        return this.scatterShot(possibleTargets);
+      }
+      possibleTargets = possibleTargets.filter(
+        (enemy) =>
+          enemy.hits < enemy.hitsMax / 2 || enemy.pos.findInRange(FIND_MY_CREEPS, 3).length > 0,
+      );
+      const target = CombatTargeting.findBestCreepTargetForTowers(this.room, possibleTargets);
+      if (target) {
+        return this.attack(target);
+      }
+    }
 
-	// private repairNearestStructure() {
-	// 	var closestDamagedStructure = this.pos.findClosestByRange(FIND_STRUCTURES, {
-	// 		filter: (s: Structure) => s.hits < s.hitsMax &&
-	// 								  s.structureType != STRUCTURE_WALL &&
-	// 								  s.structureType != STRUCTURE_RAMPART,
-	// 	});
-	// 	if (closestDamagedStructure) {
-	// 		return this.tower.repair(closestDamagedStructure);
-	// 	}
-	// }
+    const closestDamagedAlly = this.pos.findClosestByRange(
+      getRoomCreeps(this.room).filter((creep) => creep.hits < creep.hitsMax),
+    );
+    if (closestDamagedAlly) {
+      for (const tower of this.towers) {
+        tower.heal(closestDamagedAlly);
+      }
+      return;
+    }
 
-	run() {
-		if (getRoomHostiles(this.room).length > 0) {
-			const myDefenders = getRoomCreeps(this.room).filter(creep => creep.getActiveBodyparts(ATTACK) > 1);
-			const myRangedDefenders = getRoomCreeps(this.room).filter(creep => creep.getActiveBodyparts(RANGED_ATTACK) > 1);
-			const myCreepDamage = ATTACK_POWER * sum(myDefenders, creep => CombatIntel.getAttackPotential(creep)) +
-								  RANGED_ATTACK_POWER * sum(myRangedDefenders,
-															  creep => CombatIntel.getRangedAttackPotential(creep));
-			const HEAL_FUDGE_FACTOR = 1.0;
-			const avgHealing = HEAL_FUDGE_FACTOR * CombatIntel.avgHostileHealingTo(getRoomHostiles(this.room));
-			let possibleTargets = getRoomHostiles(this.room).filter(hostile => {
-				// let healing = HEAL_FUDGE_FACTOR * CombatIntel.maxHostileHealingTo(hostile);
-				const damageTaken = CombatIntel.towerDamageAtPos(hostile.pos)! + myCreepDamage;
-				const damageMultiplier = CombatIntel.minimumDamageTakenMultiplier(hostile);
-				return damageTaken * damageMultiplier > avgHealing;
-			});
-			// Only attack dancing targets (drain attack) which are far enough in rooms to be killed off by towers
-			possibleTargets = possibleTargets.filter(hostile => {
-				if (CombatIntel.isEdgeDancing(hostile)) {
-					const netDPS = CombatIntel.towerDamageAtPos(hostile.pos)! + myCreepDamage
-								   - (HEAL_FUDGE_FACTOR * CombatIntel.maxHostileHealingTo(hostile));
-					const isKillable = netDPS * getRoomPositionRangeToEdge(hostile.pos) > hostile.hits;
-					if (isKillable) {
-						return true;
-					} else {
-						// Shoot if they get close enough
-						if (this.colony.bunker && this.colony.bunker.anchor &&
-							hostile.pos.getRangeTo(this.colony.bunker.anchor) <= 6 + 2) {
-							return true;
-						}
-					}
-				} else {
-					// const netDPS = CombatIntel.towerDamageAtPos(hostile.pos)! + myCreepDamage
-					// 	- (HEAL_FUDGE_FACTOR * CombatIntel.maxHostileHealingTo(hostile));
-					// const isKillable = netDPS * hostile.pos.rangeToEdge > hostile.hits/2;
-					// return isKillable;
-					return true;
-				}
-			});
-			if (Game.time % 21 == 0 && possibleTargets.filter(target => target.hits < target.hitsMax / 2).length == 0) {
-				// console.log('Scattershotting!');
-				return this.scatterShot(possibleTargets);
-			}
-			possibleTargets = possibleTargets.filter(enemy => enemy.hits < enemy.hitsMax / 2
-															  || enemy.pos.findInRange(FIND_MY_CREEPS, 3).length > 0);
-			const target = CombatTargeting.findBestCreepTargetForTowers(this.room, possibleTargets);
-			if (target) {
-				return this.attack(target);
-			}
-		}
+    // Towers build nuke response ramparts
+    const nearbyNukeRamparts = this.colony.overlords.work.nukeDefenseRamparts.filter(
+      (rampart) => this.pos.getRangeTo(rampart) <= TOWER_OPTIMAL_RANGE,
+    );
+    if (nearbyNukeRamparts.length > 0 && this.colony.terminal && !this.colony.state.isRebuilding) {
+      const nukes = this.colony.room.find(FIND_NUKES);
+      const timeToImpact = min(nukes, (nuke) => nuke.timeToLand);
+      if (timeToImpact) {
+        const repairHitsRemaining = sum(
+          Object.values(this.colony.overlords.work.nukeDefenseHitsRemaining ?? {}),
+        );
+        const hitsRepairedPerTick = this.towers.length * TOWER_POWER_REPAIR;
+        // Only repair using towers if it looks like you won't finish repairs in time
+        if (repairHitsRemaining > 0.9 * hitsRepairedPerTick * timeToImpact) {
+          for (const tower of this.towers) {
+            tower.repair(nearbyNukeRamparts[0]);
+          }
+          return;
+        }
+      } else {
+        // Shouldn't get here
+        log.warning(`No time to impact! (Why?)`);
+      }
+    }
 
-		const closestDamagedAlly = this.pos.findClosestByRange(getRoomCreeps(this.room).filter(
-																		creep => creep.hits < creep.hitsMax));
-		if (closestDamagedAlly) {
-			for (const tower of this.towers) {
-				tower.heal(closestDamagedAlly);
-			}
-			return;
-		}
+    // Prevent rampart decay at early RCL
+    this.preventStructureDecay();
+  }
 
-		// Towers build nuke response ramparts
-		const nearbyNukeRamparts = this.colony.overlords.work.nukeDefenseRamparts.filter(
-											rampart => this.pos.getRangeTo(rampart) <= TOWER_OPTIMAL_RANGE);
-		if (nearbyNukeRamparts.length > 0 && this.colony.terminal && !this.colony.state.isRebuilding) {
-			const nukes = this.colony.room.find(FIND_NUKES);
-			const timeToImpact = min(nukes, nuke => nuke.timeToLand);
-			if (timeToImpact) {
-				const repairHitsRemaining = sum(Object.values(this.colony.overlords.work.nukeDefenseHitsRemaining ?? {}));
-				const hitsRepairedPerTick = this.towers.length * TOWER_POWER_REPAIR;
-				// Only repair using towers if it looks like you won't finish repairs in time
-				if (repairHitsRemaining > 0.9 * hitsRepairedPerTick * timeToImpact) {
-					for (const tower of this.towers) {
-						tower.repair(nearbyNukeRamparts[0]);
-					}
-					return;
-				}
-			} else {
-				// Shouldn't get here
-				log.warning(`No time to impact! (Why?)`);
-			}
-		}
-
-		// Prevent rampart decay at early RCL
-		this.preventStructureDecay();
-	}
-
-	visuals() {
-
-	}
+  visuals() {}
 }

@@ -1,9 +1,9 @@
-import {Colony} from '../../Colony';
-import {OverlordPriority} from '../../priorities/priorities_overlords';
-import {profile} from '../../profiler/decorator';
-import {getOverlord} from '../../zerg/AnyZerg';
-import {Zerg} from '../../zerg/Zerg';
-import {Overlord} from '../Overlord';
+import { Colony } from "../../Colony";
+import { OverlordPriority } from "../../priorities/priorities_overlords";
+import { profile } from "../../profiler/decorator";
+import { getOverlord } from "../../zerg/AnyZerg";
+import { Zerg } from "../../zerg/Zerg";
+import { Overlord } from "../Overlord";
 
 /**
  * This overlord contains the default actions for any creeps which lack an overlord (for example, miners whose
@@ -11,24 +11,21 @@ import {Overlord} from '../Overlord';
  */
 @profile
 export class DefaultOverlord extends Overlord {
+  idleZerg: Zerg[];
 
-	idleZerg: Zerg[];
+  constructor(colony: Colony) {
+    super(colony, "default", OverlordPriority.default);
+    this.idleZerg = [];
+  }
 
-	constructor(colony: Colony) {
-		super(colony, 'default', OverlordPriority.default);
-		this.idleZerg = [];
-	}
+  init() {
+    // Zergs are collected at end of init phase; by now anything needing to be claimed already has been
+    const idleCreeps = this.colony.creeps.filter((creep) => !getOverlord(creep));
+    this.idleZerg = idleCreeps.map((creep) => Overmind.zerg[creep.name] || new Zerg(creep));
+    for (const zerg of this.idleZerg) {
+      zerg.refresh();
+    }
+  }
 
-	init() {
-		// Zergs are collected at end of init phase; by now anything needing to be claimed already has been
-		const idleCreeps = this.colony.creeps.filter(creep => !getOverlord(creep));
-		this.idleZerg = idleCreeps.map(creep => Overmind.zerg[creep.name] || new Zerg(creep));
-		for (const zerg of this.idleZerg) {
-			zerg.refresh();
-		}
-	}
-
-	run() {
-
-	}
+  run() {}
 }

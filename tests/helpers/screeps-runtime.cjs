@@ -1,44 +1,80 @@
-const fs = require('node:fs');
-const vm = require('node:vm');
-const constants = require('@screeps/common/lib/constants');
-const lodash = require('./screeps-lodash.cjs');
+const fs = require("node:fs");
+const vm = require("node:vm");
+const constants = require("@screeps/common/lib/constants");
+const lodash = require("./screeps-lodash.cjs");
 
 // A deliberately small world: real game constants and Lodash 3, no network or owned rooms.
 // Run the complete bundle so circular imports, decorators and game helper initialization are exercised.
-function loadBundle(file, {bucket = 9999, training = false} = {}) {
+function loadBundle(file, { bucket = 9999, training = false } = {}) {
   const logs = [];
-  const calls = {pixels: 0, segments: []};
-  const memory = training ? {reinforcementLearning: {enabled: true}} : {};
+  const calls = { pixels: 0, segments: [] };
+  const memory = training ? { reinforcementLearning: { enabled: true } } : {};
   const context = vm.createContext({
     ...constants,
     _: lodash.runInContext(),
-    console: {log: (...args) => logs.push(args.join(' '))},
-    module: {exports: {}},
+    console: { log: (...args) => logs.push(args.join(" ")) },
+    module: { exports: {} },
     Memory: memory,
     RawMemory: {
-      _parsed: memory, segments: {},
+      _parsed: memory,
+      segments: {},
       get: () => JSON.stringify(context.Memory),
-      setActiveSegments: ids => calls.segments.push(Array.from(ids)),
-      setPublicSegments() {}, setDefaultPublicSegment() {}, setActiveForeignSegment() {},
+      setActiveSegments: (ids) => calls.segments.push(Array.from(ids)),
+      setPublicSegments() {},
+      setDefaultPublicSegment() {},
+      setActiveForeignSegment() {},
     },
     Game: {
-      time: 1001, rooms: {}, creeps: {}, powerCreeps: {}, spawns: {}, flags: {},
-      structures: {}, constructionSites: {}, resources: {},
-      gcl: {level: 1, progress: 0, progressTotal: 1000}, gpl: {level: 0},
-      shard: {name: 'shard3'},
-      cpu: {bucket, limit: 20, tickLimit: 500, getUsed: () => 1,
-        getHeapStatistics: () => ({}), generatePixel: () => {calls.pixels++; return constants.OK;}},
-      map: {getRoomLinearDistance: () => 1, describeExits: () => ({}),
-        getRoomTerrain: () => ({get: () => 0}), getRoomStatus: () => ({status: 'normal', timestamp: null})},
-      market: {credits: 0, orders: {}, incomingTransactions: [], outgoingTransactions: [],
-        deal: () => constants.OK, getAllOrders: () => [], getHistory: () => [],
-        calcTransactionCost: () => 0, cancelOrder: () => constants.OK},
-      getObjectById: () => null, notify() {},
+      time: 1001,
+      rooms: {},
+      creeps: {},
+      powerCreeps: {},
+      spawns: {},
+      flags: {},
+      structures: {},
+      constructionSites: {},
+      resources: {},
+      gcl: { level: 1, progress: 0, progressTotal: 1000 },
+      gpl: { level: 0 },
+      shard: { name: "shard3" },
+      cpu: {
+        bucket,
+        limit: 20,
+        tickLimit: 500,
+        getUsed: () => 1,
+        getHeapStatistics: () => ({}),
+        generatePixel: () => {
+          calls.pixels++;
+          return constants.OK;
+        },
+      },
+      map: {
+        getRoomLinearDistance: () => 1,
+        describeExits: () => ({}),
+        getRoomTerrain: () => ({ get: () => 0 }),
+        getRoomStatus: () => ({ status: "normal", timestamp: null }),
+      },
+      market: {
+        credits: 0,
+        orders: {},
+        incomingTransactions: [],
+        outgoingTransactions: [],
+        deal: () => constants.OK,
+        getAllOrders: () => [],
+        getHistory: () => [],
+        calcTransactionCost: () => 0,
+        cancelOrder: () => constants.OK,
+      },
+      getObjectById: () => null,
+      notify() {},
     },
     // A Screeps module must be self-contained: an external require is a build failure.
-    require: name => {throw new Error(`Unexpected external module: ${name}`);},
+    require: (name) => {
+      throw new Error(`Unexpected external module: ${name}`);
+    },
   });
-  vm.runInContext(`
+  vm.runInContext(
+    `
     globalThis.global = globalThis;
     globalThis.exports = module.exports;
     class RoomObject {}
@@ -75,13 +111,20 @@ function loadBundle(file, {bucket = 9999, training = false} = {}) {
       clone() {return new PathFinder.CostMatrix();}
       serialize() {return Array.from(this.data);}
     }};
-  `, context);
-  const script = new vm.Script(fs.readFileSync(file, 'utf8'), {filename: file});
-  script.runInContext(context, {timeout: 10000});
-  return {context, calls, logs, tick() {
-    vm.runInContext('module.exports.loop()', context, {timeout: 10000});
-    context.Game.time++;
-  }};
+  `,
+    context,
+  );
+  const script = new vm.Script(fs.readFileSync(file, "utf8"), { filename: file });
+  script.runInContext(context, { timeout: 10000 });
+  return {
+    context,
+    calls,
+    logs,
+    tick() {
+      vm.runInContext("module.exports.loop()", context, { timeout: 10000 });
+      context.Game.time++;
+    },
+  };
 }
 
-module.exports = {loadBundle};
+module.exports = { loadBundle };

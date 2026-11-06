@@ -1,298 +1,324 @@
-import {getRoomTowers, getRoomWalls} from '../game/RoomStructures';
-import {roomPositionLookForStructure} from '../game/RoomPosition';
-import {getRoomCreeps, getRoomHostileStructures, getRoomHostiles, getRoomOwner, isRoomMine} from '../game/Room';
-import {log} from '../console/log';
-import {isCombatZerg} from '../declarations/typeGuards';
-import {CombatIntel} from '../intel/CombatIntel';
-import {RoomIntel} from '../intel/RoomIntel';
-import {profile} from '../profiler/decorator';
-import {maxBy, minBy} from '../utilities/utils';
-import {CombatZerg} from '../zerg/CombatZerg';
-import {Swarm} from '../zerg/Swarm';
-import {sum, min} from '../utilities/native';
-
+import { getRoomTowers, getRoomWalls } from "../game/RoomStructures";
+import { roomPositionLookForStructure } from "../game/RoomPosition";
+import {
+  getRoomCreeps,
+  getRoomHostileStructures,
+  getRoomHostiles,
+  getRoomOwner,
+  isRoomMine,
+} from "../game/Room";
+import { log } from "../console/log";
+import { isCombatZerg } from "../declarations/typeGuards";
+import { CombatIntel } from "../intel/CombatIntel";
+import { RoomIntel } from "../intel/RoomIntel";
+import { profile } from "../profiler/decorator";
+import { maxBy, minBy } from "../utilities/utils";
+import { CombatZerg } from "../zerg/CombatZerg";
+import { Swarm } from "../zerg/Swarm";
+import { sum, min } from "../utilities/native";
 
 interface SkirmishAnalysis {
-	attack: number;
-	rangedAttack: number;
-	heal: number;
-	advantage: boolean;
-	isRetreating: boolean;
-	isApproaching: boolean;
+  attack: number;
+  rangedAttack: number;
+  heal: number;
+  advantage: boolean;
+  isRetreating: boolean;
+  isApproaching: boolean;
 }
 
 const DEBUG = false;
 
 @profile
 export class GoalFinder {
+  // Standard set of goals for fighting small groups of hostiles (not optimal for larger fights)
+  static skirmishGoals(zerg: CombatZerg): { approach: PathFinderGoal[]; avoid: PathFinderGoal[] } {
+    const approach: PathFinderGoal[] = [];
+    const avoid: PathFinderGoal[] = [];
 
-	// Standard set of goals for fighting small groups of hostiles (not optimal for larger fights)
-	static skirmishGoals(zerg: CombatZerg): { approach: PathFinderGoal[], avoid: PathFinderGoal[] } {
+    const room = zerg.room;
 
-		const approach: PathFinderGoal[] = [];
-		const avoid: PathFinderGoal[] = [];
+    const analysis = {} as { [id: string]: SkirmishAnalysis | undefined };
 
-		const room = zerg.room;
+    const myAttack = CombatIntel.getAttackDamage(zerg);
+    const myRangedAttack = CombatIntel.getRangedAttackDamage(zerg);
+    const myHealing = CombatIntel.getHealAmount(zerg);
 
-		const analysis = {} as { [id: string]: SkirmishAnalysis | undefined };
+    // If you're purely a healer, ignore combat goals
+    if (myHealing > 0 && myAttack == 0 && myRangedAttack == 0) {
+      return this.healingGoals(zerg);
+    }
 
-		const myAttack = CombatIntel.getAttackDamage(zerg);
-		const myRangedAttack = CombatIntel.getRangedAttackDamage(zerg);
-		const myHealing = CombatIntel.getHealAmount(zerg);
+    const preferCloseCombat = myAttack > 0;
+    const myRating = CombatIntel.rating(zerg);
+    const nearbyRating = sum(zerg.pos.findInRange(getRoomCreeps(room), 6), (c) =>
+      CombatIntel.rating(c),
+    );
+    const braveMode = zerg.hits * (nearbyRating / myRating) * 0.5 > zerg.hitsMax;
 
-		// If you're purely a healer, ignore combat goals
-		if (myHealing > 0 && myAttack == 0 && myRangedAttack == 0) {
-			return this.healingGoals(zerg);
-		}
+    const hostileHealers: Creep[] = [];
 
-		const preferCloseCombat = myAttack > 0;
-		const myRating = CombatIntel.rating(zerg);
-		const nearbyRating = sum(zerg.pos.findInRange(getRoomCreeps(room), 6), c => CombatIntel.rating(c));
-		const braveMode = zerg.hits * (nearbyRating / myRating) * .5 > zerg.hitsMax;
+    // Analyze capabilities of hostile creeps in the room
+    for (const hostile of getRoomHostiles(room)) {
+      if (hostile.owner.username == "Source Keeper") continue;
 
-		const hostileHealers: Creep[] = [];
+      const attack = CombatIntel.getAttackDamage(hostile);
+      const rangedAttack = CombatIntel.getRangedAttackDamage(hostile);
+      const healing = CombatIntel.getHealAmount(hostile);
+      if (healing > 0 && attack == 0 && rangedAttack == 0) {
+        hostileHealers.push(hostile);
+      }
+      analysis[hostile.id] = {
+        attack: attack,
+        rangedAttack: rangedAttack,
+        heal: healing,
+        advantage:
+          healing == 0 ||
+          attack + rangedAttack == 0 ||
+          myAttack +
+            myRangedAttack +
+            myHealing / CombatIntel.minimumDamageTakenMultiplier(zerg.creep) >
+            attack + rangedAttack + healing / CombatIntel.minimumDamageTakenMultiplier(hostile),
+        isRetreating: CombatIntel.isRetreating(hostile, RoomIntel.getPreviousPos(zerg.creep)),
+        isApproaching: CombatIntel.isApproaching(hostile, RoomIntel.getPreviousPos(zerg.creep)),
+      };
+    }
 
-		// Analyze capabilities of hostile creeps in the room
-		for (const hostile of getRoomHostiles(room)) {
-			if (hostile.owner.username == 'Source Keeper') continue;
+    // Generate list of targets to approach and respective ranges to keep them at
+    const approachTargets = hostileHealers.length > 0 ? hostileHealers : getRoomHostiles(room);
+    for (const target of approachTargets) {
+      const data = analysis[target.id];
+      if (data && (data.advantage || braveMode)) {
+        let range = 1;
+        if (!preferCloseCombat && (data.attack > 0 || data.rangedAttack > myRangedAttack)) {
+          range = zerg.pos.getRangeTo(target) == 3 && data.isRetreating ? 2 : 3;
+          avoid.push({ pos: target.pos, range: range });
+        }
+        approach.push({ pos: target.pos, range: range });
+      }
+    }
 
-			const attack = CombatIntel.getAttackDamage(hostile);
-			const rangedAttack = CombatIntel.getRangedAttackDamage(hostile);
-			const healing = CombatIntel.getHealAmount(hostile);
-			if (healing > 0 && attack == 0 && rangedAttack == 0) {
-				hostileHealers.push(hostile);
-			}
-			analysis[hostile.id] = {
-				attack       : attack,
-				rangedAttack : rangedAttack,
-				heal         : healing,
-				advantage    : healing == 0 || attack + rangedAttack == 0 ||
-							   myAttack + myRangedAttack + myHealing / CombatIntel.minimumDamageTakenMultiplier(zerg.creep)
-							   > attack + rangedAttack + healing / CombatIntel.minimumDamageTakenMultiplier(hostile),
-				isRetreating : CombatIntel.isRetreating(hostile, RoomIntel.getPreviousPos(zerg.creep)),
-				isApproaching: CombatIntel.isApproaching(hostile, RoomIntel.getPreviousPos(zerg.creep)),
-			};
-		}
+    // If there's nothing left to approach, group up with other creeps
+    if (approach.length == 0) {
+      for (const friendly of getRoomCreeps(room)) {
+        approach.push({ pos: friendly.pos, range: 0 });
+      }
+    }
 
-		// Generate list of targets to approach and respective ranges to keep them at
-		const approachTargets = hostileHealers.length > 0 ? hostileHealers : getRoomHostiles(room);
-		for (const target of approachTargets) {
-			const data = analysis[target.id];
-			if (data && (data.advantage || braveMode)) {
-				let range = 1;
-				if (!preferCloseCombat && (data.attack > 0 || data.rangedAttack > myRangedAttack)) {
-					range = zerg.pos.getRangeTo(target) == 3 && data.isRetreating ? 2 : 3;
-					avoid.push({pos: target.pos, range: range});
-				}
-				approach.push({pos: target.pos, range: range});
-			}
-		}
+    // Avoid hostiles that are significantly better than you
+    for (const target of getRoomHostiles(room)) {
+      const data = analysis[target.id];
+      if (data && !data.advantage && !braveMode) {
+        let range = data.isApproaching ? 3 : 2;
+        if (data.rangedAttack > 0) {
+          range = 8;
+        }
+        avoid.push({ pos: target.pos, range: range });
+      }
+    }
 
-		// If there's nothing left to approach, group up with other creeps
-		if (approach.length == 0) {
-			for (const friendly of getRoomCreeps(room)) {
-				approach.push({pos: friendly.pos, range: 0});
-			}
-		}
+    if (DEBUG) {
+      log.debug(`Report for ${zerg.name}:`, JSON.stringify(analysis));
+      log.debug(`Approach for ${zerg.name}:`, JSON.stringify(approach));
+      log.debug(`Avoid for ${zerg.name}:`, JSON.stringify(avoid));
+    }
 
-		// Avoid hostiles that are significantly better than you
-		for (const target of getRoomHostiles(room)) {
-			const data = analysis[target.id];
-			if (data && (!data.advantage && !braveMode)) {
-				let range = data.isApproaching ? 3 : 2;
-				if (data.rangedAttack > 0) {
-					range = 8;
-				}
-				avoid.push({pos: target.pos, range: range});
-			}
-		}
+    return { approach, avoid };
+  }
 
-		if (DEBUG) {
-			log.debug(`Report for ${zerg.name}:`, JSON.stringify(analysis));
-			log.debug(`Approach for ${zerg.name}:`, JSON.stringify(approach));
-			log.debug(`Avoid for ${zerg.name}:`, JSON.stringify(avoid));
-		}
+  static swarmCombatGoals(
+    swarm: Swarm,
+    includeStructures = true,
+  ): { approach: PathFinderGoal[]; avoid: PathFinderGoal[] } {
+    const approach: PathFinderGoal[] = [];
+    const avoid: PathFinderGoal[] = [];
 
-		return {approach, avoid};
-	}
+    if (swarm.rooms.length > 1) {
+      log.warning(`Swarm in more than 1 room!`);
+    }
+    // If in more than 1 room, pick the room with more hostile stuff in it
+    const room = maxBy(
+      swarm.rooms,
+      (room) => getRoomHostiles(room).length + getRoomHostileStructures(room).length,
+    ) as Room;
 
+    const myAttack = sum(swarm.creeps, (creep) => CombatIntel.getAttackDamage(creep));
+    const myRangedAttack = sum(swarm.creeps, (creep) => CombatIntel.getRangedAttackDamage(creep));
+    const myHealing = sum(swarm.creeps, (creep) => CombatIntel.getHealAmount(creep));
+    const myDamageMultiplier = CombatIntel.minimumDamageMultiplierForGroup(
+      swarm.creeps.map((c) => c.creep),
+    );
 
-	static swarmCombatGoals(swarm: Swarm,
-							includeStructures = true): { approach: PathFinderGoal[], avoid: PathFinderGoal[] } {
+    const preferCloseCombat = myAttack > myRangedAttack;
 
-		const approach: PathFinderGoal[] = [];
-		const avoid: PathFinderGoal[] = [];
+    sum(swarm.creeps, (creep) => CombatIntel.rating(creep));
 
-		if (swarm.rooms.length > 1) {
-			log.warning(`Swarm in more than 1 room!`);
-		}
-		// If in more than 1 room, pick the room with more hostile stuff in it
-		const room = maxBy(swarm.rooms, room => getRoomHostiles(room).length + getRoomHostileStructures(room).length) as Room;
+    const hostileSwarms = Swarm.findEnemySwarms(room, { pos: swarm.anchor });
 
-		const myAttack = sum(swarm.creeps, creep => CombatIntel.getAttackDamage(creep));
-		const myRangedAttack = sum(swarm.creeps, creep => CombatIntel.getRangedAttackDamage(creep));
-		const myHealing = sum(swarm.creeps, creep => CombatIntel.getHealAmount(creep));
-		const myDamageMultiplier = CombatIntel.minimumDamageMultiplierForGroup(swarm.creeps.map(c => c.creep));
+    // Analyze capabilities of hostile creeps in the room
+    for (const i in hostileSwarms) {
+      const hostiles = hostileSwarms[i].creeps as Creep[];
 
-		const preferCloseCombat = myAttack > myRangedAttack;
+      const attack = sum(hostiles, (creep) => CombatIntel.getAttackDamage(creep));
+      const rangedAttack = sum(hostiles, (creep) => CombatIntel.getRangedAttackDamage(creep));
+      const healing = sum(hostiles, (creep) => CombatIntel.getHealAmount(creep));
+      const damageMultiplier = CombatIntel.minimumDamageMultiplierForGroup(hostiles);
 
-		const myRating = sum(swarm.creeps, creep => CombatIntel.rating(creep));
+      const canPopShield =
+        (attack + rangedAttack + CombatIntel.towerDamageAtPos(swarm.anchor)) * myDamageMultiplier >
+        min(swarm.creeps, (creep) => 100 * creep.getActiveBodyparts(TOUGH));
 
-		const hostileSwarms = Swarm.findEnemySwarms(room, {pos: swarm.anchor});
+      const isRetreating =
+        sum(hostiles, (creep) => +CombatIntel.isRetreating(creep, swarm.anchor)) /
+          hostiles.length >=
+        0.5;
 
-		// Analyze capabilities of hostile creeps in the room
-		for (const i in hostileSwarms) {
+      const isApproaching =
+        sum(hostiles, (creep) => +CombatIntel.isApproaching(creep, swarm.anchor)) /
+          hostiles.length >=
+        0.5;
 
-			const hostiles = hostileSwarms[i].creeps as Creep[];
+      const advantage =
+        healing == 0 ||
+        attack + rangedAttack == 0 ||
+        myAttack + myRangedAttack + myHealing / myDamageMultiplier >
+          attack + rangedAttack + healing / damageMultiplier;
 
-			const attack = sum(hostiles, creep => CombatIntel.getAttackDamage(creep));
-			const rangedAttack = sum(hostiles, creep => CombatIntel.getRangedAttackDamage(creep));
-			const healing = sum(hostiles, creep => CombatIntel.getHealAmount(creep));
-			const damageMultiplier = CombatIntel.minimumDamageMultiplierForGroup(hostiles);
+      for (const hostile of hostiles) {
+        if (canPopShield && roomPositionLookForStructure(hostile.pos, STRUCTURE_RAMPART)) {
+          let range = (rangedAttack > attack || !preferCloseCombat ? 3 : 1) + 1;
+          if (CombatIntel.isApproaching(hostile, swarm.anchor)) {
+            range += 1;
+          }
+          avoid.push({ pos: hostile.pos, range: range });
+        } else {
+          if (advantage) {
+            let range = preferCloseCombat ? 3 : 1;
+            if (!preferCloseCombat && (attack > 0 || rangedAttack > myAttack)) {
+              range = swarm.minRangeTo(hostile) == 3 && isRetreating ? 2 : 3;
+              avoid.push({ pos: hostile.pos, range: range });
+            }
+            approach.push({ pos: hostile.pos, range: range });
+          } else {
+            let range = isApproaching ? 3 : 2;
+            if (rangedAttack > attack) {
+              range = 5;
+            }
+            avoid.push({ pos: hostile.pos, range: range });
+          }
+        }
+      }
+    }
 
-			const canPopShield = (attack + rangedAttack + CombatIntel.towerDamageAtPos(swarm.anchor)) * myDamageMultiplier
-								 > min(swarm.creeps, creep => 100 * creep.getActiveBodyparts(TOUGH));
+    if (includeStructures) {
+      const approachStructures: Structure[] = [];
+      for (const structure of getRoomHostileStructures(room)) {
+        approachStructures.push(structure);
+      }
+      for (const wall of getRoomWalls(room)) {
+        approachStructures.push(wall);
+      }
+      for (const approachStructure of approachStructures) {
+        approach.push({ pos: approachStructure.pos, range: 1 });
+      }
+    }
 
-			const isRetreating = sum(hostiles, creep => +CombatIntel.isRetreating(creep, swarm.anchor))
-								 / hostiles.length >= 0.5;
+    if (DEBUG) {
+      log.debug(`Approach for ${swarm.print}:`, JSON.stringify(approach));
+      log.debug(`Avoid for ${swarm.print}:`, JSON.stringify(avoid));
+    }
 
-			const isApproaching = sum(hostiles, creep => +CombatIntel.isApproaching(creep, swarm.anchor))
-								  / hostiles.length >= 0.5;
+    return { approach, avoid };
+  }
 
-			const advantage = healing == 0 || attack + rangedAttack == 0 ||
-							  myAttack + myRangedAttack + myHealing / myDamageMultiplier
-							  > attack + rangedAttack + healing / damageMultiplier;
+  static retreatGoals(creep: CombatZerg): { approach: PathFinderGoal[]; avoid: PathFinderGoal[] } {
+    const approach: PathFinderGoal[] = [];
+    const avoid: PathFinderGoal[] = [];
 
+    const isHealer = CombatIntel.isHealer(creep);
+    for (const friendly of getRoomCreeps(creep.room)) {
+      if (CombatIntel.getHealPotential(friendly) > 0 || (isHealer && isCombatZerg(creep))) {
+        approach.push({ pos: friendly.pos, range: 1 });
+      }
+    }
+    for (const hostile of getRoomHostiles(creep.room)) {
+      if (
+        CombatIntel.getAttackPotential(hostile) > 0 ||
+        CombatIntel.getRangedAttackPotential(hostile) > 0
+      ) {
+        avoid.push({ pos: hostile.pos, range: 8 });
+      }
+    }
+    if (getRoomOwner(creep.room) && !isRoomMine(creep.room)) {
+      for (const tower of getRoomTowers(creep.room)) {
+        avoid.push({ pos: tower.pos, range: 50 });
+      }
+    }
+    return { approach, avoid };
+  }
 
-			for (const hostile of hostiles) {
-				if (canPopShield && roomPositionLookForStructure(hostile.pos, STRUCTURE_RAMPART)) {
-					let range = (rangedAttack > attack || !preferCloseCombat ? 3 : 1) + 1;
-					if (CombatIntel.isApproaching(hostile, swarm.anchor)) {
-						range += 1;
-					}
-					avoid.push({pos: hostile.pos, range: range});
-				} else {
-					if (advantage) {
-						let range = preferCloseCombat ? 3 : 1;
-						if (!preferCloseCombat && (attack > 0 || rangedAttack > myAttack)) {
-							range = swarm.minRangeTo(hostile) == 3 && isRetreating ? 2 : 3;
-							avoid.push({pos: hostile.pos, range: range});
-						}
-						approach.push({pos: hostile.pos, range: range});
-					} else {
-						let range = isApproaching ? 3 : 2;
-						if (rangedAttack > attack) {
-							range = 5;
-						}
-						avoid.push({pos: hostile.pos, range: range});
-					}
-				}
-			}
+  static retreatGoalsForRoom(room: Room): { approach: PathFinderGoal[]; avoid: PathFinderGoal[] } {
+    const avoid: PathFinderGoal[] = [];
 
-		}
+    for (const hostile of getRoomHostiles(room)) {
+      if (
+        CombatIntel.getAttackPotential(hostile) > 0 ||
+        CombatIntel.getRangedAttackPotential(hostile) > 0
+      ) {
+        avoid.push({ pos: hostile.pos, range: 8 });
+      }
+    }
+    if (getRoomOwner(room) && !isRoomMine(room)) {
+      for (const tower of getRoomTowers(room)) {
+        avoid.push({ pos: tower.pos, range: 50 });
+      }
+    }
+    return { approach: [], avoid: avoid };
+  }
 
-		if (includeStructures) {
-			const approachStructures: Structure[] = [];
-			for (const structure of getRoomHostileStructures(room)) {
-				approachStructures.push(structure);
-			}
-			for (const wall of getRoomWalls(room)) {
-				approachStructures.push(wall);
-			}
-			for (const approachStructure of approachStructures) {
-				approach.push({pos: approachStructure.pos, range: 1});
-			}
-		}
+  static healingGoals(healer: CombatZerg): { approach: PathFinderGoal[]; avoid: PathFinderGoal[] } {
+    const approach: PathFinderGoal[] = [];
+    const avoid: PathFinderGoal[] = [];
+    const healAmount = CombatIntel.getHealAmount(healer);
+    let target = minBy(
+      getRoomCreeps(healer.room).filter((c) => c.hits < c.hitsMax),
+      (c) => c.hits + healer.pos.getRangeTo(c),
+    );
+    if (!target) {
+      target = minBy(getRoomCreeps(healer.room), (creep) => {
+        const range = healer.pos.getRangeTo(creep);
+        return range > 0 ? CombatIntel.maxFriendlyHealingTo(creep) / healAmount + range : false;
+      });
+    }
+    if (target) {
+      approach.push({ pos: target.pos, range: 0 });
+    }
+    for (const hostile of getRoomHostiles(healer.room)) {
+      const meleeDamage = CombatIntel.getAttackDamage(hostile);
+      const rangedDamage = CombatIntel.getRangedAttackDamage(hostile);
+      if (meleeDamage + rangedDamage > 0) {
+        const range = rangedDamage > healAmount ? 4 : 3;
+        avoid.push({ pos: hostile.pos, range: range });
+      }
+    }
+    return { approach, avoid };
+  }
 
-		if (DEBUG) {
-			log.debug(`Approach for ${swarm.print}:`, JSON.stringify(approach));
-			log.debug(`Avoid for ${swarm.print}:`, JSON.stringify(avoid));
-		}
+  static structureGoals(_creep: CombatZerg): {
+    approach: PathFinderGoal[];
+    avoid: PathFinderGoal[];
+  } {
+    const approach: PathFinderGoal[] = [];
 
-		return {approach, avoid};
-	}
+    // // TODO: finish this
+    // let range = CombatIntel.getAttackDamage(creep) > 0 || CombatIntel.getDismantleDamage(creep) > 0 ? 1 : 3;
+    // let structureTarget = CombatTargeting.findBestStructureTarget(creep);
+    // if (structureTarget) {
+    // 	approach.push({pos: structureTarget.pos, range: range});
+    // }
+    log.error(`NOT IMPLEMENTED`);
 
-	static retreatGoals(creep: CombatZerg): { approach: PathFinderGoal[], avoid: PathFinderGoal[] } {
-		const approach: PathFinderGoal[] = [];
-		const avoid: PathFinderGoal[] = [];
-
-		const isHealer = CombatIntel.isHealer(creep);
-		for (const friendly of getRoomCreeps(creep.room)) {
-			if (CombatIntel.getHealPotential(friendly) > 0 || (isHealer && isCombatZerg(creep))) {
-				approach.push({pos: friendly.pos, range: 1});
-			}
-		}
-		for (const hostile of getRoomHostiles(creep.room)) {
-			if (CombatIntel.getAttackPotential(hostile) > 0 || CombatIntel.getRangedAttackPotential(hostile) > 0) {
-				avoid.push({pos: hostile.pos, range: 8});
-			}
-		}
-		if (getRoomOwner(creep.room) && !isRoomMine(creep.room)) {
-			for (const tower of getRoomTowers(creep.room)) {
-				avoid.push({pos: tower.pos, range: 50});
-			}
-		}
-		return {approach, avoid};
-	}
-
-	static retreatGoalsForRoom(room: Room): { approach: PathFinderGoal[], avoid: PathFinderGoal[] } {
-		const avoid: PathFinderGoal[] = [];
-
-		for (const hostile of getRoomHostiles(room)) {
-			if (CombatIntel.getAttackPotential(hostile) > 0 || CombatIntel.getRangedAttackPotential(hostile) > 0) {
-				avoid.push({pos: hostile.pos, range: 8});
-			}
-		}
-		if (getRoomOwner(room) && !isRoomMine(room)) {
-			for (const tower of getRoomTowers(room)) {
-				avoid.push({pos: tower.pos, range: 50});
-			}
-		}
-		return {approach: [], avoid: avoid};
-	}
-
-	static healingGoals(healer: CombatZerg): { approach: PathFinderGoal[], avoid: PathFinderGoal[] } {
-		const approach: PathFinderGoal[] = [];
-		const avoid: PathFinderGoal[] = [];
-		const healAmount = CombatIntel.getHealAmount(healer);
-		let target = minBy(getRoomCreeps(healer.room).filter(c => c.hits < c.hitsMax),
-						   c => c.hits + healer.pos.getRangeTo(c));
-		if (!target) {
-			target = minBy(getRoomCreeps(healer.room), creep => {
-				const range = healer.pos.getRangeTo(creep);
-				return range > 0 ? CombatIntel.maxFriendlyHealingTo(creep) / healAmount + range : false;
-			});
-		}
-		if (target) {
-			approach.push({pos: target.pos, range: 0});
-		}
-		for (const hostile of getRoomHostiles(healer.room)) {
-			const meleeDamage = CombatIntel.getAttackDamage(hostile);
-			const rangedDamage = CombatIntel.getRangedAttackDamage(hostile);
-			if (meleeDamage + rangedDamage > 0) {
-				const range = rangedDamage > healAmount ? 4 : 3;
-				avoid.push({pos: hostile.pos, range: range});
-			}
-		}
-		return {approach, avoid};
-	}
-
-	static structureGoals(creep: CombatZerg): { approach: PathFinderGoal[], avoid: PathFinderGoal[] } {
-		const approach: PathFinderGoal[] = [];
-
-		// // TODO: finish this
-		// let range = CombatIntel.getAttackDamage(creep) > 0 || CombatIntel.getDismantleDamage(creep) > 0 ? 1 : 3;
-		// let structureTarget = CombatTargeting.findBestStructureTarget(creep);
-		// if (structureTarget) {
-		// 	approach.push({pos: structureTarget.pos, range: range});
-		// }
-		log.error(`NOT IMPLEMENTED`);
-
-		return {approach: approach, avoid: []};
-	}
-
+    return { approach: approach, avoid: [] };
+  }
 }
 
 global.GoalFinder = GoalFinder;
-
-

@@ -1,235 +1,256 @@
-import {getStoredEnergy, isStructureEmpty} from '../game/Structures';
-import {getRoomConstructionSites} from '../game/Room';
+import { getStoredEnergy, isStructureEmpty } from "../game/Structures";
+import { getRoomConstructionSites } from "../game/Room";
 import {
-	getRoomPositionPrint,
-	roomPositionAvailableNeighbors,
-	roomPositionFindClosestByLimitedRange,
-	roomPositionGetPositionsAtRange,
-	roomPositionIsWalkable,
-} from '../game/RoomPosition';
-import {getRoomContainers} from '../game/RoomStructures';
-import {$} from '../caching/GlobalCache';
-import {Colony, ColonyStage} from '../Colony';
-import {log} from '../console/log';
-import {Mem} from '../memory/Memory';
-import {UpgradingOverlord} from '../overlords/core/upgrader';
-import {profile} from '../profiler/decorator';
-import {Stats} from '../stats/stats';
-import {hasMinerals} from '../utilities/utils';
-import {HiveCluster} from './_HiveCluster';
-import {sum, max, defaults as nativeDefaults} from '../utilities/native';
+  getRoomPositionPrint,
+  roomPositionAvailableNeighbors,
+  roomPositionFindClosestByLimitedRange,
+  roomPositionGetPositionsAtRange,
+  roomPositionIsWalkable,
+} from "../game/RoomPosition";
+import { getRoomContainers } from "../game/RoomStructures";
+import { $ } from "../caching/GlobalCache";
+import { Colony, ColonyStage } from "../Colony";
+import { log } from "../console/log";
+import { Mem } from "../memory/Memory";
+import { UpgradingOverlord } from "../overlords/core/upgrader";
+import { profile } from "../profiler/decorator";
+import { Stats } from "../stats/stats";
+import { hasMinerals } from "../utilities/utils";
+import { HiveCluster } from "./_HiveCluster";
+import { sum, max, defaults as nativeDefaults } from "../utilities/native";
 
 interface UpgradeSiteMemory {
-	stats: { downtime: number };
-	speedFactor: number;		// Multiplier on upgrade parts for fast growth
+  stats: { downtime: number };
+  speedFactor: number; // Multiplier on upgrade parts for fast growth
 }
-
 
 /**
  * Upgrade sites group upgrade-related structures around a controller, such as an input link and energy container
  */
 @profile
 export class UpgradeSite extends HiveCluster {
+  memory: UpgradeSiteMemory;
+  controller: StructureController; // The controller for the site
+  upgradePowerNeeded: number;
+  link: StructureLink | undefined; // The primary object receiving energy for the site
+  battery: StructureContainer | undefined; // The container to provide an energy buffer
+  batteryPos: RoomPosition | undefined;
+  overlord: UpgradingOverlord;
+  // energyPerTick: number;
 
-	memory: UpgradeSiteMemory;
-	controller: StructureController;						// The controller for the site
-	upgradePowerNeeded: number;
-	link: StructureLink | undefined;						// The primary object receiving energy for the site
-	battery: StructureContainer | undefined; 				// The container to provide an energy buffer
-	batteryPos: RoomPosition | undefined;
-	overlord: UpgradingOverlord;
-	// energyPerTick: number;
+  static settings = {
+    energyBuffer: 100000, // Number of upgrader parts scales with energy minus this value
+    // This much excess energy adds one extra body repetition.
+    // TODO: scaling needs to increase with the new storage/terminal system.
+    energyPerBodyUnit: 20000,
+    minLinkDistance: 10, // Required distance to build link
+    linksRequestBelow: 200, // Links request energy when less than this amount
+  };
 
-	static settings = {
-		energyBuffer     : 100000,	// Number of upgrader parts scales with energy minus this value
-		// This much excess energy adds one extra body repetition.
-		// TODO: scaling needs to increase with the new storage/terminal system.
-		energyPerBodyUnit: 20000,
-		minLinkDistance  : 10,		// Required distance to build link
-		linksRequestBelow: 200,		// Links request energy when less than this amount
-	};
+  constructor(colony: Colony, controller: StructureController) {
+    super(colony, controller, "upgradeSite");
+    this.controller = controller;
+    this.memory = Mem.wrap(this.colony.memory, "upgradeSite");
+    this.upgradePowerNeeded = this.getUpgradePowerNeeded();
+    // Register bettery
+    $.set(this, "battery", () => {
+      const allowableContainers = getRoomContainers(this.room).filter(
+        (container) => container.pos.findInRange(FIND_SOURCES, 1).length == 0,
+      ); // only count containers that aren't near sources
+      return roomPositionFindClosestByLimitedRange(this.pos, allowableContainers, 3);
+    });
+    this.batteryPos = $.pos(this, "batteryPos", () => {
+      if (this.battery) {
+        return this.battery.pos;
+      }
+      const inputSite = this.findInputConstructionSite();
+      if (inputSite) {
+        return inputSite.pos;
+      }
+      return (
+        this.calculateBatteryPos() ||
+        log.alert(`Upgrade site at ${getRoomPositionPrint(this.pos)}: no batteryPos!`)
+      );
+    });
+    if (this.batteryPos) this.colony.destinations.push({ pos: this.batteryPos, order: 0 });
+    // Register link
+    $.set(this, "link", () =>
+      roomPositionFindClosestByLimitedRange(this.pos, colony.availableLinks, 3),
+    );
+    this.colony.linkNetwork.claimLink(this.link);
+    // // Energy per tick is sum of upgrader body parts and nearby worker body parts
+    // this.energyPerTick = $.number(this, 'energyPerTick', () =>
+    // 	_.sum(this.overlord.upgraders, upgrader => upgrader.getActiveBodyparts(WORK)) +
+    // 	_.sum(_.filter(this.colony.getCreepsByRole(WorkerSetup.role), worker =>
+    // 			  worker.pos.inRangeTo((this.link || this.battery || this).pos, 2)),
+    // 		  worker => worker.getActiveBodyparts(WORK)));
+    // Compute stats
+    this.stats();
+  }
 
-	constructor(colony: Colony, controller: StructureController) {
-		super(colony, controller, 'upgradeSite');
-		this.controller = controller;
-		this.memory = Mem.wrap(this.colony.memory, 'upgradeSite');
-		this.upgradePowerNeeded = this.getUpgradePowerNeeded();
-		// Register bettery
-		$.set(this, 'battery', () => {
-			const allowableContainers = getRoomContainers(this.room).filter(container =>
-				container.pos.findInRange(FIND_SOURCES, 1).length == 0); // only count containers that aren't near sources
-			return roomPositionFindClosestByLimitedRange(this.pos, allowableContainers, 3);
-		});
-		this.batteryPos = $.pos(this, 'batteryPos', () => {
-			if (this.battery) {
-				return this.battery.pos;
-			}
-			const inputSite = this.findInputConstructionSite();
-			if (inputSite) {
-				return inputSite.pos;
-			}
-			return this.calculateBatteryPos() || log.alert(`Upgrade site at ${getRoomPositionPrint(this.pos)}: no batteryPos!`);
-		});
-		if (this.batteryPos) this.colony.destinations.push({pos: this.batteryPos, order: 0});
-		// Register link
-		$.set(this, 'link', () => roomPositionFindClosestByLimitedRange(this.pos, colony.availableLinks, 3));
-		this.colony.linkNetwork.claimLink(this.link);
-		// // Energy per tick is sum of upgrader body parts and nearby worker body parts
-		// this.energyPerTick = $.number(this, 'energyPerTick', () =>
-		// 	_.sum(this.overlord.upgraders, upgrader => upgrader.getActiveBodyparts(WORK)) +
-		// 	_.sum(_.filter(this.colony.getCreepsByRole(WorkerSetup.role), worker =>
-		// 			  worker.pos.inRangeTo((this.link || this.battery || this).pos, 2)),
-		// 		  worker => worker.getActiveBodyparts(WORK)));
-		// Compute stats
-		this.stats();
-	}
+  refresh() {
+    this.memory = Mem.wrap(this.colony.memory, "upgradeSite");
+    $.refreshRoom(this);
+    $.refresh(this, "controller", "battery", "link");
+  }
 
-	refresh() {
-		this.memory = Mem.wrap(this.colony.memory, 'upgradeSite');
-		$.refreshRoom(this);
-		$.refresh(this, 'controller', 'battery', 'link');
-	}
+  spawnMoarOverlords() {
+    // Register overlord
+    this.overlord = new UpgradingOverlord(this);
+  }
 
-	spawnMoarOverlords() {
-		// Register overlord
-		this.overlord = new UpgradingOverlord(this);
-	}
+  findInputConstructionSite(): ConstructionSite | undefined {
+    const nearbyInputSites = this.pos.findInRange(getRoomConstructionSites(this.room), 4, {
+      filter: (s: ConstructionSite) =>
+        s.structureType == STRUCTURE_CONTAINER || s.structureType == STRUCTURE_LINK,
+    });
+    return nearbyInputSites[0];
+  }
 
-	findInputConstructionSite(): ConstructionSite | undefined {
-		const nearbyInputSites = this.pos.findInRange(getRoomConstructionSites(this.room), 4, {
-			filter: (s: ConstructionSite) => s.structureType == STRUCTURE_CONTAINER ||
-											 s.structureType == STRUCTURE_LINK,
-		});
-		return nearbyInputSites[0];
-	}
+  private getUpgradePowerNeeded(): number {
+    return $.number(this, "upgradePowerNeeded", () => {
+      if (this.room.storage) {
+        // Workers perform upgrading until storage is set up
+        const amountOver = Math.max(
+          this.colony.assets.energy - UpgradeSite.settings.energyBuffer,
+          0,
+        );
+        let upgradePower = 1 + Math.floor(amountOver / UpgradeSite.settings.energyPerBodyUnit);
+        if (amountOver > 800000) {
+          upgradePower *= 4; // double upgrade power if we have lots of surplus energy
+        } else if (amountOver > 500000) {
+          upgradePower *= 2;
+        }
+        if (this.controller.level == 8) {
+          if (this.colony.assets.energy < 30000) {
+            upgradePower = 0;
+          } else {
+            upgradePower = Math.min(upgradePower, 15); // don't go above 15 work parts at RCL 8
+          }
+        } else if (this.controller.level >= 6) {
+          // Can set a room to upgrade at an accelerated rate manually
+          upgradePower =
+            this.memory.speedFactor != undefined
+              ? upgradePower * this.memory.speedFactor
+              : upgradePower;
+        }
+        return upgradePower;
+      } else {
+        return 0;
+      }
+    });
+  }
 
-	private getUpgradePowerNeeded(): number {
-		return $.number(this, 'upgradePowerNeeded', () => {
-			if (this.room.storage) { // Workers perform upgrading until storage is set up
-				const amountOver = Math.max(this.colony.assets.energy - UpgradeSite.settings.energyBuffer, 0);
-				let upgradePower = 1 + Math.floor(amountOver / UpgradeSite.settings.energyPerBodyUnit);
-				if (amountOver > 800000) {
-					upgradePower *= 4; // double upgrade power if we have lots of surplus energy
-				} else if (amountOver > 500000) {
-					upgradePower *= 2;
-				}
-				if (this.controller.level == 8) {
-					if (this.colony.assets.energy < 30000) {
-						upgradePower = 0;
-					} else {
-						upgradePower = Math.min(upgradePower, 15); // don't go above 15 work parts at RCL 8
-					}
-				} else if (this.controller.level >= 6) {
-					// Can set a room to upgrade at an accelerated rate manually
-					upgradePower = this.memory.speedFactor != undefined ? upgradePower * this.memory.speedFactor : upgradePower;
-				}
-				return upgradePower;
-			} else {
-				return 0;
-			}
-		});
-	}
+  init(): void {
+    // Register energy requests
+    if (this.link && this.link.energy < UpgradeSite.settings.linksRequestBelow) {
+      this.colony.linkNetwork.requestReceive(this.link);
+    }
+    const inThreshold = this.colony.stage == ColonyStage.Larva ? 0.75 : 0.5;
+    if (this.battery) {
+      if (this.colony.stage == ColonyStage.Larva) {
+        if (getStoredEnergy(this.battery) < inThreshold * this.battery.storeCapacity) {
+          const workers = this.colony.overlords.work.workers;
+          const energyPerTick =
+            UPGRADE_CONTROLLER_POWER * sum(workers, (worker) => worker.getBodyparts(WORK));
+          this.colony.logisticsNetwork.requestInput(this.battery, { dAmountdt: energyPerTick });
+        }
+      } else {
+        if (getStoredEnergy(this.battery) < inThreshold * this.battery.storeCapacity) {
+          const energyPerTick = UPGRADE_CONTROLLER_POWER * this.upgradePowerNeeded;
+          this.colony.logisticsNetwork.requestInput(this.battery, { dAmountdt: energyPerTick });
+        }
+      }
+      if (hasMinerals(this.battery.store)) {
+        // get rid of any minerals in the container if present
+        this.colony.logisticsNetwork.requestOutputMinerals(this.battery);
+      }
+    }
+  }
 
-	init(): void {
-		// Register energy requests
-		if (this.link && this.link.energy < UpgradeSite.settings.linksRequestBelow) {
-			this.colony.linkNetwork.requestReceive(this.link);
-		}
-		const inThreshold = this.colony.stage == ColonyStage.Larva ? 0.75 : 0.5;
-		if (this.battery) {
-			if (this.colony.stage == ColonyStage.Larva) {
-				if (getStoredEnergy(this.battery) < inThreshold * this.battery.storeCapacity) {
-					const workers = this.colony.overlords.work.workers;
-					const energyPerTick = UPGRADE_CONTROLLER_POWER * sum(workers, worker => worker.getBodyparts(WORK));
-					this.colony.logisticsNetwork.requestInput(this.battery, {dAmountdt: energyPerTick});
-				}
-			} else {
-				if (getStoredEnergy(this.battery) < inThreshold * this.battery.storeCapacity) {
-					const energyPerTick = UPGRADE_CONTROLLER_POWER * this.upgradePowerNeeded;
-					this.colony.logisticsNetwork.requestInput(this.battery, {dAmountdt: energyPerTick});
-				}
-			}
-			if (hasMinerals(this.battery.store)) { // get rid of any minerals in the container if present
-				this.colony.logisticsNetwork.requestOutputMinerals(this.battery);
-			}
-		}
-	}
+  /**
+   * Calculate where the input will be built for this site
+   */
+  private calculateBatteryPos(): RoomPosition | undefined {
+    let originPos: RoomPosition | undefined;
+    if (this.colony.storage) {
+      originPos = this.colony.storage.pos;
+    } else if (this.colony.roomPlanner.storagePos) {
+      originPos = this.colony.roomPlanner.storagePos;
+    } else {
+      return;
+    }
+    // Find all positions at range 2 from controller
+    let inputLocations: RoomPosition[] = [];
+    for (const pos of roomPositionGetPositionsAtRange(this.pos, 2)) {
+      if (roomPositionIsWalkable(pos, true)) {
+        inputLocations.push(pos);
+      }
+    }
+    // Try to find locations where there is maximal standing room
+    const maxNeighbors = max(
+      inputLocations,
+      (pos) => roomPositionAvailableNeighbors(pos, true).length,
+    );
+    inputLocations = inputLocations.filter(
+      (pos) => roomPositionAvailableNeighbors(pos, true).length >= maxNeighbors,
+    );
+    // Return location closest to storage by path
+    const inputPos = originPos.findClosestByPath(inputLocations);
+    if (inputPos) {
+      return inputPos;
+    }
+  }
 
-	/**
-	 * Calculate where the input will be built for this site
-	 */
-	private calculateBatteryPos(): RoomPosition | undefined {
-		let originPos: RoomPosition | undefined;
-		if (this.colony.storage) {
-			originPos = this.colony.storage.pos;
-		} else if (this.colony.roomPlanner.storagePos) {
-			originPos = this.colony.roomPlanner.storagePos;
-		} else {
-			return;
-		}
-		// Find all positions at range 2 from controller
-		let inputLocations: RoomPosition[] = [];
-		for (const pos of roomPositionGetPositionsAtRange(this.pos, 2)) {
-			if (roomPositionIsWalkable(pos, true)) {
-				inputLocations.push(pos);
-			}
-		}
-		// Try to find locations where there is maximal standing room
-		const maxNeighbors = max(inputLocations, pos => roomPositionAvailableNeighbors(pos, true).length);
-		inputLocations = inputLocations.filter(
-								  pos => roomPositionAvailableNeighbors(pos, true).length >= maxNeighbors);
-		// Return location closest to storage by path
-		const inputPos = originPos.findClosestByPath(inputLocations);
-		if (inputPos) {
-			return inputPos;
-		}
-	}
+  /**
+   * Build a container output at the optimal location
+   */
+  private buildBatteryIfMissing(): void {
+    if (!this.battery && !this.findInputConstructionSite()) {
+      const buildHere = this.batteryPos;
+      if (buildHere) {
+        const result = buildHere.createConstructionSite(STRUCTURE_CONTAINER);
+        if (result == OK) {
+          return;
+        } else {
+          log.warning(
+            `Upgrade site at ${getRoomPositionPrint(this.pos)}: cannot build battery! Result: ${result}`,
+          );
+        }
+      }
+    }
+  }
 
-	/**
-	 * Build a container output at the optimal location
-	 */
-	private buildBatteryIfMissing(): void {
-		if (!this.battery && !this.findInputConstructionSite()) {
-			const buildHere = this.batteryPos;
-			if (buildHere) {
-				const result = buildHere.createConstructionSite(STRUCTURE_CONTAINER);
-				if (result == OK) {
-					return;
-				} else {
-					log.warning(`Upgrade site at ${getRoomPositionPrint(this.pos)}: cannot build battery! Result: ${result}`);
-				}
-			}
-		}
-	}
+  private stats() {
+    const defaults = {
+      downtime: 0,
+    };
+    if (!this.memory.stats) this.memory.stats = defaults;
+    nativeDefaults(this.memory.stats, defaults);
+    // Compute downtime
+    this.memory.stats.downtime =
+      (this.memory.stats.downtime * (CREEP_LIFE_TIME - 1) +
+        (this.battery ? +isStructureEmpty(this.battery) : 0)) /
+      CREEP_LIFE_TIME;
+    Stats.log(`colonies.${this.colony.name}.upgradeSite.downtime`, this.memory.stats.downtime);
+  }
 
-	private stats() {
-		const defaults = {
-			downtime: 0,
-		};
-		if (!this.memory.stats) this.memory.stats = defaults;
-		nativeDefaults(this.memory.stats, defaults);
-		// Compute downtime
-		this.memory.stats.downtime = (this.memory.stats.downtime * (CREEP_LIFE_TIME - 1) +
-									  (this.battery ? +isStructureEmpty(this.battery) : 0)) / CREEP_LIFE_TIME;
-		Stats.log(`colonies.${this.colony.name}.upgradeSite.downtime`, this.memory.stats.downtime);
-	}
+  run(): void {
+    if (Game.time % 25 == 7 && this.colony.level >= 2) {
+      this.buildBatteryIfMissing();
+    }
+  }
 
-	run(): void {
-		if (Game.time % 25 == 7 && this.colony.level >= 2) {
-			this.buildBatteryIfMissing();
-		}
-	}
-
-	visuals() {
-		// let info = [];
-		// if (this.controller.level != 8) {
-		// 	let progress = `${Math.floor(this.controller.progress / 1000)}K`;
-		// 	let progressTotal = `${Math.floor(this.controller.progressTotal / 1000)}K`;
-		// 	let percent = `${Math.floor(100 * this.controller.progress / this.controller.progressTotal)}`;
-		// 	info.push(`Progress: ${progress}/${progressTotal} (${percent}%)`);
-		//
-		// }
-		// info.push(`Downtime: ${this.memory.stats.downtime.toPercent()}`);
-		// Visualizer.showInfo(info, this);
-	}
+  visuals() {
+    // let info = [];
+    // if (this.controller.level != 8) {
+    // 	let progress = `${Math.floor(this.controller.progress / 1000)}K`;
+    // 	let progressTotal = `${Math.floor(this.controller.progressTotal / 1000)}K`;
+    // 	let percent = `${Math.floor(100 * this.controller.progress / this.controller.progressTotal)}`;
+    // 	info.push(`Progress: ${progress}/${progressTotal} (${percent}%)`);
+    //
+    // }
+    // info.push(`Downtime: ${this.memory.stats.downtime.toPercent()}`);
+    // Visualizer.showInfo(info, this);
+  }
 }

@@ -1,34 +1,33 @@
-import {isStructureFull} from '../../game/Structures';
-import {isRoomMine} from '../../game/Room';
-import {Pathing} from '../../movement/Pathing';
-import {MiningOverlord} from '../../overlords/mining/miner';
-import {OverlordPriority} from '../../priorities/priorities_overlords';
-import {profile} from '../../profiler/decorator';
-import {Cartographer, ROOMTYPE_SOURCEKEEPER} from '../../utilities/Cartographer';
-import {ema, getCacheExpiration} from '../../utilities/utils';
-import {Directive} from '../Directive';
-import {defaultsDeep} from '../../utilities/native';
-
+import { isStructureFull } from "../../game/Structures";
+import { isRoomMine } from "../../game/Room";
+import { Pathing } from "../../movement/Pathing";
+import { MiningOverlord } from "../../overlords/mining/miner";
+import { OverlordPriority } from "../../priorities/priorities_overlords";
+import { profile } from "../../profiler/decorator";
+import { Cartographer, ROOMTYPE_SOURCEKEEPER } from "../../utilities/Cartographer";
+import { ema, getCacheExpiration } from "../../utilities/utils";
+import { Directive } from "../Directive";
+import { defaultsDeep } from "../../utilities/native";
 
 // Because harvest directives are the most common, they have special shortened memory keys to minimize memory impact
 export const enum HARVEST_MEM {
-	PATHING  = 'P',
-	USAGE    = 'u',
-	DOWNTIME = 'd',
+  PATHING = "P",
+  USAGE = "u",
+  DOWNTIME = "d",
 }
 
 interface DirectiveHarvestMemory extends FlagMemory {
-	[HARVEST_MEM.PATHING]?: {
-		[MEM.DISTANCE]: number,
-		[MEM.EXPIRATION]: number
-	};
-	[HARVEST_MEM.USAGE]: number;
-	[HARVEST_MEM.DOWNTIME]: number;
+  [HARVEST_MEM.PATHING]?: {
+    [MEM.DISTANCE]: number;
+    [MEM.EXPIRATION]: number;
+  };
+  [HARVEST_MEM.USAGE]: number;
+  [HARVEST_MEM.DOWNTIME]: number;
 }
 
 const defaultDirectiveHarvestMemory: DirectiveHarvestMemory = {
-	[HARVEST_MEM.USAGE]   : 1,
-	[HARVEST_MEM.DOWNTIME]: 0,
+  [HARVEST_MEM.USAGE]: 1,
+  [HARVEST_MEM.DOWNTIME]: 0,
 };
 
 /**
@@ -36,67 +35,69 @@ const defaultDirectiveHarvestMemory: DirectiveHarvestMemory = {
  */
 @profile
 export class DirectiveHarvest extends Directive {
+  static directiveName = "harvest";
+  static color = COLOR_YELLOW;
+  static secondaryColor = COLOR_YELLOW;
 
-	static directiveName = 'harvest';
-	static color = COLOR_YELLOW;
-	static secondaryColor = COLOR_YELLOW;
+  memory: DirectiveHarvestMemory;
+  overlords: {
+    mine: MiningOverlord;
+  };
 
-	memory: DirectiveHarvestMemory;
-	overlords: {
-		mine: MiningOverlord;
-	};
+  constructor(flag: Flag) {
+    super(flag);
+    if (this.colony) {
+      this.colony.miningSites[this.name] = this;
+      this.colony.destinations.push({ pos: this.pos, order: this.memory[MEM.TICK] || Game.time });
+    }
+    defaultsDeep(this.memory, defaultDirectiveHarvestMemory);
+  }
 
-	constructor(flag: Flag) {
-		super(flag);
-		if (this.colony) {
-			this.colony.miningSites[this.name] = this;
-			this.colony.destinations.push({pos: this.pos, order: this.memory[MEM.TICK] || Game.time});
-		}
-		defaultsDeep(this.memory, defaultDirectiveHarvestMemory);
-	}
+  // Hauling distance
+  get distance(): number {
+    if (
+      !this.memory[HARVEST_MEM.PATHING] ||
+      Game.time >= this.memory[HARVEST_MEM.PATHING]![MEM.EXPIRATION]
+    ) {
+      const distance = Pathing.distance(this.colony.pos, this.pos) || Infinity;
+      const expiration = getCacheExpiration(this.colony.storage ? 5000 : 1000);
+      this.memory[HARVEST_MEM.PATHING] = {
+        [MEM.DISTANCE]: distance,
+        [MEM.EXPIRATION]: expiration,
+      };
+    }
+    return this.memory[HARVEST_MEM.PATHING]![MEM.DISTANCE];
+  }
 
-	// Hauling distance
-	get distance(): number {
-		if (!this.memory[HARVEST_MEM.PATHING] || Game.time >= this.memory[HARVEST_MEM.PATHING]![MEM.EXPIRATION]) {
-			const distance = Pathing.distance(this.colony.pos, this.pos) || Infinity;
-			const expiration = getCacheExpiration(this.colony.storage ? 5000 : 1000);
-			this.memory[HARVEST_MEM.PATHING] = {
-				[MEM.DISTANCE]  : distance,
-				[MEM.EXPIRATION]: expiration
-			};
-		}
-		return this.memory[HARVEST_MEM.PATHING]![MEM.DISTANCE];
-	}
+  spawnMoarOverlords() {
+    // Create a mining overlord for this
+    let priority = OverlordPriority.ownedRoom.mine;
+    if (!(this.room && isRoomMine(this.room))) {
+      priority =
+        Cartographer.roomType(this.pos.roomName) == ROOMTYPE_SOURCEKEEPER
+          ? OverlordPriority.remoteSKRoom.mine
+          : OverlordPriority.remoteRoom.mine;
+    }
+    this.overlords.mine = new MiningOverlord(this, priority);
+  }
 
-	spawnMoarOverlords() {
-		// Create a mining overlord for this
-		let priority = OverlordPriority.ownedRoom.mine;
-		if (!(this.room && isRoomMine(this.room))) {
-			priority = Cartographer.roomType(this.pos.roomName) == ROOMTYPE_SOURCEKEEPER ?
-					   OverlordPriority.remoteSKRoom.mine : OverlordPriority.remoteRoom.mine;
-		}
-		this.overlords.mine = new MiningOverlord(this, priority);
-	}
+  init() {}
 
-	init() {
+  run() {
+    this.computeStats();
+  }
 
-	}
-
-	run() {
-		this.computeStats();
-	}
-
-	private computeStats() {
-		const source = this.overlords.mine.source;
-		if (source && source.ticksToRegeneration == 1) {
-			this.memory[HARVEST_MEM.USAGE] = (source.energyCapacity - source.energy) / source.energyCapacity;
-		}
-		const container = this.overlords.mine.container;
-		this.memory[HARVEST_MEM.DOWNTIME] = +(ema(container ? +isStructureFull(container) : 0,
-												  this.memory[HARVEST_MEM.DOWNTIME],
-												  CREEP_LIFE_TIME)).toFixed(5);
-	}
-
+  private computeStats() {
+    const source = this.overlords.mine.source;
+    if (source && source.ticksToRegeneration == 1) {
+      this.memory[HARVEST_MEM.USAGE] =
+        (source.energyCapacity - source.energy) / source.energyCapacity;
+    }
+    const container = this.overlords.mine.container;
+    this.memory[HARVEST_MEM.DOWNTIME] = +ema(
+      container ? +isStructureFull(container) : 0,
+      this.memory[HARVEST_MEM.DOWNTIME],
+      CREEP_LIFE_TIME,
+    ).toFixed(5);
+  }
 }
-
-

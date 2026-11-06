@@ -288,3 +288,33 @@ Read response bytes and decompress when the gzip magic bytes are present before 
 - Tags: screeps, history, gzip, null-ticks
 
 ---
+
+## [ERR-20261106-VP1] pnpm_store_location
+
+**Logged**: 2026-11-06T10:40:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: config
+
+### Summary
+Dependency installation must reuse this checkout's project-local pnpm store.
+
+### Error
+`ERR_PNPM_UNEXPECTED_STORE`: existing node_modules links target
+`node_modules/.pnpm-store/v11`, while the default store is under `~/Library/pnpm`.
+
+### Context
+Encountered while adding Vite+ with pnpm 12.16.1. Vite+ package-manager shims
+may also need network access to resolve the pinned package manager.
+
+### Resolution
+Use `pnpm --store-dir node_modules/.pnpm-store ...` for dependency operations
+on this existing checkout. Do not change global pnpm configuration. Offline
+frozen installation may still require uncached supply-chain policy metadata;
+retry online rather than disabling policy verification.
+
+### Metadata
+- Reproducible: yes
+- Related Files: package.json, pnpm-lock.yaml
+
+---

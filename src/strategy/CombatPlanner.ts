@@ -1,369 +1,366 @@
-import {isStructureWalkable} from '../game/Structures';
-import {getRoomBarriers, getRoomRamparts, getRoomSpawns, getRoomTowers, getRoomWalls} from '../game/RoomStructures';
-import {roomPositionLookForStructure} from '../game/RoomPosition';
-import {getRoomHostiles, getRoomOwner, getRoomPrint, getRoomStructures, isRoomMine} from '../game/Room';
+import { isStructureWalkable } from "../game/Structures";
+import {
+  getRoomBarriers,
+  getRoomRamparts,
+  getRoomSpawns,
+  getRoomTowers,
+  getRoomWalls,
+} from "../game/RoomStructures";
+import { roomPositionLookForStructure } from "../game/RoomPosition";
+import {
+  getRoomHostiles,
+  getRoomOwner,
+  getRoomPrint,
+  getRoomStructures,
+  isRoomMine,
+} from "../game/Room";
 // High-level planning for skirmishing and combats
 
-import {log} from '../console/log';
-import {DefenseDirective} from '../directives/defense/_DefenseDirective';
-import {CombatIntel, CombatPotentials} from '../intel/CombatIntel';
-import {RoomIntel} from '../intel/RoomIntel';
-import {Pathing} from '../movement/Pathing';
-import {CombatOverlord} from '../overlords/CombatOverlord';
-import {ema, getCacheExpiration} from '../utilities/utils';
-import {CombatZerg} from '../zerg/CombatZerg';
-import {defaults, compact, range, randomInt, max, min, sum} from '../utilities/native';
+import { log } from "../console/log";
+import { DefenseDirective } from "../directives/defense/_DefenseDirective";
+import { CombatIntel, CombatPotentials } from "../intel/CombatIntel";
+import { RoomIntel } from "../intel/RoomIntel";
+import { Pathing } from "../movement/Pathing";
+import { CombatOverlord } from "../overlords/CombatOverlord";
+import { ema, getCacheExpiration } from "../utilities/utils";
+import { CombatZerg } from "../zerg/CombatZerg";
+import { defaults, compact, range, randomInt, max, min, sum } from "../utilities/native";
 
 export interface Threat {
-	directive: DefenseDirective;
-	potentials: CombatPotentials | undefined;
-	roomName: string;
-	closestColony: string;
-	distances: {};
-	lastSeen: {
-		tick: number,
-	};
+  directive: DefenseDirective;
+  potentials: CombatPotentials | undefined;
+  roomName: string;
+  closestColony: string;
+  distances: {};
+  lastSeen: {
+    tick: number;
+  };
 }
 
 export interface EnemyProfile {
-
-	score: number;
-	creepEffectiveness: {
-		hydralisk: number;
-		broodling: number;
-		healer: number;
-	};
-	attackEffectiveness: {
-		drain: number;
-
-	};
-
+  score: number;
+  creepEffectiveness: {
+    hydralisk: number;
+    broodling: number;
+    healer: number;
+  };
+  attackEffectiveness: {
+    drain: number;
+  };
 }
 
-const THREAT_EXPIRATION = 100;
 const THREAT_DECAY_TIMESCALE = 100;
 const SIEGE_ANALYSIS_EXPIRATION = 2500;
 
-type RoomLayout = 'bunker' | 'edgewall' | 'innerwall' | 'exposed';
+type RoomLayout = "bunker" | "edgewall" | "innerwall" | "exposed";
 
 export interface SiegeAnalysis {
-	owner: string | undefined;
-	level: number;
-	maxTowerDamage: number;
-	minBarrierHits: number;
-	avgBarrierHits: number;
-	numWalls: number;
-	numRamparts: number;
-	roomLayout: RoomLayout;
-	expiration: number;
+  owner: string | undefined;
+  level: number;
+  maxTowerDamage: number;
+  minBarrierHits: number;
+  avgBarrierHits: number;
+  numWalls: number;
+  numRamparts: number;
+  roomLayout: RoomLayout;
+  expiration: number;
 }
 
 interface CombatPlannerMemory {
+  threats: {
+    [directiveRef: string]: Threat;
+  };
 
-	threats: {
-		[directiveRef: string]: Threat
-	};
+  profiles: { [playerName: string]: EnemyProfile };
 
-	profiles: { [playerName: string]: EnemyProfile };
+  defenses: {
+    [roomName: string]: {};
+  };
 
-	defenses: {
-		[roomName: string]: {}
-	};
+  sieges: {
+    [roomName: string]: {
+      analysis?: SiegeAnalysis;
+    };
+  };
 
-	sieges: {
-		[roomName: string]: {
-			analysis?: SiegeAnalysis,
-		}
-	};
-
-	skirmishes: {
-		[roomName: string]: {}
-	};
+  skirmishes: {
+    [roomName: string]: {};
+  };
 }
 
 const defaultCombatPlannerMemory: CombatPlannerMemory = {
-	threats   : {},
-	profiles  : {},
-	defenses  : {},
-	sieges    : {},
-	skirmishes: {},
+  threats: {},
+  profiles: {},
+  defenses: {},
+  sieges: {},
+  skirmishes: {},
 };
 
 export class CombatPlanner {
-
-	directives: DefenseDirective[];
-	creeps: CombatZerg[];
-
-	constructor() {
-		defaults(this.memory, defaultCombatPlannerMemory);
-	}
-
-	get memory(): CombatPlannerMemory {
-		return Memory.combatPlanner;
-	}
-
-	private static computeHitsToSpawn(room: Room): number {
-		// TODO
-		return 0;
-	}
-
-
-	// private getNeededPotentials(): CombatPotentials {
-	// 	// TODO
-	// }
-
-	private spawnNeededCreeps() {
-
-	}
-
-	private assembleSquads(): void {
-
-		// Figure out the best thing for each creep to be doing
-		const idleCreeps: CombatZerg[] = [];
-
-
-		for (const creep of this.creeps) {
-			if (!creep.overlord) {
-				idleCreeps.push(creep);
-			} else {
-				const creepDirective = (<CombatOverlord>creep.overlord).directive;
-				if (creepDirective && creepDirective instanceof DefenseDirective) {
-					if (this.memory.threats[creepDirective.ref]) {
-
-					}
-				}
-			}
-		}
-
-	}
-
-	static getThreat(directive: DefenseDirective): Threat {
-
-		if (directive.room) {
-			return {
-				directive    : directive,
-				potentials   : CombatIntel.getCombatPotentials(getRoomHostiles(directive.room)),
-				roomName     : directive.room.name,
-				closestColony: directive.colony.name,
-				distances    : directive.overlord.spawnGroup.memory.distances,
-				lastSeen     : {
-					tick: Game.time,
-				}
-			};
-		} else {
-			return {
-				directive    : directive,
-				potentials   : undefined,
-				roomName     : directive.pos.roomName,
-				closestColony: directive.colony.name,
-				distances    : directive.overlord.spawnGroup.memory.distances,
-				lastSeen     : {
-					tick: Game.time,
-				}
-			};
-		}
-
-	}
-
-	registerThreat(directive: DefenseDirective): void {
-
-		const threat = CombatPlanner.getThreat(directive);
-
-		if (this.memory.threats[directive.ref]) {
-
-			// If a threat already exists, update it or allow potentials to decay
-
-			if (threat.potentials) {  // you have vision
-
-				// If you have new info on threat potentials, update the log in memory
-				let attack, rangedAttack, heal: number;
-				const lastPotentials = this.memory.threats[directive.ref].potentials;
-				if (lastPotentials) {
-					attack = lastPotentials.attack;
-					rangedAttack = lastPotentials.ranged;
-					heal = lastPotentials.heal;
-				} else {
-					attack = 0;
-					rangedAttack = 0;
-					heal = 0;
-				}
-
-				const decayedAttack = ema(threat.potentials.attack, attack, THREAT_DECAY_TIMESCALE);
-				const decayedRangedAttack = ema(threat.potentials.ranged,
-												rangedAttack, THREAT_DECAY_TIMESCALE);
-				const decayedHeal = ema(threat.potentials.heal, heal, THREAT_DECAY_TIMESCALE);
-
-				// TODO: adjust decay for creeps known to have moved to next visible room
-
-				// Set new potential to maximum of current or decayed potential
-				const potentials: CombatPotentials = {
-					attack: Math.max(threat.potentials.attack, decayedAttack),
-					ranged: Math.max(threat.potentials.ranged, decayedRangedAttack),
-					heal  : Math.max(threat.potentials.heal, decayedHeal),
-				};
-
-				// Update the existing threat
-				this.memory.threats[directive.ref].potentials = potentials;
-				this.memory.threats[directive.ref].lastSeen.tick = Game.time;
-
-			} else { // no vision
-
-
-			}
-
-		} else {
-
-			// Register a new threat
-			this.memory.threats[directive.ref] = threat;
-
-		}
-
-	}
-
-	static getRoomLayout(room: Room): RoomLayout {
-		let isBunker, isExposed, isInnerWall, isEdgeWall = false;
-		const exitPositions = RoomIntel.getExitPositions(room.name);
-		const terrain = Game.map.getRoomTerrain(room.name);
-
-		// Room is bunker if >80% of hostile structures are covered by ramparts
-		const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
-		const hostileStructuresInRampart = hostileStructures.filter(s => roomPositionLookForStructure(s.pos, STRUCTURE_RAMPART));
-		isBunker = (hostileStructuresInRampart.length / hostileStructures.length >= 0.8);
-
-		// Room is edgewall if every exit tile has wall or barrier at 2 range to left/right/top/bottom
-		const walledOffExitTiles = exitPositions.filter(pos => {
-
-			let lookPos: RoomPosition;
-			const x = pos.x;
-			const y = pos.y;
-
-			if (x == 0) {
-				lookPos = new RoomPosition(x + 2, y, room.name);
-			} else if (x == 49) {
-				lookPos = new RoomPosition(x - 2, y, room.name);
-			} else if (y == 0) {
-				lookPos = new RoomPosition(x, y + 2, room.name);
-			} else if (y == 49) {
-				lookPos = new RoomPosition(x, y - 2, room.name);
-			} else { // shouldn't ever get here
-				lookPos = pos;
-			}
-
-			if (terrain.get(lookPos.x, lookPos.y) == TERRAIN_MASK_WALL) {
-				return true;
-			} else {
-				const rampart = roomPositionLookForStructure(lookPos, STRUCTURE_RAMPART);
-				const wall = roomPositionLookForStructure(lookPos, STRUCTURE_WALL);
-				return rampart != undefined || wall != undefined;
-			}
-
-		});
-		if (walledOffExitTiles.length == walledOffExitTiles.length) {
-			isEdgeWall = true;
-		}
-
-		// Room is inner wall if not bunker or edgewall and there is no path to spawn, otherwise exposed
-		if (!isBunker && !isEdgeWall) {
-			const entryPoints = compact([exitPositions.find(pos => pos.x == 0),  // left
-				 exitPositions.find(pos => pos.x == 49), // right
-				 exitPositions.find(pos => pos.y == 0),  // top
-				 exitPositions.find(pos => pos.y == 49), // bottom
-				]) as RoomPosition[];
-			const target = (getRoomSpawns(room)[0] || getRoomTowers(room)[0]);
-			if (target) {
-				const obstacles = getRoomStructures(room).filter(s => !isStructureWalkable(s));
-				const isReachable = entryPoints.find(pos => Pathing.isReachable(pos, target.pos, obstacles));
-				if (isReachable) {
-					isExposed = true;
-				}
-			}
-			if (!isExposed) {
-				isInnerWall = true;
-			}
-		}
-
-		if (isEdgeWall) {
-			return 'edgewall';
-		} else if (isBunker) {
-			return 'bunker';
-		} else if (isExposed) {
-			return 'exposed';
-		} else if (isInnerWall) {
-			return 'innerwall';
-		} else {
-			log.warning(`Inconclusive room layout for ${getRoomPrint(room)}! Assuming inner wall.`);
-			return 'innerwall';
-		}
-
-	}
-
-	static getSiegeAnalysis(room: Room): SiegeAnalysis {
-
-		const owner = getRoomOwner(room);
-		const level = room.controller ? room.controller.level : 0;
-		const towerDamageSamplePositions = range(20).map(
-												 i => new RoomPosition(randomInt(1, 48), randomInt(1, 48), room.name));
-		const maxTowerDamage = max(towerDamageSamplePositions, pos => CombatIntel.towerDamageAtPos(pos, true));
-		const minBarrierHits = getRoomBarriers(room).length > 0 ? min(getRoomBarriers(room), b => b.hits) : 0;
-		const avgBarrierHits = getRoomBarriers(room).length > 0 ? sum(getRoomBarriers(room), b => b.hits) / getRoomBarriers(room).length : 0;
-
-		const numWalls = getRoomWalls(room).length;
-		const numRamparts = getRoomRamparts(room).length;
-
-		const expiration = getCacheExpiration(SIEGE_ANALYSIS_EXPIRATION);
-
-		const roomLayout = this.getRoomLayout(room);
-
-		return {
-			owner,
-			level,
-			maxTowerDamage,
-			minBarrierHits,
-			avgBarrierHits,
-			numWalls,
-			numRamparts,
-			roomLayout,
-			expiration
-		};
-
-	}
-
-	private registerSiegeAnalysis(room: Room): void {
-		if (!this.memory.sieges[room.name]) {
-			this.memory.sieges[room.name] = {};
-		}
-		if (!this.memory.sieges[room.name].analysis || Game.time > this.memory.sieges[room.name].analysis!.expiration) {
-			this.memory.sieges[room.name].analysis = CombatPlanner.getSiegeAnalysis(room);
-		}
-	}
-
-	init() {
-
-		// Register new interactions in visible rooms
-		for (const roomName in Game.rooms) {
-
-			const room: Room = Game.rooms[roomName];
-
-			// Make new siege analyses for rooms needing it
-			if (getRoomOwner(room) && !isRoomMine(room)) {
-				this.registerSiegeAnalysis(room);
-			}
-
-		}
-
-		for (const directive of this.directives) {
-			this.registerThreat(directive);
-		}
-
-
-	}
-
-	run() {
-
-	}
-
-	visuals() {
-
-	}
-
+  directives: DefenseDirective[];
+  creeps: CombatZerg[];
+
+  constructor() {
+    defaults(this.memory, defaultCombatPlannerMemory);
+  }
+
+  get memory(): CombatPlannerMemory {
+    return Memory.combatPlanner;
+  }
+
+  private static computeHitsToSpawn(_room: Room): number {
+    // TODO
+    return 0;
+  }
+
+  // private getNeededPotentials(): CombatPotentials {
+  // 	// TODO
+  // }
+
+  private spawnNeededCreeps() {}
+
+  private assembleSquads(): void {
+    // Figure out the best thing for each creep to be doing
+    const idleCreeps: CombatZerg[] = [];
+
+    for (const creep of this.creeps) {
+      if (!creep.overlord) {
+        idleCreeps.push(creep);
+      } else {
+        const creepDirective = (<CombatOverlord>creep.overlord).directive;
+        if (creepDirective && creepDirective instanceof DefenseDirective) {
+          if (this.memory.threats[creepDirective.ref]) {
+          }
+        }
+      }
+    }
+  }
+
+  static getThreat(directive: DefenseDirective): Threat {
+    if (directive.room) {
+      return {
+        directive: directive,
+        potentials: CombatIntel.getCombatPotentials(getRoomHostiles(directive.room)),
+        roomName: directive.room.name,
+        closestColony: directive.colony.name,
+        distances: directive.overlord.spawnGroup.memory.distances,
+        lastSeen: {
+          tick: Game.time,
+        },
+      };
+    } else {
+      return {
+        directive: directive,
+        potentials: undefined,
+        roomName: directive.pos.roomName,
+        closestColony: directive.colony.name,
+        distances: directive.overlord.spawnGroup.memory.distances,
+        lastSeen: {
+          tick: Game.time,
+        },
+      };
+    }
+  }
+
+  registerThreat(directive: DefenseDirective): void {
+    const threat = CombatPlanner.getThreat(directive);
+
+    if (this.memory.threats[directive.ref]) {
+      // If a threat already exists, update it or allow potentials to decay
+
+      if (threat.potentials) {
+        // you have vision
+
+        // If you have new info on threat potentials, update the log in memory
+        let attack, rangedAttack, heal: number;
+        const lastPotentials = this.memory.threats[directive.ref].potentials;
+        if (lastPotentials) {
+          attack = lastPotentials.attack;
+          rangedAttack = lastPotentials.ranged;
+          heal = lastPotentials.heal;
+        } else {
+          attack = 0;
+          rangedAttack = 0;
+          heal = 0;
+        }
+
+        const decayedAttack = ema(threat.potentials.attack, attack, THREAT_DECAY_TIMESCALE);
+        const decayedRangedAttack = ema(
+          threat.potentials.ranged,
+          rangedAttack,
+          THREAT_DECAY_TIMESCALE,
+        );
+        const decayedHeal = ema(threat.potentials.heal, heal, THREAT_DECAY_TIMESCALE);
+
+        // TODO: adjust decay for creeps known to have moved to next visible room
+
+        // Set new potential to maximum of current or decayed potential
+        const potentials: CombatPotentials = {
+          attack: Math.max(threat.potentials.attack, decayedAttack),
+          ranged: Math.max(threat.potentials.ranged, decayedRangedAttack),
+          heal: Math.max(threat.potentials.heal, decayedHeal),
+        };
+
+        // Update the existing threat
+        this.memory.threats[directive.ref].potentials = potentials;
+        this.memory.threats[directive.ref].lastSeen.tick = Game.time;
+      } else {
+        // no vision
+      }
+    } else {
+      // Register a new threat
+      this.memory.threats[directive.ref] = threat;
+    }
+  }
+
+  static getRoomLayout(room: Room): RoomLayout {
+    let isBunker,
+      isExposed,
+      isInnerWall,
+      isEdgeWall = false;
+    const exitPositions = RoomIntel.getExitPositions(room.name);
+    const terrain = Game.map.getRoomTerrain(room.name);
+
+    // Room is bunker if >80% of hostile structures are covered by ramparts
+    const hostileStructures = room.find(FIND_HOSTILE_STRUCTURES);
+    const hostileStructuresInRampart = hostileStructures.filter((s) =>
+      roomPositionLookForStructure(s.pos, STRUCTURE_RAMPART),
+    );
+    isBunker = hostileStructuresInRampart.length / hostileStructures.length >= 0.8;
+
+    // Room is edgewall if every exit tile has wall or barrier at 2 range to left/right/top/bottom
+    const walledOffExitTiles = exitPositions.filter((pos) => {
+      let lookPos: RoomPosition;
+      const x = pos.x;
+      const y = pos.y;
+
+      if (x == 0) {
+        lookPos = new RoomPosition(x + 2, y, room.name);
+      } else if (x == 49) {
+        lookPos = new RoomPosition(x - 2, y, room.name);
+      } else if (y == 0) {
+        lookPos = new RoomPosition(x, y + 2, room.name);
+      } else if (y == 49) {
+        lookPos = new RoomPosition(x, y - 2, room.name);
+      } else {
+        // shouldn't ever get here
+        lookPos = pos;
+      }
+
+      if (terrain.get(lookPos.x, lookPos.y) == TERRAIN_MASK_WALL) {
+        return true;
+      } else {
+        const rampart = roomPositionLookForStructure(lookPos, STRUCTURE_RAMPART);
+        const wall = roomPositionLookForStructure(lookPos, STRUCTURE_WALL);
+        return rampart != undefined || wall != undefined;
+      }
+    });
+    if (walledOffExitTiles.length == walledOffExitTiles.length) {
+      isEdgeWall = true;
+    }
+
+    // Room is inner wall if not bunker or edgewall and there is no path to spawn, otherwise exposed
+    if (!isBunker && !isEdgeWall) {
+      const entryPoints = compact([
+        exitPositions.find((pos) => pos.x == 0), // left
+        exitPositions.find((pos) => pos.x == 49), // right
+        exitPositions.find((pos) => pos.y == 0), // top
+        exitPositions.find((pos) => pos.y == 49), // bottom
+      ]) as RoomPosition[];
+      const target = getRoomSpawns(room)[0] || getRoomTowers(room)[0];
+      if (target) {
+        const obstacles = getRoomStructures(room).filter((s) => !isStructureWalkable(s));
+        const isReachable = entryPoints.find((pos) =>
+          Pathing.isReachable(pos, target.pos, obstacles),
+        );
+        if (isReachable) {
+          isExposed = true;
+        }
+      }
+      if (!isExposed) {
+        isInnerWall = true;
+      }
+    }
+
+    if (isEdgeWall) {
+      return "edgewall";
+    } else if (isBunker) {
+      return "bunker";
+    } else if (isExposed) {
+      return "exposed";
+    } else if (isInnerWall) {
+      return "innerwall";
+    } else {
+      log.warning(`Inconclusive room layout for ${getRoomPrint(room)}! Assuming inner wall.`);
+      return "innerwall";
+    }
+  }
+
+  static getSiegeAnalysis(room: Room): SiegeAnalysis {
+    const owner = getRoomOwner(room);
+    const level = room.controller ? room.controller.level : 0;
+    const towerDamageSamplePositions = range(20).map(
+      (_i) => new RoomPosition(randomInt(1, 48), randomInt(1, 48), room.name),
+    );
+    const maxTowerDamage = max(towerDamageSamplePositions, (pos) =>
+      CombatIntel.towerDamageAtPos(pos, true),
+    );
+    const minBarrierHits =
+      getRoomBarriers(room).length > 0 ? min(getRoomBarriers(room), (b) => b.hits) : 0;
+    const avgBarrierHits =
+      getRoomBarriers(room).length > 0
+        ? sum(getRoomBarriers(room), (b) => b.hits) / getRoomBarriers(room).length
+        : 0;
+
+    const numWalls = getRoomWalls(room).length;
+    const numRamparts = getRoomRamparts(room).length;
+
+    const expiration = getCacheExpiration(SIEGE_ANALYSIS_EXPIRATION);
+
+    const roomLayout = this.getRoomLayout(room);
+
+    return {
+      owner,
+      level,
+      maxTowerDamage,
+      minBarrierHits,
+      avgBarrierHits,
+      numWalls,
+      numRamparts,
+      roomLayout,
+      expiration,
+    };
+  }
+
+  private registerSiegeAnalysis(room: Room): void {
+    if (!this.memory.sieges[room.name]) {
+      this.memory.sieges[room.name] = {};
+    }
+    if (
+      !this.memory.sieges[room.name].analysis ||
+      Game.time > this.memory.sieges[room.name].analysis!.expiration
+    ) {
+      this.memory.sieges[room.name].analysis = CombatPlanner.getSiegeAnalysis(room);
+    }
+  }
+
+  init() {
+    // Register new interactions in visible rooms
+    for (const roomName in Game.rooms) {
+      const room: Room = Game.rooms[roomName];
+
+      // Make new siege analyses for rooms needing it
+      if (getRoomOwner(room) && !isRoomMine(room)) {
+        this.registerSiegeAnalysis(room);
+      }
+    }
+
+    for (const directive of this.directives) {
+      this.registerThreat(directive);
+    }
+  }
+
+  run() {}
+
+  visuals() {}
 }

@@ -1,77 +1,82 @@
-import { DirectiveOutpost } from '../directives/colony/outpost';
-import { DirectiveSKOutpost } from '../directives/colony/outpostSK';
-import { profile } from '../profiler/decorator';
-import {groupBy} from '../utilities/native';
+import { DirectiveOutpost } from "../directives/colony/outpost";
+import { DirectiveSKOutpost } from "../directives/colony/outpostSK";
+import { profile } from "../profiler/decorator";
+import { groupBy } from "../utilities/native";
 
 /**
  * GameCache does initial low-level preprocessing before each tick is run
  */
 @profile
 export class GameCache implements ICache {
+  overlords: { [overlord: string]: { [roleName: string]: string[] } };
+  creepsByColony: { [colonyName: string]: Creep[] };
+  targets: { [ref: string]: string[] };
+  outpostFlags: Flag[];
 
-	overlords: { [overlord: string]: { [roleName: string]: string[] } };
-	creepsByColony: { [colonyName: string]: Creep[] };
-	targets: { [ref: string]: string[] };
-	outpostFlags: Flag[];
+  constructor() {
+    this.overlords = {};
+    this.creepsByColony = {};
+    this.targets = {};
+    this.outpostFlags = Object.values(Game.flags ?? {}).filter(
+      (flag) => DirectiveOutpost.filter(flag) || DirectiveSKOutpost.filter(flag),
+    );
+  }
 
-	constructor() {
-		this.overlords = {};
-		this.creepsByColony = {};
-		this.targets = {};
-		this.outpostFlags = Object.values(Game.flags ?? {}).filter(flag => DirectiveOutpost.filter(flag)
-			|| DirectiveSKOutpost.filter(flag));
-	}
+  private cacheCreepsByColony() {
+    this.creepsByColony = groupBy(
+      Object.values(Game.creeps ?? {}),
+      (creep) => creep.memory[MEM.COLONY],
+    );
+  }
 
-	private cacheCreepsByColony() {
-		this.creepsByColony = groupBy(Object.values(Game.creeps ?? {}), creep => creep.memory[MEM.COLONY]);
-	}
+  /**
+   * Generates a hash table for creeps assigned to each object: key: OLref, val: (key: role, val: names[])
+   */
+  private cacheOverlords() {
+    this.overlords = {};
+    // keys: overlordRef, value: creepNames[]
+    const creepNamesByOverlord = groupBy(
+      Object.keys(Game.creeps ?? {}),
+      (name) => Game.creeps[name].memory[MEM.OVERLORD],
+    );
+    groupBy(
+      Object.keys(Game.powerCreeps ?? {}),
+      (name) => Game.powerCreeps[name].memory[MEM.OVERLORD],
+    );
+    for (const ref in creepNamesByOverlord) {
+      // keys: roleName, value: creepNames[]
+      this.overlords[ref] = groupBy(
+        creepNamesByOverlord[ref],
+        (name) => (Game.creeps[name] || Game.powerCreeps[name]).memory.role,
+      );
+    }
+  }
 
-	/**
-	 * Generates a hash table for creeps assigned to each object: key: OLref, val: (key: role, val: names[])
-	 */
-	private cacheOverlords() {
-		this.overlords = {};
-		// keys: overlordRef, value: creepNames[]
-		const creepNamesByOverlord = groupBy(Object.keys(Game.creeps ?? {}),
-			name => Game.creeps[name].memory[MEM.OVERLORD]);
-		const powerCreepNamesByOverlord = groupBy(Object.keys(Game.powerCreeps ?? {}),
-			name => Game.powerCreeps[name].memory[MEM.OVERLORD]);
-		for (const ref in creepNamesByOverlord) {
-			// keys: roleName, value: creepNames[]
-			this.overlords[ref] = groupBy(creepNamesByOverlord[ref],
-				name => (Game.creeps[name] || Game.powerCreeps[name]).memory.role);
-		}
-	}
+  /**
+   * Generates a hash table for targets: key: TargetRef, val: targeting creep names
+   */
+  private cacheTargets() {
+    this.targets = {};
+    for (const i in Game.creeps) {
+      const creep = Game.creeps[i];
+      let task = creep.memory.task;
+      while (task) {
+        if (!this.targets[task._target.ref]) this.targets[task._target.ref] = [];
+        this.targets[task._target.ref].push(creep.name);
+        task = task._parent;
+      }
+    }
+  }
 
-	/**
-	 * Generates a hash table for targets: key: TargetRef, val: targeting creep names
-	 */
-	private cacheTargets() {
-		this.targets = {};
-		for (const i in Game.creeps) {
-			const creep = Game.creeps[i];
-			let task = creep.memory.task;
-			while (task) {
-				if (!this.targets[task._target.ref]) this.targets[task._target.ref] = [];
-				this.targets[task._target.ref].push(creep.name);
-				task = task._parent;
-			}
-		}
-	}
+  build() {
+    this.cacheCreepsByColony();
+    this.cacheOverlords();
+    this.cacheTargets();
+  }
 
-	build() {
-		this.cacheCreepsByColony();
-		this.cacheOverlords();
-		this.cacheTargets();
-	}
-
-	refresh() {
-		this.cacheCreepsByColony();
-		this.cacheOverlords();
-		this.cacheTargets();
-	}
+  refresh() {
+    this.cacheCreepsByColony();
+    this.cacheOverlords();
+    this.cacheTargets();
+  }
 }
-
-
-
-

@@ -1,223 +1,280 @@
-import {roomVisualStructure} from '../game/RoomVisual';
-import {getRoomPositionPrint, roomPositionAvailableNeighbors, roomPositionLookForStructure} from '../game/RoomPosition';
-import {getCutTiles} from '../algorithms/minCut';
-import {Colony} from '../Colony';
-import {log} from '../console/log';
-import {isOwnedStructure} from '../declarations/typeGuards';
-import {Mem} from '../memory/Memory';
-import {profile} from '../profiler/decorator';
-import {packCoord, packCoordList, unpackCoordListAsPosList} from '../utilities/packrat';
-import {minMax} from '../utilities/utils';
-import {Visualizer} from '../visuals/Visualizer';
-import {BUNKER_RADIUS, bunkerLayout, insideBunkerBounds} from './layouts/bunker';
-import {hasRoomOverride} from './roomOverrides';
-import {getAllStructureCoordsFromLayout, RoomPlanner, translatePositions} from './RoomPlanner';
-import {memoize, compact} from '../utilities/native';
+import { roomVisualStructure } from "../game/RoomVisual";
+import {
+  getRoomPositionPrint,
+  roomPositionAvailableNeighbors,
+  roomPositionLookForStructure,
+} from "../game/RoomPosition";
+import { getCutTiles } from "../algorithms/minCut";
+import { Colony } from "../Colony";
+import { log } from "../console/log";
+import { isOwnedStructure } from "../declarations/typeGuards";
+import { Mem } from "../memory/Memory";
+import { profile } from "../profiler/decorator";
+import { packCoord, packCoordList, unpackCoordListAsPosList } from "../utilities/packrat";
+import { minMax } from "../utilities/utils";
+import { Visualizer } from "../visuals/Visualizer";
+import { BUNKER_RADIUS, bunkerLayout, insideBunkerBounds } from "./layouts/bunker";
+import { hasRoomOverride } from "./roomOverrides";
+import { getAllStructureCoordsFromLayout, RoomPlanner, translatePositions } from "./RoomPlanner";
+import { memoize, compact } from "../utilities/native";
 
 export interface BarrierPlannerMemory {
-	barrierCoordsPacked: string;
+  barrierCoordsPacked: string;
 }
 
 const getDefaultBarrierPlannerMemory: () => BarrierPlannerMemory = () => ({
-	barrierCoordsPacked: '',
+  barrierCoordsPacked: "",
 });
 
 @profile
 export class BarrierPlanner {
+  private colony: Colony;
+  private memory: BarrierPlannerMemory;
+  private roomPlanner: RoomPlanner;
+  private barrierPositions: RoomPosition[];
+  private _barrierLookup: ((pos: RoomPosition) => boolean) | undefined;
 
-	private colony: Colony;
-	private memory: BarrierPlannerMemory;
-	private roomPlanner: RoomPlanner;
-	private barrierPositions: RoomPosition[];
-	private _barrierLookup: ((pos: RoomPosition) => boolean) | undefined;
+  static settings = {
+    buildBarriersAtRCL: 3,
+    padding: 3, // allow this much space between structures and barriers (if possible)
+    bunkerizeRCL: 7,
+  };
 
-	static settings = {
-		buildBarriersAtRCL: 3,
-		padding           : 3, // allow this much space between structures and barriers (if possible)
-		bunkerizeRCL      : 7
-	};
+  constructor(roomPlanner: RoomPlanner) {
+    this.roomPlanner = roomPlanner;
+    this.colony = roomPlanner.colony;
+    this.memory = Mem.wrap(this.colony.memory, "barrierPlanner", getDefaultBarrierPlannerMemory);
+    this.barrierPositions = [];
+  }
 
-	constructor(roomPlanner: RoomPlanner) {
-		this.roomPlanner = roomPlanner;
-		this.colony = roomPlanner.colony;
-		this.memory = Mem.wrap(this.colony.memory, 'barrierPlanner', getDefaultBarrierPlannerMemory);
-		this.barrierPositions = [];
-	}
+  refresh(): void {
+    this.memory = Mem.wrap(this.colony.memory, "barrierPlanner", getDefaultBarrierPlannerMemory);
+    this.barrierPositions = [];
+  }
 
-	refresh(): void {
-		this.memory = Mem.wrap(this.colony.memory, 'barrierPlanner', getDefaultBarrierPlannerMemory);
-		this.barrierPositions = [];
-	}
+  private computeBunkerBarrierPositions(
+    bunkerPos: RoomPosition,
+    upgradeSitePos: RoomPosition,
+  ): RoomPosition[] {
+    const rectArray = [];
+    const padding = BarrierPlanner.settings.padding;
+    if (bunkerPos) {
+      const { x, y } = bunkerPos;
+      const r = BUNKER_RADIUS - 1;
+      let [x1, y1] = [Math.max(x - r - padding, 0), Math.max(y - r - padding, 0)];
+      let [x2, y2] = [Math.min(x + r + padding, 49), Math.min(y + r + padding, 49)];
+      // Make sure you don't leave open walls
+      x1 = minMax(x1, 3, 50 - 3);
+      x2 = minMax(x2, 3, 50 - 3);
+      y1 = minMax(y1, 3, 50 - 3);
+      y2 = minMax(y2, 3, 50 - 3);
+      rectArray.push({ x1: x1, y1: y1, x2: x2, y2: y2 });
+    }
+    // Get Min cut
+    const barrierCoords = getCutTiles(this.colony.name, rectArray, false, 2, false);
+    let positions = barrierCoords.map(
+      (coord) => new RoomPosition(coord.x, coord.y, this.colony.name),
+    );
+    positions = positions.concat(roomPositionAvailableNeighbors(upgradeSitePos, true));
+    return positions;
+  }
 
-	private computeBunkerBarrierPositions(bunkerPos: RoomPosition, upgradeSitePos: RoomPosition): RoomPosition[] {
-		const rectArray = [];
-		const padding = BarrierPlanner.settings.padding;
-		if (bunkerPos) {
-			const {x, y} = bunkerPos;
-			const r = BUNKER_RADIUS - 1;
-			let [x1, y1] = [Math.max(x - r - padding, 0), Math.max(y - r - padding, 0)];
-			let [x2, y2] = [Math.min(x + r + padding, 49), Math.min(y + r + padding, 49)];
-			// Make sure you don't leave open walls
-			x1 = minMax(x1, 3, 50 - 3);
-			x2 = minMax(x2, 3, 50 - 3);
-			y1 = minMax(y1, 3, 50 - 3);
-			y2 = minMax(y2, 3, 50 - 3);
-			rectArray.push({x1: x1, y1: y1, x2: x2, y2: y2});
-		}
-		// Get Min cut
-		const barrierCoords = getCutTiles(this.colony.name, rectArray, false, 2, false);
-		let positions = barrierCoords.map(coord => new RoomPosition(coord.x, coord.y, this.colony.name));
-		positions = positions.concat(roomPositionAvailableNeighbors(upgradeSitePos, true));
-		return positions;
-	}
+  private computeBarrierPositions(
+    hatcheryPos: RoomPosition,
+    commandCenterPos: RoomPosition,
+    upgradeSitePos: RoomPosition,
+  ): RoomPosition[] {
+    const rectArray = [];
+    const padding = BarrierPlanner.settings.padding;
+    if (hatcheryPos) {
+      const { x, y } = hatcheryPos;
+      const [x1, y1] = [Math.max(x - 5 - padding, 0), Math.max(y - 4 - padding, 0)];
+      const [x2, y2] = [Math.min(x + 5 + padding, 49), Math.min(y + 6 + padding, 49)];
+      rectArray.push({ x1: x1, y1: y1, x2: x2, y2: y2 });
+    }
+    if (commandCenterPos) {
+      const { x, y } = commandCenterPos;
+      const [x1, y1] = [Math.max(x - 3 - padding, 0), Math.max(y - 0 - padding, 0)];
+      const [x2, y2] = [Math.min(x + 0 + padding, 49), Math.min(y + 5 + padding, 49)];
+      rectArray.push({ x1: x1, y1: y1, x2: x2, y2: y2 });
+    }
+    if (upgradeSitePos) {
+      const { x, y } = upgradeSitePos;
+      const [x1, y1] = [Math.max(x - 1, 0), Math.max(y - 1, 0)];
+      const [x2, y2] = [Math.min(x + 1, 49), Math.min(y + 1, 49)];
+      rectArray.push({ x1: x1, y1: y1, x2: x2, y2: y2 });
+    }
+    // Get Min cut
+    const barrierCoords = getCutTiles(this.colony.name, rectArray, true, 2, false);
+    return barrierCoords.map((coord) => new RoomPosition(coord.x, coord.y, this.colony.name));
+  }
 
-	private computeBarrierPositions(hatcheryPos: RoomPosition, commandCenterPos: RoomPosition,
-									upgradeSitePos: RoomPosition): RoomPosition[] {
-		const rectArray = [];
-		const padding = BarrierPlanner.settings.padding;
-		if (hatcheryPos) {
-			const {x, y} = hatcheryPos;
-			const [x1, y1] = [Math.max(x - 5 - padding, 0), Math.max(y - 4 - padding, 0)];
-			const [x2, y2] = [Math.min(x + 5 + padding, 49), Math.min(y + 6 + padding, 49)];
-			rectArray.push({x1: x1, y1: y1, x2: x2, y2: y2});
-		}
-		if (commandCenterPos) {
-			const {x, y} = commandCenterPos;
-			const [x1, y1] = [Math.max(x - 3 - padding, 0), Math.max(y - 0 - padding, 0)];
-			const [x2, y2] = [Math.min(x + 0 + padding, 49), Math.min(y + 5 + padding, 49)];
-			rectArray.push({x1: x1, y1: y1, x2: x2, y2: y2});
-		}
-		if (upgradeSitePos) {
-			const {x, y} = upgradeSitePos;
-			const [x1, y1] = [Math.max(x - 1, 0), Math.max(y - 1, 0)];
-			const [x2, y2] = [Math.min(x + 1, 49), Math.min(y + 1, 49)];
-			rectArray.push({x1: x1, y1: y1, x2: x2, y2: y2});
-		}
-		// Get Min cut
-		const barrierCoords = getCutTiles(this.colony.name, rectArray, true, 2, false);
-		return barrierCoords.map(coord => new RoomPosition(coord.x, coord.y, this.colony.name));
-	}
+  init(): void {}
 
-	init(): void {
+  /* Write everything to memory after roomPlanner is closed */
+  finalize(): void {
+    if (this.barrierPositions.length == 0) {
+      if (this.roomPlanner.bunkerPos) {
+        this.barrierPositions = this.computeBunkerBarrierPositions(
+          this.roomPlanner.bunkerPos,
+          this.colony.controller.pos,
+        );
+      } else if (this.roomPlanner.storagePos && this.roomPlanner.hatcheryPos) {
+        this.barrierPositions = this.computeBarrierPositions(
+          this.roomPlanner.hatcheryPos,
+          this.roomPlanner.storagePos,
+          this.colony.controller.pos,
+        );
+      } else {
+        log.error(`${this.colony.print} BARRIER PLANNER: couldn't generate barrier plan!`);
+        return;
+      }
+    }
+    this.memory.barrierCoordsPacked = packCoordList(this.barrierPositions);
+  }
 
-	}
+  /* Quick lookup for if a barrier should be in this position. Barriers returning false won't be maintained. */
+  barrierShouldBeHere(pos: RoomPosition): boolean {
+    if (hasRoomOverride(this.colony.name)) {
+      // A shield belongs on an actual critical building, not an empty future building tile.
+      const criticalTypes: StructureConstant[] = [
+        STRUCTURE_SPAWN,
+        STRUCTURE_TOWER,
+        STRUCTURE_STORAGE,
+        STRUCTURE_TERMINAL,
+      ];
+      return (
+        this.memory.barrierCoordsPacked.includes(packCoord(pos)) ||
+        pos
+          .lookFor(LOOK_STRUCTURES)
+          .some(
+            (structure) =>
+              criticalTypes.includes(structure.structureType) &&
+              isOwnedStructure(structure) &&
+              structure.my,
+          )
+      );
+    }
+    // Once you are high level, only maintain ramparts at bunker or controller
+    if (
+      this.colony.layout == "bunker" &&
+      this.colony.level >= BarrierPlanner.settings.bunkerizeRCL
+    ) {
+      return insideBunkerBounds(pos, this.colony) || pos.getRangeTo(this.colony.controller) == 1;
+    }
+    // Otherwise look up from memory
+    if (this._barrierLookup == undefined) {
+      this._barrierLookup = memoize((p: RoomPosition) =>
+        this.memory.barrierCoordsPacked.includes(packCoord(p)),
+      );
+    }
+    return this._barrierLookup(pos);
+  }
 
-	/* Write everything to memory after roomPlanner is closed */
-	finalize(): void {
-		if (this.barrierPositions.length == 0) {
-			if (this.roomPlanner.bunkerPos) {
-				this.barrierPositions = this.computeBunkerBarrierPositions(this.roomPlanner.bunkerPos,
-																		   this.colony.controller.pos);
-			} else if (this.roomPlanner.storagePos && this.roomPlanner.hatcheryPos) {
-				this.barrierPositions = this.computeBarrierPositions(this.roomPlanner.hatcheryPos,
-																	 this.roomPlanner.storagePos,
-																	 this.colony.controller.pos);
-			} else {
-				log.error(`${this.colony.print} BARRIER PLANNER: couldn't generate barrier plan!`);
-				return;
-			}
-		}
-		this.memory.barrierCoordsPacked = packCoordList(this.barrierPositions);
-	}
+  /* Create construction sites for any buildings that need to be built */
+  private buildMissingRamparts(): void {
+    // Max buildings that can be placed each tick
+    let count = RoomPlanner.settings.maxSitesPerColony - this.colony.constructionSites.length;
 
-	/* Quick lookup for if a barrier should be in this position. Barriers returning false won't be maintained. */
-	barrierShouldBeHere(pos: RoomPosition): boolean {
-		if (hasRoomOverride(this.colony.name)) {
-			// A shield belongs on an actual critical building, not an empty future building tile.
-			const criticalTypes: StructureConstant[] = [STRUCTURE_SPAWN, STRUCTURE_TOWER,
-				STRUCTURE_STORAGE, STRUCTURE_TERMINAL];
-			return this.memory.barrierCoordsPacked.includes(packCoord(pos))
-				|| pos.lookFor(LOOK_STRUCTURES).some(structure =>
-					criticalTypes.includes(structure.structureType) && isOwnedStructure(structure) && structure.my);
-		}
-		// Once you are high level, only maintain ramparts at bunker or controller
-		if (this.colony.layout == 'bunker' && this.colony.level >= BarrierPlanner.settings.bunkerizeRCL) {
-			return insideBunkerBounds(pos, this.colony) || pos.getRangeTo(this.colony.controller) == 1;
-		}
-		// Otherwise look up from memory
-		if (this._barrierLookup == undefined) {
-			this._barrierLookup = memoize((p: RoomPosition) =>
-												this.memory.barrierCoordsPacked.includes(packCoord(p)));
-		}
-		return this._barrierLookup(pos);
-	}
+    // Build missing ramparts
+    const barrierPositions = unpackCoordListAsPosList(
+      this.memory.barrierCoordsPacked,
+      this.colony.room.name,
+    );
 
-	/* Create construction sites for any buildings that need to be built */
-	private buildMissingRamparts(): void {
-		// Max buildings that can be placed each tick
-		let count = RoomPlanner.settings.maxSitesPerColony - this.colony.constructionSites.length;
+    // Add critical structures to barrier lookup
+    const criticalStructures: Structure[] = compact([
+      ...this.colony.towers,
+      ...this.colony.spawns,
+      this.colony.storage!,
+      this.colony.terminal!,
+    ]);
+    for (const structure of criticalStructures) {
+      barrierPositions.push(structure.pos);
+    }
 
-		// Build missing ramparts
-		const barrierPositions = unpackCoordListAsPosList(this.memory.barrierCoordsPacked, this.colony.room.name);
+    for (const pos of barrierPositions) {
+      if (
+        count > 0 &&
+        RoomPlanner.canBuild(STRUCTURE_RAMPART, pos) &&
+        this.barrierShouldBeHere(pos)
+      ) {
+        const ret = pos.createConstructionSite(STRUCTURE_RAMPART);
+        if (ret != OK) {
+          log.warning(
+            `${this.colony.name}: couldn't create rampart site at ${getRoomPositionPrint(pos)}. Result: ${ret}`,
+          );
+        } else {
+          count--;
+        }
+      }
+    }
+  }
 
-		// Add critical structures to barrier lookup
-		const criticalStructures: Structure[] = compact([...this.colony.towers,
-														   ...this.colony.spawns,
-														   this.colony.storage!,
-														   this.colony.terminal!]);
-		for (const structure of criticalStructures) {
-			barrierPositions.push(structure.pos);
-		}
+  private buildMissingBunkerRamparts(): void {
+    if (!this.roomPlanner.bunkerPos) return;
+    const bunkerCoords = getAllStructureCoordsFromLayout(bunkerLayout, this.colony.level);
+    bunkerCoords.push(bunkerLayout.data.anchor); // add center bunker tile
+    let bunkerPositions = bunkerCoords.map(
+      (coord) => new RoomPosition(coord.x, coord.y, this.colony.name),
+    );
+    bunkerPositions = translatePositions(
+      bunkerPositions,
+      bunkerLayout.data.anchor,
+      this.roomPlanner.bunkerPos,
+    );
+    let count = RoomPlanner.settings.maxSitesPerColony - this.colony.constructionSites.length;
+    for (const pos of bunkerPositions) {
+      if (
+        count > 0 &&
+        !roomPositionLookForStructure(pos, STRUCTURE_RAMPART) &&
+        pos.lookFor(LOOK_CONSTRUCTION_SITES).length == 0
+      ) {
+        const ret = pos.createConstructionSite(STRUCTURE_RAMPART);
+        if (ret != OK) {
+          log.warning(
+            `${this.colony.name}: couldn't create bunker rampart at ${getRoomPositionPrint(pos)}. Result: ${ret}`,
+          );
+        } else {
+          count--;
+        }
+      }
+    }
+  }
 
-		for (const pos of barrierPositions) {
-			if (count > 0 && RoomPlanner.canBuild(STRUCTURE_RAMPART, pos) && this.barrierShouldBeHere(pos)) {
-				const ret = pos.createConstructionSite(STRUCTURE_RAMPART);
-				if (ret != OK) {
-					log.warning(`${this.colony.name}: couldn't create rampart site at ${getRoomPositionPrint(pos)}. Result: ${ret}`);
-				} else {
-					count--;
-				}
-			}
-		}
-	}
+  run(): void {
+    if (this.roomPlanner.active) {
+      if (this.roomPlanner.bunkerPos) {
+        this.barrierPositions = this.computeBunkerBarrierPositions(
+          this.roomPlanner.bunkerPos,
+          this.colony.controller.pos,
+        );
+      } else if (this.roomPlanner.storagePos && this.roomPlanner.hatcheryPos) {
+        this.barrierPositions = this.computeBarrierPositions(
+          this.roomPlanner.hatcheryPos,
+          this.roomPlanner.storagePos,
+          this.colony.controller.pos,
+        );
+      }
+      this.visuals();
+    } else {
+      if (
+        !this.roomPlanner.memory.relocating &&
+        this.colony.level >= BarrierPlanner.settings.buildBarriersAtRCL &&
+        this.roomPlanner.shouldRecheck(2)
+      ) {
+        this.buildMissingRamparts();
+        if (this.colony.layout == "bunker" && this.colony.level >= 7) {
+          this.buildMissingBunkerRamparts();
+        }
+      }
+    }
+  }
 
-	private buildMissingBunkerRamparts(): void {
-		if (!this.roomPlanner.bunkerPos) return;
-		const bunkerCoords = getAllStructureCoordsFromLayout(bunkerLayout, this.colony.level);
-		bunkerCoords.push(bunkerLayout.data.anchor); // add center bunker tile
-		let bunkerPositions = bunkerCoords.map(coord => new RoomPosition(coord.x, coord.y, this.colony.name));
-		bunkerPositions = translatePositions(bunkerPositions, bunkerLayout.data.anchor, this.roomPlanner.bunkerPos);
-		let count = RoomPlanner.settings.maxSitesPerColony - this.colony.constructionSites.length;
-		for (const pos of bunkerPositions) {
-			if (count > 0 && !roomPositionLookForStructure(pos, STRUCTURE_RAMPART)
-				&& pos.lookFor(LOOK_CONSTRUCTION_SITES).length == 0) {
-				const ret = pos.createConstructionSite(STRUCTURE_RAMPART);
-				if (ret != OK) {
-					log.warning(`${this.colony.name}: couldn't create bunker rampart at ${getRoomPositionPrint(pos)}. Result: ${ret}`);
-				} else {
-					count--;
-				}
-			}
-		}
-	}
-
-	run(): void {
-		if (this.roomPlanner.active) {
-			if (this.roomPlanner.bunkerPos) {
-				this.barrierPositions = this.computeBunkerBarrierPositions(this.roomPlanner.bunkerPos,
-																		   this.colony.controller.pos);
-			} else if (this.roomPlanner.storagePos && this.roomPlanner.hatcheryPos) {
-				this.barrierPositions = this.computeBarrierPositions(this.roomPlanner.hatcheryPos,
-																	 this.roomPlanner.storagePos,
-																	 this.colony.controller.pos);
-			}
-			this.visuals();
-		} else {
-			if (!this.roomPlanner.memory.relocating && this.colony.level >= BarrierPlanner.settings.buildBarriersAtRCL
-				&& this.roomPlanner.shouldRecheck(2)) {
-				this.buildMissingRamparts();
-				if (this.colony.layout == 'bunker' && this.colony.level >= 7) {
-					this.buildMissingBunkerRamparts();
-				}
-			}
-		}
-	}
-
-	visuals(): void {
-		if (!Visualizer.enabled) return;
-		for (const pos of this.barrierPositions) {
-			roomVisualStructure(this.colony.room.visual, pos.x, pos.y, STRUCTURE_RAMPART);
-		}
-	}
-
+  visuals(): void {
+    if (!Visualizer.enabled) return;
+    for (const pos of this.barrierPositions) {
+      roomVisualStructure(this.colony.room.visual, pos.x, pos.y, STRUCTURE_RAMPART);
+    }
+  }
 }

@@ -1,23 +1,21 @@
-import {getRoomSpawns} from '../game/RoomStructures';
-/* tslint:disable:no-string-literal */
+import { getRoomSpawns } from "../game/RoomStructures";
 
-import {log} from '../console/log';
-import {Mem} from '../memory/Memory';
-import {packCoordList} from '../utilities/packrat';
-import {MY_USERNAME} from '../~settings';
-import {compact, mapKeys} from '../utilities/native';
+import { log } from "../console/log";
+import { Mem } from "../memory/Memory";
+import { packCoordList } from "../utilities/packrat";
+import { MY_USERNAME } from "../~settings";
+import { compact, mapKeys } from "../utilities/native";
 
 interface VersionMigratorMemory {
-	versions: { [version: string]: boolean };
+  versions: { [version: string]: boolean };
 }
 
 /**
  * The VersionMigration class contains ad-hoc methods for migrating older versions of Overmind to newer versions
  */
 export class VersionMigration {
-
-	static run(): void {
-		/*
+  static run(): void {
+    /*
 		if (!this.memory.versions['02Xto03X']) {
 			this.migrate_02X_03X();
 		}
@@ -35,48 +33,48 @@ export class VersionMigration {
 		}
 		*/
 
-		if (!this.memory.versions['05Xto051']) {
-			this.migrate_050_051();
-		}
-		if (!this.memory.versions['05Xto051_part2']) {
-			this.migrate_050_051_part2();
-		}
-		if (!this.memory.versions['05Xto051_part3']) {
-			this.migrate_050_051_part3();
-		}
-		if (!this.memory.versions['05Xto051_part4']) {
-			this.migrate_050_051_part4();
-		}
-		if (!this.memory.versions['051to052']) {
-			this.migrate_051_052();
-		}
-		if (!this.memory.versions['052to053']) {
-			this.migrate_052_053();
-		}
-		if (!this.memory.versions['053to06X_part1']) {
-			this.migrate_053_06X_part1();
-		}
-		if (!this.memory.versions['053to06X_part2']) {
-			this.migrate_053_06X_part2();
-		}
-		if (!this.memory.versions['053to06X_part3']) {
-			this.migrate_053_06X_part3();
-		}
-		if (!this.memory.versions['053to06X_part4']) {
-			this.migrate_053_06X_part4();
-		}
-		if (!this.memory.versions['053to06X_part5']) {
-			this.migrate_053_06X_part5();
-		}
-	}
+    if (!this.memory.versions["05Xto051"]) {
+      this.migrate_050_051();
+    }
+    if (!this.memory.versions["05Xto051_part2"]) {
+      this.migrate_050_051_part2();
+    }
+    if (!this.memory.versions["05Xto051_part3"]) {
+      this.migrate_050_051_part3();
+    }
+    if (!this.memory.versions["05Xto051_part4"]) {
+      this.migrate_050_051_part4();
+    }
+    if (!this.memory.versions["051to052"]) {
+      this.migrate_051_052();
+    }
+    if (!this.memory.versions["052to053"]) {
+      this.migrate_052_053();
+    }
+    if (!this.memory.versions["053to06X_part1"]) {
+      this.migrate_053_06X_part1();
+    }
+    if (!this.memory.versions["053to06X_part2"]) {
+      this.migrate_053_06X_part2();
+    }
+    if (!this.memory.versions["053to06X_part3"]) {
+      this.migrate_053_06X_part3();
+    }
+    if (!this.memory.versions["053to06X_part4"]) {
+      this.migrate_053_06X_part4();
+    }
+    if (!this.memory.versions["053to06X_part5"]) {
+      this.migrate_053_06X_part5();
+    }
+  }
 
-	static get memory(): VersionMigratorMemory {
-		return Mem.wrap(Memory.Overmind, 'versionMigrator', () => ({
-			versions: {}
-		}));
-	}
+  static get memory(): VersionMigratorMemory {
+    return Mem.wrap(Memory.Overmind, "versionMigrator", () => ({
+      versions: {},
+    }));
+  }
 
-	/*
+  /*
 	static migrate_02X_03X() {
 		// This technically won't run correctly because it gets run only on global reset, but no one is using v0.2.x
 		// anymore anyway, so I don't feel the need to maintain support for this function
@@ -191,307 +189,335 @@ export class VersionMigration {
 
 	*/
 
-	static migrate_050_051() {
-		// Destroy all links that aren't hatchery or commandCenter links
-		for (const id in Game.structures) {
-			const s = Game.structures[id];
-			if (s.structureType == STRUCTURE_LINK) {
-				const isCommandCenterLink = s.pos.findInRange(compact([s.room.storage!,
-																		 s.room.terminal!]), 2).length > 0;
-				const isHatcheryLink = s.pos.findInRange(getRoomSpawns(s.room), 2).length > 0;
-				if (!isCommandCenterLink && !isHatcheryLink) {
-					s.destroy();
-				}
-			}
-		}
-		let count = 0;
-		for (const name in Game.creeps) {
-			const creep = Game.creeps[name];
-			if (creep.memory.role == 'drone' &&
-				(<any>creep.memory).overlord && (<any>creep.memory).overlord.includes('miningSite')) {
-				creep.suicide();
-				count++;
-			}
-		}
-		this.memory.versions['05Xto051'] = true;
-		log.alert(`Genocide complete: suicided ${count} innocent drones.`);
-		log.alert(`Version migration from 0.5.0 -> 0.5.1 (part 1) completed successfully.`);
-	}
+  static migrate_050_051() {
+    // Destroy all links that aren't hatchery or commandCenter links
+    for (const id in Game.structures) {
+      const s = Game.structures[id];
+      if (s.structureType == STRUCTURE_LINK) {
+        const isCommandCenterLink =
+          s.pos.findInRange(compact([s.room.storage!, s.room.terminal!]), 2).length > 0;
+        const isHatcheryLink = s.pos.findInRange(getRoomSpawns(s.room), 2).length > 0;
+        if (!isCommandCenterLink && !isHatcheryLink) {
+          s.destroy();
+        }
+      }
+    }
+    let count = 0;
+    for (const name in Game.creeps) {
+      const creep = Game.creeps[name];
+      if (
+        creep.memory.role == "drone" &&
+        (<any>creep.memory).overlord &&
+        (<any>creep.memory).overlord.includes("miningSite")
+      ) {
+        creep.suicide();
+        count++;
+      }
+    }
+    this.memory.versions["05Xto051"] = true;
+    log.alert(`Genocide complete: suicided ${count} innocent drones.`);
+    log.alert(`Version migration from 0.5.0 -> 0.5.1 (part 1) completed successfully.`);
+  }
 
-	static migrate_050_051_part2() {
-		// Destroy all links that aren't hatchery or commandCenter links
-		for (const name in Game.creeps) {
-			const creep = Game.creeps[name];
-			if (creep.memory.role == 'reserver') {
-				creep.memory.role = 'infestor';
-			} else if (creep.memory.role == 'guard') {
-				creep.memory.role = 'broodling';
-			}
-		}
-		this.memory.versions['05Xto051_part2'] = true;
-		log.alert(`Version migration from 0.5.0 -> 0.5.1 (part 2) completed successfully.`);
-	}
+  static migrate_050_051_part2() {
+    // Destroy all links that aren't hatchery or commandCenter links
+    for (const name in Game.creeps) {
+      const creep = Game.creeps[name];
+      if (creep.memory.role == "reserver") {
+        creep.memory.role = "infestor";
+      } else if (creep.memory.role == "guard") {
+        creep.memory.role = "broodling";
+      }
+    }
+    this.memory.versions["05Xto051_part2"] = true;
+    log.alert(`Version migration from 0.5.0 -> 0.5.1 (part 2) completed successfully.`);
+  }
 
-	static migrate_050_051_part3() {
-		if (Memory.assimilator && Memory.assimilator.users) {
-			delete Memory.assimilator.users;
-		}
-		this.memory.versions['05Xto051_part3'] = true;
-		log.alert(`Version migration from 0.5.0 -> 0.5.1 (part 3) completed successfully.`);
-	}
+  static migrate_050_051_part3() {
+    if (Memory.assimilator && Memory.assimilator.users) {
+      delete Memory.assimilator.users;
+    }
+    this.memory.versions["05Xto051_part3"] = true;
+    log.alert(`Version migration from 0.5.0 -> 0.5.1 (part 3) completed successfully.`);
+  }
 
-	static migrate_050_051_part4() {
-		const protectedKeywords = ['suspendUntil', 'amount', 'created', 'persistent', 'setPosition', 'rotation',
-								   'colony', 'parent', 'pathing', 'stats', 'safeTick', 'enhanced', 'persistent',
-								   'recoveryWaypoint', 'totalResources', 'maxPathLength', 'maxLinearRange'];
-		for (const name in Memory.flags) {
-			for (const prop in Memory.flags[name]) {
-				if (!protectedKeywords.includes(prop)) {
-					delete (<any>Memory.flags[name])[prop];
-				}
-			}
-		}
-		this.memory.versions['05Xto051_part4'] = true;
-		log.alert(`Version migration from 0.5.0 -> 0.5.1 (part 4) completed successfully.`);
-	}
+  static migrate_050_051_part4() {
+    const protectedKeywords = [
+      "suspendUntil",
+      "amount",
+      "created",
+      "persistent",
+      "setPosition",
+      "rotation",
+      "colony",
+      "parent",
+      "pathing",
+      "stats",
+      "safeTick",
+      "enhanced",
+      "persistent",
+      "recoveryWaypoint",
+      "totalResources",
+      "maxPathLength",
+      "maxLinearRange",
+    ];
+    for (const name in Memory.flags) {
+      for (const prop in Memory.flags[name]) {
+        if (!protectedKeywords.includes(prop)) {
+          delete (<any>Memory.flags[name])[prop];
+        }
+      }
+    }
+    this.memory.versions["05Xto051_part4"] = true;
+    log.alert(`Version migration from 0.5.0 -> 0.5.1 (part 4) completed successfully.`);
+  }
 
-	static migrate_051_052() {
-		if (__VERSION__ == '0.5.2') {
-			for (const name in Game.creeps) {
-				if (name.includes('mutalisk')) {
-					Game.creeps[name].suicide();
-				}
-			}
-		}
-		this.memory.versions['051to052'] = true;
-		log.alert(`Version migration from 0.5.1 -> 0.5.2 completed successfully.`);
-	}
+  static migrate_051_052() {
+    if (__VERSION__ == "0.5.2") {
+      for (const name in Game.creeps) {
+        if (name.includes("mutalisk")) {
+          Game.creeps[name].suicide();
+        }
+      }
+    }
+    this.memory.versions["051to052"] = true;
+    log.alert(`Version migration from 0.5.1 -> 0.5.2 completed successfully.`);
+  }
 
-	static migrate_052_053() {
+  static migrate_052_053() {
+    // Reformat flag and harvest directive memory
+    const newFlagKeys: { [oldKey: string]: string } = {
+      created: MEM.TICK,
+      expiration: MEM.EXPIRATION,
+      overlord: MEM.OVERLORD,
+      colony: MEM.COLONY,
+    };
+    for (const name in Memory.flags) {
+      // Replace old keys with new ones
+      Memory.flags[name] = mapKeys(<any>Memory.flags[name], function (value, key) {
+        return newFlagKeys[key] || key;
+      });
 
-		// Reformat flag and harvest directive memory
-		const newFlagKeys: { [oldKey: string]: string } = {
-			created   : MEM.TICK,
-			expiration: MEM.EXPIRATION,
-			overlord  : MEM.OVERLORD,
-			colony    : MEM.COLONY,
-		};
-		for (const name in Memory.flags) {
+      // Special opertions for harvest flags
+      if (name.includes("harvest:")) {
+        const pathing = (<any>Memory.flags[name]).pathing;
+        if (pathing) {
+          (<any>Memory.flags[name])["P"] = {
+            D: pathing.distance,
+            X: pathing.expiration,
+          };
+          delete (<any>Memory.flags[name]).pathing;
+        }
+        (<any>Memory.flags[name])["u"] = (<any>Memory.flags[name]).stats.usage;
+        (<any>Memory.flags[name])["d"] = (<any>Memory.flags[name]).stats.downtime;
+        delete (<any>Memory.flags[name]).stats;
+      }
+    }
 
-			// Replace old keys with new ones
-			Memory.flags[name] = mapKeys((<any>Memory.flags[name]), function(value, key) {
-				return newFlagKeys[key] || key;
-			});
+    // Reformat creep memory
+    const newCreepKeys: { [oldKey: string]: string } = {
+      overlord: MEM.OVERLORD,
+      colony: MEM.COLONY,
+    };
+    for (const name in Memory.creeps) {
+      // Replace old keys with new ones
+      (<any>Memory.creeps[name]) = mapKeys(<any>Memory.creeps[name], function (value, key) {
+        return newCreepKeys[key] || key;
+      });
+    }
 
-			// Special opertions for harvest flags
-			if (name.includes('harvest:')) {
-				const pathing = (<any>Memory.flags[name]).pathing;
-				if (pathing) {
-					(<any>Memory.flags[name])['P'] = {
-						D: pathing.distance,
-						X: pathing.expiration,
-					};
-					delete (<any>Memory.flags[name]).pathing;
-				}
-				(<any>Memory.flags[name])['u'] = (<any>Memory.flags[name]).stats.usage;
-				(<any>Memory.flags[name])['d'] = (<any>Memory.flags[name]).stats.downtime;
-				delete (<any>Memory.flags[name]).stats;
-			}
+    // Delete outdated colony memory properties
+    for (const name in Memory.colonies) {
+      for (const key in Memory.colonies[name]) {
+        if (key.includes("miningSite@")) {
+          delete Memory.colonies[name][key];
+        }
+      }
+    }
 
-		}
+    // Delete ALL room memory
+    for (const name in Memory.rooms) {
+      delete Memory.rooms[name];
+    }
 
-		// Reformat creep memory
-		const newCreepKeys: { [oldKey: string]: string } = {
-			overlord: MEM.OVERLORD,
-			colony  : MEM.COLONY,
-		};
-		for (const name in Memory.creeps) {
-			// Replace old keys with new ones
-			(<any>Memory.creeps[name]) = mapKeys((<any>Memory.creeps[name]), function(value, key) {
-				return newCreepKeys[key] || key;
-			});
-		}
+    this.memory.versions["052to053"] = true;
+    log.alert(`Version migration from 0.5.2 -> 0.5.3 completed successfully.`);
+  }
 
-		// Delete outdated colony memory properties
-		for (const name in Memory.colonies) {
-			for (const key in Memory.colonies[name]) {
-				if (key.includes('miningSite@')) {
-					delete Memory.colonies[name][key];
-				}
-			}
-		}
+  static migrate_053_06X_part1() {
+    // Delete some old properties
+    delete Memory.overseer.suspendUntil;
+    // Delete ALL room memory
+    for (const name in Memory.rooms) {
+      delete Memory.rooms[name];
+    }
+    this.memory.versions["053to06X_part1"] = true;
+    log.alert(`Version migration from 0.5.3 -> 0.6.X part 1 completed successfully.`);
+  }
 
-		// Delete ALL room memory
-		for (const name in Memory.rooms) {
-			delete Memory.rooms[name];
-		}
+  static migrate_053_06X_part2() {
+    // Delete some old properties
+    if ((<any>Memory).Overmind.terminalNetwork) {
+      delete (<any>Memory).Overmind.terminalNetwork;
+    }
+    // Remove all orders
+    for (const id in Game.market.orders) {
+      Game.market.cancelOrder(id);
+    }
+    this.memory.versions["053to06X_part2"] = true;
+    log.alert(`Version migration from 0.5.3 -> 0.6.X part 2 completed successfully.`);
+  }
 
-		this.memory.versions['052to053'] = true;
-		log.alert(`Version migration from 0.5.2 -> 0.5.3 completed successfully.`);
-	}
+  static migrate_053_06X_part3() {
+    // Remove all orders
+    for (const colonyName in Memory.colonies) {
+      if (Memory.colonies[colonyName].evolutionChamber) {
+        delete Memory.colonies[colonyName].evolutionChamber.activeReaction;
+        delete Memory.colonies[colonyName].evolutionChamber.reactionQueue;
+        delete Memory.colonies[colonyName].evolutionChamber.status;
+        delete Memory.colonies[colonyName].evolutionChamber.statusTick;
+      }
+    }
+    this.memory.versions["053to06X_part3"] = true;
+    log.alert(`Version migration from 0.5.3 -> 0.6.X part 3 completed successfully.`);
+  }
 
-	static migrate_053_06X_part1() {
-		// Delete some old properties
-		delete Memory.overseer.suspendUntil;
-		// Delete ALL room memory
-		for (const name in Memory.rooms) {
-			delete Memory.rooms[name];
-		}
-		this.memory.versions['053to06X_part1'] = true;
-		log.alert(`Version migration from 0.5.3 -> 0.6.X part 1 completed successfully.`);
-	}
+  static migrate_053_06X_part4() {
+    // Remove orders for reaction intermediates
+    for (const id in Game.market.orders) {
+      const order = Game.market.orders[id];
+      const deleteOrdersFor: MarketResourceConstant[] = [
+        RESOURCE_GHODIUM,
+        RESOURCE_ZYNTHIUM_KEANITE,
+        RESOURCE_UTRIUM_LEMERGITE,
+        RESOURCE_HYDROXIDE,
+      ];
+      if (deleteOrdersFor.includes(order.resourceType)) {
+        Game.market.cancelOrder(id);
+      }
+    }
+    this.memory.versions["053to06X_part4"] = true;
+    log.alert(`Version migration from 0.5.3 -> 0.6.X part 4 completed successfully.`);
+  }
 
-	static migrate_053_06X_part2() {
-		// Delete some old properties
-		if ((<any>Memory).Overmind.terminalNetwork) {
-			delete (<any>Memory).Overmind.terminalNetwork;
-		}
-		// Remove all orders
-		for (const id in Game.market.orders) {
-			Game.market.cancelOrder(id);
-		}
-		this.memory.versions['053to06X_part2'] = true;
-		log.alert(`Version migration from 0.5.3 -> 0.6.X part 2 completed successfully.`);
-	}
+  static migrate_053_06X_part5() {
+    // Find oldest tick we can find
+    log.alert(`Fetching approximate empire age...`);
+    if (MY_USERNAME == "Muon") {
+      Memory.tick = Game.time - 4461275; // oldest tick I could find
+    } else {
+      let oldestTick = Infinity;
+      for (const name in Memory.colonies) {
+        if (Memory.colonies[name] && Memory.colonies[name].roomPlanner) {
+          const rpmem = Memory.colonies[name].roomPlanner;
+          if (rpmem.lastGenerated && rpmem.lastGenerated < oldestTick) {
+            oldestTick = rpmem.lastGenerated;
+          }
+        }
+      }
+      for (const name in Memory.flags) {
+        const fmem = Memory.flags[name];
+        if (fmem.T && fmem.T < oldestTick) {
+          oldestTick = fmem.T;
+        }
+      }
+      if (oldestTick < Infinity) {
+        Memory.tick = Game.time - oldestTick;
+      }
+    }
 
-	static migrate_053_06X_part3() {
-		// Remove all orders
-		for (const colonyName in Memory.colonies) {
-			if (Memory.colonies[colonyName].evolutionChamber) {
-				delete Memory.colonies[colonyName].evolutionChamber.activeReaction;
-				delete Memory.colonies[colonyName].evolutionChamber.reactionQueue;
-				delete Memory.colonies[colonyName].evolutionChamber.status;
-				delete Memory.colonies[colonyName].evolutionChamber.statusTick;
-			}
-		}
-		this.memory.versions['053to06X_part3'] = true;
-		log.alert(`Version migration from 0.5.3 -> 0.6.X part 3 completed successfully.`);
-	}
+    // Clean some properties we don't use anymore
+    log.alert(`Cleaning memory...`);
+    delete Memory.strategist;
+    delete Memory.zoneRooms;
+    Memory.roomIntel = {}; // reset this
 
-	static migrate_053_06X_part4() {
-		// Remove orders for reaction intermediates
-		for (const id in Game.market.orders) {
-			const order = Game.market.orders[id];
-			const deleteOrdersFor: MarketResourceConstant[] = [RESOURCE_GHODIUM, RESOURCE_ZYNTHIUM_KEANITE,
-															   RESOURCE_UTRIUM_LEMERGITE, RESOURCE_HYDROXIDE];
-			if (deleteOrdersFor.includes(order.resourceType)) {
-				Game.market.cancelOrder(id);
-			}
-		}
-		this.memory.versions['053to06X_part4'] = true;
-		log.alert(`Version migration from 0.5.3 -> 0.6.X part 4 completed successfully.`);
-	}
+    if (Memory.stats.persistent && Memory.stats.persistent.terminalNetwork) {
+      delete Memory.stats.persistent.terminalNetwork.transfers;
+      delete Memory.stats.persistent.terminalNetwork.costs;
+    }
 
-	static migrate_053_06X_part5() {
+    const mem = Memory as any;
 
-		// Find oldest tick we can find
-		log.alert(`Fetching approximate empire age...`);
-		if (MY_USERNAME == 'Muon') {
-			Memory.tick = Game.time - 4461275; // oldest tick I could find
-		} else {
-			let oldestTick = Infinity;
-			for (const name in Memory.colonies) {
-				if (Memory.colonies[name] && Memory.colonies[name].roomPlanner) {
-					const rpmem =  Memory.colonies[name].roomPlanner;
-					if (rpmem.lastGenerated && rpmem.lastGenerated < oldestTick) {
-						oldestTick = rpmem.lastGenerated;
-					}
-				}
-			}
-			for (const name in Memory.flags) {
-				const fmem = Memory.flags[name];
-				if (fmem.T && fmem.T < oldestTick) {
-					oldestTick = fmem.T;
-				}
-			}
-			if (oldestTick < Infinity) {
-				Memory.tick = Game.time - oldestTick;
-			}
-		}
+    delete mem.pathing.paths; // not used
+    delete mem.pathing.weightedDistances;
 
-		// Clean some properties we don't use anymore
-		log.alert(`Cleaning memory...`);
-		delete Memory.strategist;
-		delete Memory.zoneRooms;
-		Memory.roomIntel = {}; // reset this
+    // Changes will need repathing
+    for (const name in Game.creeps) {
+      const creep = Game.creeps[name];
+      if (creep) {
+        delete creep.memory._go;
+      }
+    }
 
-		if (Memory.stats.persistent && Memory.stats.persistent.terminalNetwork) {
-			delete Memory.stats.persistent.terminalNetwork.transfers;
-			delete Memory.stats.persistent.terminalNetwork.costs;
-		}
+    function derefCoords(coordName: string): Coord {
+      const [x, y] = coordName.split(":");
+      return { x: parseInt(x, 10), y: parseInt(y, 10) };
+    }
 
-		const mem = Memory as any;
+    for (const name in Memory.colonies) {
+      const colmem = Memory.colonies[name];
 
-		delete mem.pathing.paths; // not used
-		delete mem.pathing.weightedDistances;
+      delete colmem.abathur; // outdated
 
-		// Changes will need repathing
-		for (const name in Game.creeps) {
-			const creep = Game.creeps[name];
-			if (creep) {
-				delete creep.memory._go;
-			}
-		}
+      delete colmem.expansionData; // bugged
 
-		function derefCoords(coordName: string): Coord {
-			const [x, y] = coordName.split(':');
-			return {x: parseInt(x, 10), y: parseInt(y, 10)};
-		}
+      log.alert(`Migrating room planner memories...`);
+      // Clean room planner memory of some old shit
+      const validRoomPlannerMemKeys = [
+        "active",
+        "relocating",
+        "recheckStructuresAt",
+        "bunkerData",
+        "lastGenerated",
+        "mapsByLevel",
+        "savedFlags",
+      ];
+      if (colmem.roomPlanner) {
+        for (const key in colmem.roomPlanner) {
+          if (!validRoomPlannerMemKeys.includes(key)) {
+            delete colmem.roomPlanner[key];
+          }
+        }
+      }
 
+      // Migrate road planner to new format
+      log.alert(`Migrating road planner memories...`);
+      if (colmem.roadPlanner) {
+        if (colmem.roadPlanner.roadLookup) {
+          const roadLookup = colmem.roadPlanner.roadLookup;
+          const roadCoordsPacked: { [roomName: string]: string } = {};
+          for (const roomName in roadLookup) {
+            const roadCoords = Object.keys(roadLookup[roomName] ?? {}).map((coordName) =>
+              derefCoords(coordName),
+            );
+            roadCoordsPacked[roomName] = packCoordList(roadCoords);
+          }
+          colmem.roadPlanner.roadCoordsPacked = roadCoordsPacked;
+          delete colmem.roadPlanner.roadLookup;
+        }
+      }
 
-		for (const name in Memory.colonies) {
-			const colmem = Memory.colonies[name];
+      // Migrate barrier planner to new format
+      log.alert(`Migrating barrier planner memories...`);
+      if (colmem.barrierPlanner) {
+        if (colmem.barrierPlanner.barrierLookup) {
+          const barrierLookup = colmem.barrierPlanner.barrierLookup;
+          const barrierCoords = Object.keys(barrierLookup ?? {}).map((coordName) =>
+            derefCoords(coordName),
+          );
+          colmem.barrierPlanner.barrierCoordsPacked = packCoordList(barrierCoords);
+          delete colmem.barrierPlanner.barrierLookup;
+        }
+      }
+    }
 
-			delete colmem.abathur; // outdated
+    log.alert(`Clearing room memories...`);
+    for (const roomName in Memory.rooms) {
+      delete Memory.rooms[roomName];
+    }
 
-			delete colmem.expansionData; // bugged
-
-			log.alert(`Migrating room planner memories...`);
-			// Clean room planner memory of some old shit
-			const validRoomPlannerMemKeys = ['active', 'relocating', 'recheckStructuresAt', 'bunkerData',
-											 'lastGenerated', 'mapsByLevel', 'savedFlags'];
-			if (colmem.roomPlanner) {
-				for (const key in colmem.roomPlanner) {
-					if (!validRoomPlannerMemKeys.includes(key)) {
-						delete colmem.roomPlanner[key];
-					}
-				}
-			}
-
-			// Migrate road planner to new format
-			log.alert(`Migrating road planner memories...`);
-			if (colmem.roadPlanner) {
-				if (colmem.roadPlanner.roadLookup) {
-					const roadLookup = colmem.roadPlanner.roadLookup;
-					const roadCoordsPacked: { [roomName: string]: string } = {};
-					for (const roomName in roadLookup) {
-						const roadCoords = Object.keys(roadLookup[roomName] ?? {}).map(coordName => derefCoords(coordName));
-						roadCoordsPacked[roomName] = packCoordList(roadCoords);
-					}
-					colmem.roadPlanner.roadCoordsPacked = roadCoordsPacked;
-					delete colmem.roadPlanner.roadLookup;
-				}
-			}
-
-			// Migrate barrier planner to new format
-			log.alert(`Migrating barrier planner memories...`);
-			if (colmem.barrierPlanner) {
-				if (colmem.barrierPlanner.barrierLookup) {
-					const barrierLookup = colmem.barrierPlanner.barrierLookup;
-					const barrierCoords = Object.keys(barrierLookup ?? {}).map(coordName => derefCoords(coordName));
-					colmem.barrierPlanner.barrierCoordsPacked = packCoordList(barrierCoords);
-					delete colmem.barrierPlanner.barrierLookup;
-				}
-			}
-		}
-
-		log.alert(`Clearing room memories...`);
-		for (const roomName in Memory.rooms) {
-			delete Memory.rooms[roomName];
-		}
-
-		this.memory.versions['053to06X_part5'] = true;
-		log.alert(`Version migration from 0.5.3 -> 0.6.X part 5 completed successfully.`);
-	}
-
+    this.memory.versions["053to06X_part5"] = true;
+    log.alert(`Version migration from 0.5.3 -> 0.6.X part 5 completed successfully.`);
+  }
 }
