@@ -2,16 +2,8 @@
   "name": "Overmind",
   "version": "0.6.0",
   "description": "Overmind Screeps AI",
-  "homepage": "https://github.com/bencbartlett/Overmind#readme",
-  "bugs": {
-    "url": "https://github.com/bencbartlett/Overmind/issues"
-  },
   "license": "MIT",
   "author": "Ben Bartlett",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/bencbartlett/Overmind.git"
-  },
   "scripts": {
     "build": "vp run typecheck && vp pack",
     "typecheck": "vp lint --type-aware --type-check -A all",
