@@ -32,24 +32,6 @@ export function printRoomName(roomName: string, aligned = false): string {
   }
 }
 
-export function stringToColorHash(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    // Rotate hash to the left before adding the next character code
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    // Introduce a larger multiplier for character position
-    hash += (i * 123) ^ (hash >> 2);
-    // Ensure we're still working with 32 bits
-    hash = hash & hash;
-  }
-  let color = "#";
-  for (let i = 0; i < 3; i++) {
-    const value = (hash >> (i * 8)) & 0xff;
-    color += value.toString(16).padStart(2, "0");
-  }
-  return color;
-}
-
 export function color(str: string, color: string): string {
   return `<font color='${color}'>${str}</font>`;
 }

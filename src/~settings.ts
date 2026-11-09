@@ -77,17 +77,6 @@ export const RESERVE_CREDITS = onPublicServer() ? (Game.gcl.level >= 10 ? 1e6 : 
  */
 export const NEW_OVERMIND_INTERVAL = onPublicServer() ? 20 : 5;
 
-/**
- * Master scale for the RoomVisuals GUI // TODO: not plugged in yet
- */
-export const GUI_SCALE = 1.0;
-
-/** Show the room logo, resource graphs, notifications, and colony status panels. */
-export const SHOW_ROOM_HUD = false;
-
-/** Master switch, including directive markers and planner/debug rendering. */
-export const ENABLE_VISUALS = false;
-
 /** Random roaming scouts per colony. Zero retires existing scouts and stops replacement spawning. */
 export const RANDOM_SCOUT_COUNT = 0;
 

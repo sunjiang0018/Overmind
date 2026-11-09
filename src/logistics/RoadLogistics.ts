@@ -53,7 +53,7 @@ export class RoadLogistics {
         // If worker is not already assigned, repair if critical roads or repaving energy >= carry capacity
         return (
           this.criticalRoads(room).length > 0 ||
-          this.energyToRepave(room.name) >= worker.carryCapacity
+          this.energyToRepave(room.name) >= worker.store.getCapacity()
         );
       }
     } else {
@@ -210,7 +210,7 @@ export class RoadLogistics {
   }
 
   buildPavingManifest(worker: Zerg, room: Room): Task<any> | null {
-    let energy = worker.carry.energy;
+    let energy = worker.store.energy;
     const targetRefs: { [ref: string]: boolean } = {};
     const tasks: Task<any>[] = [];
     let target: StructureRoad | undefined;

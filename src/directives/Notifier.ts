@@ -1,6 +1,5 @@
 import { log } from "../console/log";
 import { printRoomName } from "../utilities/utils";
-import { Visualizer } from "../visuals/Visualizer";
 import { sortBy } from "../utilities/native";
 
 export enum NotifierPriority {
@@ -47,7 +46,6 @@ export class Notifier {
   }
 
   alert(message: string, roomName?: string | undefined, priority = NotifierPriority.Normal) {
-    // Register an alert to be displayed this in the notifications visual box
     const alert: Alert = { message, roomName, priority };
     this.alerts.push(alert);
   }
@@ -74,10 +72,5 @@ export class Notifier {
         return alert.message;
       }
     });
-  }
-
-  visuals(): void {
-    const notificationMessages = this.generateNotificationsList();
-    Visualizer.drawNotifications(notificationMessages);
   }
 }

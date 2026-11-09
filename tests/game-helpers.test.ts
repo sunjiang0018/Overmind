@@ -1,3 +1,4 @@
+import { createStore } from "./helpers/store";
 import type { TestScope } from "./helpers/types";
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
@@ -320,38 +321,17 @@ test("reference, targeting, serialization, and store helpers support engine and 
   assert.equal(
     structures.isStructureFull({
       structureType: "container",
-      store: { energy: 7, H: 3 },
-      storeCapacity: 10,
+      store: createStore({ energy: 7, H: 3 }, 10),
     }),
     true,
   );
-  assert.equal(structures.isStructureEmpty({ structureType: "spawn", energy: 0 }), true);
-});
-
-test("visual road state is external, isolated by visual instance, and reset each tick", () => {
-  const runtime = createGameRuntime({ Game: { time: 1 } }),
-    api = runtime.load("RoomVisual");
-  const lines = [];
-  const visual = Object.freeze({
-    circle() {},
-    line(...args: unknown[]) {
-      lines.push(args);
-    },
-  });
-  const other = Object.freeze({
-    line() {
-      throw new Error("roads leaked across instances");
-    },
-  });
-  api.roomVisualStructure(visual, 10, 10, "road");
-  api.roomVisualStructure(visual, 11, 10, "road");
-  api.roomVisualConnectRoads(visual);
-  assert.equal(lines.length, 1);
-  api.roomVisualConnectRoads(other);
-  runtime.scope.Game.time++;
-  api.roomVisualConnectRoads(visual);
-  assert.equal(lines.length, 1);
-  assert.deepEqual(Reflect.ownKeys(visual), ["circle", "line"]);
+  assert.equal(
+    structures.isStructureEmpty({
+      structureType: "spawn",
+      store: createStore({ energy: 0 }, { energy: 300 }),
+    }),
+    true,
+  );
 });
 
 test("task serialization and Zerg task assignment keep real target IDs without a ref getter", () => {

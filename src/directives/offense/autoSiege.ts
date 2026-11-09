@@ -2,7 +2,6 @@ import { getRoomHostileStructures, getRoomHostiles } from "../../game/Room";
 import { log } from "../../console/log";
 import { profile } from "../../profiler/decorator";
 import { CombatPlanner, SiegeAnalysis } from "../../strategy/CombatPlanner";
-import { Visualizer } from "../../visuals/Visualizer";
 import { Directive } from "../Directive";
 
 interface DirectiveAutoSiegeMemory extends FlagMemory {
@@ -63,9 +62,5 @@ export class DirectiveAutoSiege extends Directive {
       log.notify(`Auto-siege operation at ${this.pos.roomName} completed successfully.`);
       this.remove();
     }
-  }
-
-  visuals(): void {
-    Visualizer.marker(this.pos, { color: "red" });
   }
 }

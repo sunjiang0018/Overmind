@@ -1,3 +1,4 @@
+import { createStore } from "./helpers/store";
 import type { TestScope } from "./helpers/types";
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
@@ -19,8 +20,7 @@ function runtime() {
     parked: unknown[][] = [];
   let request: { target: TestScope } | undefined;
   const queen: TestScope = {
-    carry: { energy: 95 },
-    carryCapacity: 1500,
+    store: createStore({ energy: 95 }, 1500),
     pos: { x: 30, y: 38 },
     get task() {
       return this._task;
@@ -46,12 +46,12 @@ function runtime() {
     transfer: (target: TestScope) => ({
       name: "transfer",
       target,
-      valid: () => queen.carry.energy > 0 && target.energy < target.capacity,
+      valid: () => queen.store.energy > 0 && target.energy < target.capacity,
     }),
     withdraw: (target: TestScope) => ({
       name: "withdraw",
       target,
-      valid: () => queen.carry.energy < queen.carryCapacity && target.energy > 0,
+      valid: () => queen.store.energy < queen.store.getCapacity() && target.energy > 0,
     }),
     recharge: () => null,
   };
@@ -126,7 +126,7 @@ test("queen recharges after using up its delivery energy", () => {
   const r = runtime();
   r.request({ energy: 0, capacity: 50 });
   r.overlord.run();
-  r.queen.carry.energy = 0;
+  r.queen.store.energy = 0;
   const link = (r.overlord.hatchery.link = { energy: 776, capacity: 800 });
   r.overlord.run();
   assert.equal(r.queen.task.name, "withdraw");
@@ -141,14 +141,14 @@ test("queen completes a valid recharge before choosing a new delivery", () => {
   r.request({ energy: 0, capacity: 50 });
   r.overlord.run();
   assert.equal(r.queen.task, recharge);
-  r.queen.carry.energy = r.queen.carryCapacity;
+  r.queen.store.energy = r.queen.store.getCapacity();
   r.overlord.run();
   assert.equal(r.queen.task.name, "transfer");
 });
 
 test("queen replans a recharge if its source becomes empty", () => {
   const r = runtime();
-  r.queen.carry.energy = 0;
+  r.queen.store.energy = 0;
   const previous = { energy: 100, capacity: 800 },
     next = { energy: 776, capacity: 800 };
   r.queen.task = r.Tasks.withdraw(previous);
@@ -160,7 +160,7 @@ test("queen replans a recharge if its source becomes empty", () => {
 
 test("queen returns to the hatchery when no valid work or recharge source exists", () => {
   const r = runtime();
-  r.queen.carry.energy = 0;
+  r.queen.store.energy = 0;
   r.overlord.run();
   assert.equal(r.ran.length, 0);
   assert.deepEqual(r.parked, [[r.overlord.hatchery.idlePos]]);
@@ -169,7 +169,7 @@ test("queen returns to the hatchery when no valid work or recharge source exists
 function bufferedRuntime() {
   const r = runtime();
   r.overlord.colony = { roomPlanner: { memory: { logisticsPolicy: { queenBufferFirst: true } } } };
-  r.queen.carry.energy = 0;
+  r.queen.store.energy = 0;
   return r;
 }
 
@@ -184,7 +184,7 @@ test("buffered queen takes a full load from a container before an 800-energy lin
 
 test("buffered queen uses a link if it can fill the requested remaining capacity", () => {
   const r = bufferedRuntime();
-  r.queen.carry.energy = 900;
+  r.queen.store.energy = 900;
   r.overlord.hatchery.batteries = [{ energy: 100, capacity: 2000 }];
   const link = (r.overlord.hatchery.link = { energy: 800, capacity: 800 });
   r.overlord.rechargeActions(r.queen);

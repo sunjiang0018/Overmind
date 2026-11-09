@@ -1,4 +1,3 @@
-import { roomVisualResource } from "../game/RoomVisual";
 import {
   getRoomPositionNeighbors,
   getRoomPositionPrint,
@@ -20,7 +19,6 @@ import { Stats } from "../stats/stats";
 import { randint } from "../utilities/random";
 import { rightArrow } from "../utilities/stringConstants";
 import { ema } from "../utilities/utils";
-import { Visualizer } from "../visuals/Visualizer";
 import { HiveCluster } from "./_HiveCluster";
 import { sortBy, difference, partition, sum, compactMap } from "../utilities/native";
 
@@ -205,7 +203,8 @@ export class EvolutionChamber extends HiveCluster {
         const requiredReagents: readonly (ResourceConstant | null)[] = reagents;
         if (
           this.reagentLabs.every(
-            (lab) => lab.mineralAmount >= amount && requiredReagents.includes(lab.mineralType),
+            (lab) =>
+              lab.store[lab.mineralType!] >= amount && requiredReagents.includes(lab.mineralType),
           )
         ) {
           this.memory.status = LabStatus.Synthesizing;
@@ -214,7 +213,7 @@ export class EvolutionChamber extends HiveCluster {
         break;
 
       case LabStatus.Synthesizing:
-        if (this.reagentLabs.some((lab) => lab.mineralAmount < LAB_REACTION_AMOUNT)) {
+        if (this.reagentLabs.some((lab) => lab.store[lab.mineralType!] < LAB_REACTION_AMOUNT)) {
           this.memory.status = LabStatus.UnloadingLabs;
           this.memory.statusTick = Game.time;
         }
@@ -222,7 +221,7 @@ export class EvolutionChamber extends HiveCluster {
 
       case LabStatus.UnloadingLabs:
         const unloadLabs = this.labs.filter((lab) => !this.labReservations[lab.id]);
-        if (unloadLabs.every((lab) => lab.mineralAmount == 0)) {
+        if (unloadLabs.every((lab) => lab.store[lab.mineralType!] == 0)) {
           this.memory.status = LabStatus.Idle;
           this.memory.statusTick = Game.time;
         }
@@ -283,34 +282,40 @@ export class EvolutionChamber extends HiveCluster {
       // Empty out any incorrect minerals and request the correct reagents
       if (
         this.memory.status == LabStatus.UnloadingLabs ||
-        (lab1.mineralType != ing1 && lab1.mineralAmount > 0)
+        (lab1.mineralType != ing1 && lab1.store[lab1.mineralType!] > 0)
       ) {
         this.transportRequests.requestOutput(lab1, Priority.Normal, {
           resourceType: lab1.mineralType!,
         });
-      } else if (this.memory.status == LabStatus.LoadingLabs && lab1.mineralAmount < amount) {
+      } else if (
+        this.memory.status == LabStatus.LoadingLabs &&
+        lab1.store[lab1.mineralType!] < amount
+      ) {
         this.transportRequests.requestInput(lab1, Priority.Normal, {
           resourceType: ing1,
-          amount: amount - lab1.mineralAmount,
+          amount: amount - lab1.store[lab1.mineralType!],
         });
       }
       if (
         this.memory.status == LabStatus.UnloadingLabs ||
-        (lab2.mineralType != ing2 && lab2.mineralAmount > 0)
+        (lab2.mineralType != ing2 && lab2.store[lab2.mineralType!] > 0)
       ) {
         this.transportRequests.requestOutput(lab2, Priority.Normal, {
           resourceType: lab2.mineralType!,
         });
-      } else if (this.memory.status == LabStatus.LoadingLabs && lab2.mineralAmount < amount) {
+      } else if (
+        this.memory.status == LabStatus.LoadingLabs &&
+        lab2.store[lab2.mineralType!] < amount
+      ) {
         this.transportRequests.requestInput(lab2, Priority.Normal, {
           resourceType: ing2,
-          amount: amount - lab2.mineralAmount,
+          amount: amount - lab2.store[lab2.mineralType!],
         });
       }
     } else {
       // Labs should be empty when no reaction process is currently happening
       for (const lab of reagentLabs) {
-        if (lab.mineralType && lab.mineralAmount > 0) {
+        if (lab.mineralType && lab.store[lab.mineralType!] > 0) {
           this.transportRequests.requestOutput(lab, Priority.Normal, {
             resourceType: lab.mineralType,
           });
@@ -323,11 +328,12 @@ export class EvolutionChamber extends HiveCluster {
     if (this.memory.activeReaction) {
       const { mineralType } = this.memory.activeReaction;
       for (const lab of labs) {
-        const labHasWrongMineral = lab.mineralType != mineralType && lab.mineralAmount > 0;
-        const labIsFull = lab.mineralAmount == lab.mineralCapacity;
+        const labHasWrongMineral =
+          lab.mineralType != mineralType && lab.store[lab.mineralType!] > 0;
+        const labIsFull = lab.store.getFreeCapacity(lab.mineralType || mineralType) === 0;
         // Empty out incorrect minerals or if it's time to unload or if lab is full
         if (
-          (this.memory.status == LabStatus.UnloadingLabs && lab.mineralAmount > 0) ||
+          (this.memory.status == LabStatus.UnloadingLabs && lab.store[lab.mineralType!] > 0) ||
           labHasWrongMineral ||
           labIsFull
         ) {
@@ -339,7 +345,7 @@ export class EvolutionChamber extends HiveCluster {
     } else {
       // Labs should be empty when no reaction process is currently happening
       for (const lab of labs) {
-        if (lab.mineralType && lab.mineralAmount > 0) {
+        if (lab.mineralType && lab.store[lab.mineralType!] > 0) {
           this.transportRequests.requestOutput(lab, Priority.NormalLow, {
             resourceType: lab.mineralType,
           });
@@ -352,14 +358,14 @@ export class EvolutionChamber extends HiveCluster {
     for (const lab of labs) {
       const { mineralType, amount } = this.labReservations[lab.id];
       // Empty out incorrect minerals
-      if (lab.mineralType != mineralType && lab.mineralAmount > 0) {
+      if (lab.mineralType != mineralType && lab.store[lab.mineralType!] > 0) {
         this.transportRequests.requestOutput(lab, Priority.High, {
           resourceType: lab.mineralType!,
         });
       } else {
         this.transportRequests.requestInput(lab, Priority.High, {
           resourceType: <ResourceConstant>mineralType,
-          amount: amount - lab.mineralAmount,
+          amount: amount - lab.store[lab.mineralType!],
         });
       }
     }
@@ -378,13 +384,19 @@ export class EvolutionChamber extends HiveCluster {
     );
 
     // Handle energy requests for labs with different priorities
-    const boostingRefillLabs = boostingProductLabs.filter((lab) => lab.energy < lab.energyCapacity);
+    const boostingRefillLabs = boostingProductLabs.filter(
+      (lab) => lab.store[RESOURCE_ENERGY] < lab.store.getCapacity(RESOURCE_ENERGY),
+    );
     boostingRefillLabs.forEach((lab) => this.transportRequests.requestInput(lab, Priority.High));
-    const reactionRefillLabs = reactionProductLabs.filter((lab) => lab.energy < lab.energyCapacity);
+    const reactionRefillLabs = reactionProductLabs.filter(
+      (lab) => lab.store[RESOURCE_ENERGY] < lab.store.getCapacity(RESOURCE_ENERGY),
+    );
     reactionRefillLabs.forEach((lab) =>
       this.transportRequests.requestInput(lab, Priority.NormalLow),
     );
-    const reagentRefillLabs = this.reagentLabs.filter((lab) => lab.energy < lab.energyCapacity);
+    const reagentRefillLabs = this.reagentLabs.filter(
+      (lab) => lab.store[RESOURCE_ENERGY] < lab.store.getCapacity(RESOURCE_ENERGY),
+    );
     reagentRefillLabs.forEach((lab) =>
       this.transportRequests.requestInput(lab, Priority.NormalLow),
     );
@@ -538,7 +550,7 @@ export class EvolutionChamber extends HiveCluster {
             lab.mineralType == boost &&
             (!this.labReservations[lab.id] || this.labReservations[lab.id].mineralType != boost)
           ) {
-            amountUnavailable += lab.mineralAmount;
+            amountUnavailable += lab.store[lab.mineralType];
           }
         });
       } else if (boost == reagents[0]) {
@@ -547,7 +559,7 @@ export class EvolutionChamber extends HiveCluster {
             lab.mineralType == boost &&
             (!this.labReservations[lab.id] || this.labReservations[lab.id].mineralType != boost)
           ) {
-            amountUnavailable += lab.mineralAmount;
+            amountUnavailable += lab.store[lab.mineralType];
           }
         });
       } else if (boost == reagents[1]) {
@@ -556,7 +568,7 @@ export class EvolutionChamber extends HiveCluster {
             lab.mineralType == boost &&
             (!this.labReservations[lab.id] || this.labReservations[lab.id].mineralType != boost)
           ) {
-            amountUnavailable += lab.mineralAmount;
+            amountUnavailable += lab.store[lab.mineralType];
           }
         });
       }
@@ -669,75 +681,6 @@ export class EvolutionChamber extends HiveCluster {
     }
     // Record stats
     this.stats();
-  }
-
-  private drawLabReport(coord: Coord): Coord {
-    let { x, y } = coord;
-    const height = 2;
-    const titleCoords = Visualizer.section(
-      `${this.colony.name} Evolution Chamber`,
-      { x, y, roomName: this.room.name },
-      9.5,
-      height + 0.1,
-    );
-    const boxX = titleCoords.x;
-    y = titleCoords.y + 0.25;
-
-    let status: string;
-    switch (this.memory.status) {
-      case LabStatus.Idle:
-        status = "IDLE";
-        break;
-      case LabStatus.AcquiringMinerals:
-        status = "acquire minerals";
-        break;
-      case LabStatus.LoadingLabs:
-        status = "loading labs";
-        break;
-      case LabStatus.Synthesizing:
-        status = "synthesizing";
-        break;
-      case LabStatus.UnloadingLabs:
-        status = "unloading labs";
-        break;
-      default:
-        status = "INVALID";
-        break;
-    }
-
-    const activeReaction = this.memory.activeReaction;
-    const mineral = activeReaction ? activeReaction.mineralType : "NONE";
-
-    Visualizer.text(`Status: ${status}`, { x: boxX, y: y, roomName: this.room.name });
-    y += 1;
-    if (this.memory.status == LabStatus.Synthesizing && activeReaction) {
-      const amountDone = sum(this.productLabs, (lab) =>
-        lab.mineralType == activeReaction!.mineralType ? lab.mineralAmount : 0,
-      );
-      Visualizer.text(activeReaction.mineralType, { x: boxX, y: y, roomName: this.room.name });
-      Visualizer.barGraph(
-        [amountDone, activeReaction.amount],
-        { x: boxX + 4, y: y, roomName: this.room.name },
-        5,
-      );
-      y += 1;
-    } else {
-      Visualizer.text(`Active reaction: ${mineral}`, { x: boxX, y: y, roomName: this.room.name });
-      y += 1;
-    }
-    return { x: x, y: y + 0.25 };
-  }
-
-  visuals(coord: Coord): Coord {
-    const vis = this.room.visual;
-    // Lab visuals
-    for (const lab of this.labs) {
-      if (lab.mineralType) {
-        roomVisualResource(vis, lab.mineralType, lab.pos.x, lab.pos.y);
-      }
-    }
-    // Draw lab report
-    return this.drawLabReport(coord);
   }
 
   private stats(): void {

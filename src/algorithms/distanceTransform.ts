@@ -71,32 +71,6 @@ function walkablePixelsForRoom(roomName: string): CostMatrix {
   return costMatrix;
 }
 
-// Visualize a given costMatrix globally
-function displayCostMatrix(costMatrix: CostMatrix, color = "#ff0000"): void {
-  const vis = new RoomVisual();
-
-  let max = 1;
-  for (let y = 0; y < 50; ++y) {
-    for (let x = 0; x < 50; ++x) {
-      max = Math.max(max, costMatrix.get(x, y));
-    }
-  }
-
-  for (let y = 0; y < 50; ++y) {
-    for (let x = 0; x < 50; ++x) {
-      const value = costMatrix.get(x, y);
-      if (value > 0) {
-        vis.circle(x, y, { radius: costMatrix.get(x, y) / max / 2, fill: color });
-      }
-    }
-  }
-}
-
-export function testDistanceTransform(roomName = "sim") {
-  const dt = applyDistanceTransform(walkablePixelsForRoom(roomName));
-  displayCostMatrix(dt);
-}
-
 export function distanceTransform(roomName: string): CostMatrix {
   return applyDistanceTransform(walkablePixelsForRoom(roomName));
 }

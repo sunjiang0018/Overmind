@@ -44,12 +44,12 @@
  */
 export function packId(id: string): string {
   return (
-    String.fromCharCode(parseInt(id.substr(0, 4), 16)) +
-    String.fromCharCode(parseInt(id.substr(4, 4), 16)) +
-    String.fromCharCode(parseInt(id.substr(8, 4), 16)) +
-    String.fromCharCode(parseInt(id.substr(12, 4), 16)) +
-    String.fromCharCode(parseInt(id.substr(16, 4), 16)) +
-    String.fromCharCode(parseInt(id.substr(20, 4), 16))
+    String.fromCharCode(parseInt(id.slice(0, 4), 16)) +
+    String.fromCharCode(parseInt(id.slice(4, 8), 16)) +
+    String.fromCharCode(parseInt(id.slice(8, 12), 16)) +
+    String.fromCharCode(parseInt(id.slice(12, 16), 16)) +
+    String.fromCharCode(parseInt(id.slice(16, 20), 16)) +
+    String.fromCharCode(parseInt(id.slice(20, 24), 16))
   );
 }
 
@@ -91,7 +91,7 @@ export function packIdList(ids: string[]): string {
 export function unpackIdList(packedIds: string): string[] {
   const ids: string[] = [];
   for (let i = 0; i < packedIds.length; i += 6) {
-    ids.push(unpackId(packedIds.substr(i, 6)));
+    ids.push(unpackId(packedIds.slice(i, i + 6)));
   }
   return ids;
 }
@@ -296,7 +296,7 @@ export function packPosList(posList: RoomPosition[]): string {
 export function unpackPosList(chars: string): RoomPosition[] {
   const posList: RoomPosition[] = [];
   for (let i = 0; i < chars.length; i += 2) {
-    posList.push(unpackPos(chars.substr(i, 2)));
+    posList.push(unpackPos(chars.slice(i, i + 2)));
   }
   return posList;
 }

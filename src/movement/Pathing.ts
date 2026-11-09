@@ -15,7 +15,6 @@ import {
 import { profile } from "../profiler/decorator";
 import { packPos, packPosList } from "../utilities/packrat";
 import { isAlly, minBy } from "../utilities/utils";
-import { Visualizer } from "../visuals/Visualizer";
 import { AnyZerg } from "../zerg/AnyZerg";
 import { normalizePos } from "./helpers";
 import { SwarmMoveOptions } from "./Movement";
@@ -550,12 +549,7 @@ export class Pathing {
     const volatileMatrixOpts: VolatileMatrixOptions = {};
     if (opts.blockCreeps) volatileMatrixOpts.blockCreeps = opts.blockCreeps;
 
-    const matrix = MatrixLib.getMatrix(roomName, matrixOpts, volatileMatrixOpts);
-
-    if (opts.displayCostMatrix) {
-      Visualizer.displayCostMatrix(matrix, roomName);
-    }
-    return matrix;
+    return MatrixLib.getMatrix(roomName, matrixOpts, volatileMatrixOpts);
   }
 
   private static kitingRoomCallback(roomName: string): CostMatrix | boolean {
@@ -1082,12 +1076,11 @@ export class Pathing {
   /**
    * Serialize a path as a string of move directions
    */
-  static serializePath(startPos: RoomPosition, path: RoomPosition[], color = "orange"): string {
+  static serializePath(startPos: RoomPosition, path: RoomPosition[]): string {
     let serializedPath = "";
     let lastPosition = startPos;
     for (const position of path) {
       if (position.roomName == lastPosition.roomName) {
-        new RoomVisual(position.roomName).line(position, lastPosition, { color: color });
         serializedPath += lastPosition.getDirectionTo(position);
       }
       lastPosition = position;

@@ -14,9 +14,8 @@ import { CommandCenterOverlord } from "../overlords/core/manager";
 import { Priority } from "../priorities/priorities";
 import { profile } from "../profiler/decorator";
 import { Cartographer } from "../utilities/Cartographer";
-import { Visualizer } from "../visuals/Visualizer";
 import { HiveCluster } from "./_HiveCluster";
-import { compact, sortBy, last, sum } from "../utilities/native";
+import { compact, sortBy, last } from "../utilities/native";
 
 export const MAX_OBSERVE_DISTANCE = 4;
 
@@ -120,7 +119,7 @@ export class CommandCenter extends HiveCluster {
   /* Register a link transfer store if the link is sufficiently full */
   private registerLinkTransferRequests(): void {
     if (this.link) {
-      if (this.link.energy > CommandCenter.settings.linksTransmitAt) {
+      if (this.link.store[RESOURCE_ENERGY] > CommandCenter.settings.linksTransmitAt) {
         this.colony.linkNetwork.requestTransmit(this.link);
       }
     }
@@ -128,14 +127,17 @@ export class CommandCenter extends HiveCluster {
 
   private registerRequests(): void {
     // Refill core spawn (only applicable to bunker layouts)
-    if (this.colony.bunker && this.colony.bunker.coreSpawn) {
-      if (this.colony.bunker.coreSpawn.energy < this.colony.bunker.coreSpawn.energyCapacity) {
+    if (this.colony.bunker?.coreSpawn) {
+      if (
+        this.colony.bunker.coreSpawn.store[RESOURCE_ENERGY] <
+        this.colony.bunker.coreSpawn.store.getCapacity(RESOURCE_ENERGY)
+      ) {
         this.transportRequests.requestInput(this.colony.bunker.coreSpawn, Priority.Normal);
       }
     }
 
     // If the link has energy and nothing needs it, empty it
-    if (this.link && this.link.energy > 0) {
+    if (this.link && this.link.store[RESOURCE_ENERGY] > 0) {
       if (this.colony.linkNetwork.receive.length == 0 || this.link.cooldown > 3) {
         this.transportRequests.requestOutput(this.link, Priority.High);
       }
@@ -149,7 +151,11 @@ export class CommandCenter extends HiveCluster {
     // Supply requests:
 
     // If the link is empty and can send energy and something needs energy, fill it up
-    if (this.link && this.link.energy < 0.9 * this.link.energyCapacity && this.link.cooldown <= 1) {
+    if (
+      this.link &&
+      this.link.store[RESOURCE_ENERGY] < 0.9 * this.link.store.getCapacity(RESOURCE_ENERGY) &&
+      this.link.cooldown <= 1
+    ) {
       if (this.colony.linkNetwork.receive.length > 0) {
         // If something wants energy
         this.transportRequests.requestInput(this.link, Priority.Critical);
@@ -157,19 +163,23 @@ export class CommandCenter extends HiveCluster {
     }
     // Refill towers as needed with variable priority
     const refillTowers = this.towers.filter(
-      (tower) => tower.energy < CommandCenter.settings.refillTowersBelow,
+      (tower) => tower.store[RESOURCE_ENERGY] < CommandCenter.settings.refillTowersBelow,
     );
     refillTowers.forEach((tower) => this.transportRequests.requestInput(tower, Priority.High));
 
     // Refill power spawn
     if (this.powerSpawn) {
-      if (this.powerSpawn.energy < this.powerSpawn.energyCapacity * 0.5) {
+      if (
+        this.powerSpawn.store[RESOURCE_ENERGY] <
+        this.powerSpawn.store.getCapacity(RESOURCE_ENERGY) * 0.5
+      ) {
         this.transportRequests.requestInput(this.powerSpawn, Priority.NormalLow);
       } else if (
-        this.powerSpawn.power < this.powerSpawn.powerCapacity * 0.5 &&
+        this.powerSpawn.store[RESOURCE_POWER] <
+          this.powerSpawn.store.getCapacity(RESOURCE_POWER) * 0.5 &&
         this.terminal &&
-        this.terminal.store.power &&
-        this.terminal.store.power >= 100
+        this.terminal.store[RESOURCE_POWER] &&
+        this.terminal.store[RESOURCE_POWER] >= 100
       ) {
         this.transportRequests.requestInput(this.powerSpawn, Priority.NormalLow, {
           resourceType: RESOURCE_POWER,
@@ -179,14 +189,14 @@ export class CommandCenter extends HiveCluster {
     // Refill nuker with low priority
     if (this.nuker) {
       if (
-        this.nuker.energy < this.nuker.energyCapacity &&
+        this.nuker.store[RESOURCE_ENERGY] < this.nuker.store.getCapacity(RESOURCE_ENERGY) &&
         ((getStoredEnergy(this.storage) > 200000 && this.nuker.cooldown <= 1000) ||
           getStoredEnergy(this.storage) > 800000)
       ) {
         this.transportRequests.requestInput(this.nuker, Priority.Low);
       }
       if (
-        this.nuker.ghodium < this.nuker.ghodiumCapacity &&
+        this.nuker.store[RESOURCE_GHODIUM] < this.nuker.store.getCapacity(RESOURCE_GHODIUM) &&
         this.colony.assets[RESOURCE_GHODIUM] >= LAB_MINERAL_CAPACITY
       ) {
         this.transportRequests.requestInput(this.nuker, Priority.Low, {
@@ -262,37 +272,5 @@ export class CommandCenter extends HiveCluster {
   run(): void {
     this.runObserver();
     this.runPowerSpawn();
-  }
-
-  visuals(coord: Coord): Coord {
-    let { x, y } = coord;
-    const height = this.storage && this.terminal ? 2 : 1;
-    const titleCoords = Visualizer.section(
-      `${this.colony.name} Command Center`,
-      { x, y, roomName: this.room.name },
-      9.5,
-      height + 0.1,
-    );
-    const boxX = titleCoords.x;
-    y = titleCoords.y + 0.25;
-    if (this.storage) {
-      Visualizer.text("Storage", { x: boxX, y: y, roomName: this.room.name });
-      Visualizer.barGraph(
-        sum(this.storage.store) / this.storage.storeCapacity,
-        { x: boxX + 4, y: y, roomName: this.room.name },
-        5,
-      );
-      y += 1;
-    }
-    if (this.terminal) {
-      Visualizer.text("Terminal", { x: boxX, y: y, roomName: this.room.name });
-      Visualizer.barGraph(
-        sum(this.terminal.store) / this.terminal.storeCapacity,
-        { x: boxX + 4, y: y, roomName: this.room.name },
-        5,
-      );
-      y += 1;
-    }
-    return { x: x, y: y + 0.25 };
   }
 }

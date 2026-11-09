@@ -5,8 +5,14 @@ declare function deref(ref: string): RoomObject | null;
 
 global.deref = function (ref: string): RoomObject | null {
   // dereference any object from identifier
-  // @ts-ignore
-  return Game.getObjectById(ref) || Game.flags[ref] || Game.creeps[ref] || Game.spawns[ref] || null;
+  // References can be serialized engine IDs or application names; ID branding has no runtime representation.
+  return (
+    Game.getObjectById(ref as Id<RoomObject & _HasId>) ||
+    Game.flags[ref] ||
+    Game.creeps[ref] ||
+    Game.spawns[ref] ||
+    null
+  );
 };
 
 declare function derefRoomPosition(protoPos: ProtoPos): RoomPosition;

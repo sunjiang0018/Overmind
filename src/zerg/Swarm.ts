@@ -51,7 +51,7 @@ interface SwarmMemory {
   creeps: string[];
   orientation: TOP | BOTTOM | LEFT | RIGHT;
   target?: {
-    id: string;
+    id: Id<Creep | Structure>;
     exp: number;
   };
   numRetreats: number;
@@ -597,16 +597,10 @@ export class Swarm implements ProtoSwarm {
   }
 
   goTo(destination: RoomPosition | HasPos, options: SwarmMoveOptions = {}): number {
-    // if (DEBUG) {
-    // 	options.displayCostMatrix = true;
-    // }
     return Movement.swarmMove(this, destination, options);
   }
 
   goToRoom(roomName: string, options: SwarmMoveOptions = {}): number {
-    // if (DEBUG) {
-    // 	options.displayCostMatrix = true;
-    // }
     return Movement.goToRoom_swarm(this, roomName, options);
   }
 
@@ -615,9 +609,6 @@ export class Swarm implements ProtoSwarm {
     avoid: PathFinderGoal[],
     options: CombatMoveOptions = {},
   ): number {
-    // if (DEBUG) {
-    // 	options.displayAvoid = true;
-    // }
     const ret = Movement.swarmCombatMove(this, approach, avoid, options);
     this.debug(`Moving... Result: ${ret}`);
     return ret;
@@ -778,12 +769,10 @@ export class Swarm implements ProtoSwarm {
 
     // Find a target if needed
     if (!this.target) {
-      const displayCostMatrix = DEBUG;
       this.target = CombatTargeting.findBestSwarmStructureTarget(
         this,
         roomName,
         10 * this.memory.numRetreats,
-        displayCostMatrix,
       );
       this.debug(this.target);
     }

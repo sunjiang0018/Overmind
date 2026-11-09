@@ -132,9 +132,4 @@
 // 			this.buildOutputIfNeeded();
 // 		}
 // 	}
-//
-// 	visuals() {
-// 		// Visualizer.showInfo([`Usage:  ${this.memory.stats.usage.toPercent()}`,
-// 		// 					 `Downtime: ${this.memory.stats.downtime.toPercent()}`], this);
-// 	}
 // }

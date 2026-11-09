@@ -48,7 +48,7 @@ export class HaulingOverlord extends Overlord {
     const haulingPowerNeeded =
       Math.min(
         this.directive.totalResources,
-        this.colony.storage.storeCapacity - sum(this.colony.storage.store),
+        this.colony.storage.store.getCapacity() - sum(this.colony.storage.store),
       ) * tripDistance;
     // Calculate amount of hauling each hauler provides in a lifetime
     const haulerCarryParts = Setups.transporters.early.getBodyPotential(CARRY, this.colony);
@@ -63,7 +63,7 @@ export class HaulingOverlord extends Overlord {
   }
 
   private handleHauler(hauler: Zerg) {
-    if (sum(hauler.carry) == 0) {
+    if (sum(hauler.store) == 0) {
       // Travel to directive and collect resources
       if (hauler.inSameRoomAs(this.directive)) {
         // Pick up drops first
@@ -93,7 +93,7 @@ export class HaulingOverlord extends Overlord {
                 );
               }
               totalDrawn += amount;
-              if (totalDrawn >= hauler.carryCapacity) {
+              if (totalDrawn >= hauler.store.getCapacity()) {
                 return;
               }
             }
@@ -114,7 +114,7 @@ export class HaulingOverlord extends Overlord {
       // Travel to colony room and deposit resources
       if (hauler.inSameRoomAs(this.colony)) {
         // Put energy in storage and minerals in terminal if there is one
-        for (const [resourceType, amount] of getStoreContents(hauler.carry)) {
+        for (const [resourceType, amount] of getStoreContents(hauler.store)) {
           if (amount == 0) continue;
           if (resourceType == RESOURCE_ENERGY) {
             // prefer to put energy in storage
@@ -161,7 +161,7 @@ export class HaulingOverlord extends Overlord {
     // TODO: fix the way this is done
     if (
       this.directive.memory.totalResources == 0 &&
-      this.haulers.filter((hauler) => sum(hauler.carry) > 0).length == 0
+      this.haulers.filter((hauler) => sum(hauler.store) > 0).length == 0
     ) {
       this.directive.remove();
     }

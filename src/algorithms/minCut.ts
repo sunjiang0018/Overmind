@@ -265,10 +265,8 @@ export function createGraph(
   toProtect: Rectangle[],
   preferCloserBarriers = true,
   preferCloserBarrierLimit = Infinity, // ignore the toProtect[n] for n > this value
-  visualize = true,
   bounds: Rectangle = { x1: 0, y1: 0, x2: 49, y2: 49 },
 ) {
-  const visual = new RoomVisual(roomName);
   const roomArray = get2DArray(roomName, bounds);
   // For all Rectangles, set edges as source (to protect area) and area as unused
   let r: Rectangle;
@@ -321,33 +319,7 @@ export function createGraph(
             const rangeToBorder = Math.max(x1range, x2range, y1range, y2range);
             const modifiedWeight = NORMAL + RANGE_MODIFIER * (RANGE_PADDING - rangeToBorder);
             roomArray[x][y] = Math.max(roomArray[x][y], modifiedWeight);
-            if (visualize) {
-              visual.text(`${roomArray[x][y]}`, x, y);
-            }
           }
-        }
-      }
-    }
-  }
-
-  // ********************** Visualization
-  if (visualize) {
-    for (x = bounds.x1; x <= bounds.x2; x++) {
-      for (y = bounds.y1; y <= bounds.y2; y++) {
-        if (roomArray[x][y] === UNWALKABLE) {
-          visual.circle(x, y, { radius: 0.5, fill: "#1b1b9f", opacity: 0.3 });
-        } else if (roomArray[x][y] > UNWALKABLE && roomArray[x][y] < NORMAL) {
-          visual.circle(x, y, { radius: 0.5, fill: "#42cce8", opacity: 0.3 });
-        } else if (roomArray[x][y] === NORMAL) {
-          visual.circle(x, y, { radius: 0.5, fill: "#bdb8b8", opacity: 0.3 });
-        } else if (roomArray[x][y] > NORMAL && roomArray[x][y] < PROTECTED) {
-          visual.circle(x, y, { radius: 0.5, fill: "#9929e8", opacity: 0.3 });
-        } else if (roomArray[x][y] === PROTECTED) {
-          visual.circle(x, y, { radius: 0.5, fill: "#e800c6", opacity: 0.3 });
-        } else if (roomArray[x][y] === CANNOT_BUILD) {
-          visual.circle(x, y, { radius: 0.5, fill: "#e8000f", opacity: 0.3 });
-        } else if (roomArray[x][y] === EXIT) {
-          visual.circle(x, y, { radius: 0.5, fill: "#000000", opacity: 0.3 });
         }
       }
     }
@@ -427,7 +399,6 @@ export function getCutTiles(
   toProtect: Rectangle[],
   preferCloserBarriers = true,
   preferCloserBarrierLimit = Infinity,
-  visualize = true,
   bounds: Rectangle = { x1: 0, y1: 0, x2: 49, y2: 49 },
 ): Coord[] {
   const graph = createGraph(
@@ -435,7 +406,6 @@ export function getCutTiles(
     toProtect,
     preferCloserBarriers,
     preferCloserBarrierLimit,
-    visualize,
     bounds,
   );
   if (!graph) {
@@ -458,15 +428,7 @@ export function getCutTiles(
       positions.push({ x, y });
     }
   }
-  // Visualise Result
-  if (positions.length > 0) {
-    const visual = new RoomVisual(roomName);
-    for (let i = positions.length - 1; i >= 0; i--) {
-      visual.circle(positions[i].x, positions[i].y, { radius: 0.5, fill: "#ff7722", opacity: 0.9 });
-    }
-  } else {
-    return [];
-  }
+  if (positions.length === 0) return [];
   const wholeRoom = bounds.x1 === 0 && bounds.y1 === 0 && bounds.x2 === 49 && bounds.y2 === 49;
   return wholeRoom ? positions : pruneDeadEnds(roomName, positions);
 }
@@ -638,7 +600,7 @@ export function testMinCutSubset(colonyName: string) {
     });
   }
   // Get Min cut, returns the positions where ramparts/walls need to be
-  const positions = getCutTiles(colonyName, rectArray, true, Infinity, true, {
+  const positions = getCutTiles(colonyName, rectArray, true, Infinity, {
     x1: 5,
     y1: 5,
     x2: 44,

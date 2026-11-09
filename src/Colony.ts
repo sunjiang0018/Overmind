@@ -65,7 +65,6 @@ import {
 } from "./strategy/ExpansionEvaluator";
 import { Cartographer, ROOMTYPE_CONTROLLER } from "./utilities/Cartographer";
 import { maxBy, mergeSum, minBy } from "./utilities/utils";
-import { Visualizer } from "./visuals/Visualizer";
 import { Zerg } from "./zerg/Zerg";
 import { groupBy, clone, compact, sortBy, sum, flatten, compactMap } from "./utilities/native";
 
@@ -263,7 +262,7 @@ export class Colony {
         this.memory.outposts[outpost] = { active: true };
       }
     });
-    Object.keys(clone(this.memory.outposts) ?? {}).forEach((roomName) => {
+    Object.keys(this.memory.outposts).forEach((roomName) => {
       if (!outposts.includes(roomName)) {
         delete this.memory.outposts[roomName];
       }
@@ -384,14 +383,15 @@ export class Colony {
   private computeDrops(): { [resourceType: string]: Resource[] } {
     const drops: { [resourceType: string]: Resource[] } = {};
     for (const room of this.rooms) {
-      for (const resourceType of Object.keys(getRoomDrops(room))) {
-        const roomDrops = getRoomDrops(room)[resourceType];
-        if (roomDrops && roomDrops.length > 0) {
+      const roomDrops = getRoomDrops(room);
+      for (const resourceType of Object.keys(roomDrops)) {
+        const roomDrop = roomDrops[resourceType];
+        if (roomDrop && roomDrop.length > 0) {
           const existing = drops[resourceType];
           if (existing) {
-            existing.push(...roomDrops);
+            existing.push(...roomDrop);
           } else {
-            drops[resourceType] = roomDrops.slice();
+            drops[resourceType] = roomDrop.slice();
           }
         }
       }
@@ -462,7 +462,7 @@ export class Colony {
     this.controller = this.room.controller!; // must be controller since colonies are based in owned rooms
     this.extensions = getRoomExtensions(this.room);
     this.links = getRoomLinks(this.room);
-    this.availableLinks = clone(getRoomLinks(this.room));
+    this.availableLinks = this.links.slice();
     this.towers = getRoomTowers(this.room);
     this.powerSpawn = getRoomPowerSpawn(this.room);
     this.nuker = getRoomNuker(this.room);
@@ -624,7 +624,7 @@ export class Colony {
     this.transportRequests = new TransportRequestGroup();
     // Register a room planner
     this.roomPlanner = new RoomPlanner(this);
-    if (this.roomPlanner.memory.bunkerData && this.roomPlanner.memory.bunkerData.anchor) {
+    if (this.roomPlanner.memory.bunkerData?.anchor) {
       this.layout = "bunker";
       const anchor = derefRoomPosition(this.roomPlanner.memory.bunkerData.anchor);
       // log.debug(JSON.stringify(`anchor for ${this.name}: ${anchor}`));
@@ -871,29 +871,6 @@ export class Colony {
         sum(getRoomBarriers(this.room), (barrier) => barrier.hits) /
         getRoomBarriers(this.room).length;
       Stats.log(`colonies.${this.name}.avgBarrierHits`, avgBarrierHits);
-    }
-  }
-
-  private drawCreepReport(coord: Coord): Coord {
-    let { x, y } = coord;
-    const roledata = Overmind.overseer.getCreepReport(this);
-    const tablePos = new RoomPosition(x, y, this.room.name);
-    y = Visualizer.infoBox(`${this.name} Creeps`, roledata, tablePos, 7);
-    return { x, y };
-  }
-
-  visuals(): void {
-    let x = 1;
-    let y = 11.5;
-    let coord: Coord;
-    coord = this.drawCreepReport({ x, y });
-    x = coord.x;
-    y = coord.y;
-
-    for (const hiveCluster of compact([this.hatchery, this.commandCenter, this.evolutionChamber])) {
-      coord = hiveCluster!.visuals({ x, y });
-      x = coord.x;
-      y = coord.y;
     }
   }
 }

@@ -13,12 +13,12 @@ const MAX_TOTAL_PATH_LENGTH = 25 * 3;
 
 @profile
 export class BasePlanner {
-  static getBunkerLocation(room: Room, visualize = true): RoomPosition | undefined {
+  static getBunkerLocation(room: Room): RoomPosition | undefined {
     const colony = Overmind.colonies[room.name] as Colony;
     if (colony && colony.bunker && colony.bunker.anchor) {
       return colony.bunker.anchor;
     }
-    let allowableLocations = this.getAllowableBunkerLocations(room, visualize);
+    let allowableLocations = this.getAllowableBunkerLocations(room);
     if (allowableLocations.length > MAX_SAMPLE) {
       allowableLocations = sample(allowableLocations, MAX_SAMPLE);
     }
@@ -44,8 +44,8 @@ export class BasePlanner {
     }
   }
 
-  private static getAllowableBunkerLocations(room: Room, visualize = true): RoomPosition[] {
-    let allowableLocations = this.getNonIntersectingBunkerLocations(room.name, visualize);
+  private static getAllowableBunkerLocations(room: Room): RoomPosition[] {
+    let allowableLocations = this.getNonIntersectingBunkerLocations(room.name);
     if (allowableLocations.length > MAX_SAMPLE) {
       allowableLocations = sample(allowableLocations, MAX_SAMPLE);
     }
@@ -62,19 +62,10 @@ export class BasePlanner {
     allowableLocations = allowableLocations.filter(
       (anchor) => !sitesAndMineral.some((pos) => this.bunkerIntersectsWith(anchor, pos, 1)),
     );
-    if (visualize) {
-      const vis = room.visual;
-      for (const pos of allowableLocations) {
-        vis.circle(pos.x, pos.y, { fill: "purple" });
-      }
-    }
     return allowableLocations;
   }
 
-  private static getNonIntersectingBunkerLocations(
-    roomName: string,
-    visualize = true,
-  ): RoomPosition[] {
+  private static getNonIntersectingBunkerLocations(roomName: string): RoomPosition[] {
     const dt = distanceTransform(roomName);
     const coords: Coord[] = [];
     let x, y: number;
@@ -90,12 +81,6 @@ export class BasePlanner {
           // If it might not fits, check that it fits before I sits
           coords.push({ x, y });
         }
-      }
-    }
-    if (visualize) {
-      const vis = new RoomVisual(roomName);
-      for (const coord of coords) {
-        vis.text(dt.get(coord.x, coord.y).toString(), coord.x, coord.y);
       }
     }
     return coords.map((coord) => new RoomPosition(coord.x, coord.y, roomName));

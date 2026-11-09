@@ -60,7 +60,6 @@ function main(): void {
   PHASE = "run";
   Overmind.run(); // Run phase: execute state-changing actions
   PHASE = "postRun";
-  Overmind.visuals(); // Draw visuals
   Stats.run(); // Record statistics
   Memory.tick++; // Record successful tick
 

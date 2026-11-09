@@ -20,7 +20,7 @@ export class TaskTransferAll extends Task<transferAllTargetType> {
   }
 
   isValidTask() {
-    for (const [resourceType, amount] of getStoreContents(this.creep.carry)) {
+    for (const [resourceType, amount] of getStoreContents(this.creep.store)) {
       if (this.data.skipEnergy && resourceType == RESOURCE_ENERGY) {
         continue;
       }
@@ -37,7 +37,7 @@ export class TaskTransferAll extends Task<transferAllTargetType> {
 
   work() {
     if (!this.target) return ERR_INVALID_TARGET;
-    for (const [resourceType, amount] of getStoreContents(this.creep.carry)) {
+    for (const [resourceType, amount] of getStoreContents(this.creep.store)) {
       if (this.data.skipEnergy && resourceType == RESOURCE_ENERGY) {
         continue;
       }

@@ -23,7 +23,7 @@ import { profile } from "../profiler/decorator";
 import { Zerg } from "../zerg/Zerg";
 import { initializeTask } from "./initializer";
 
-type targetType = { id?: string; name?: string; ref?: string; pos: ProtoPos }; // overwrite this variable to specify more precise typing
+type targetType = { id?: Id<_HasId>; name?: string; ref?: string; pos: ProtoPos }; // overwrite this variable to specify more precise typing
 
 /**
  * An abstract class for encapsulating creep actions. This generalizes the concept of "do action X to thing Y until
@@ -97,9 +97,10 @@ export abstract class Task<TargetType extends targetType> {
       descriptor += " targetPos: " + getRoomPositionPrint(this.targetPos);
     }
     if (this.target) {
-      const targetId = (<any>this.target).id;
-      if (targetId && Game.getObjectById(targetId)) {
-        descriptor += " target: " + Game.getObjectById(targetId)!.toString();
+      const targetId = this.target.id;
+      const target = targetId ? Game.getObjectById(targetId) : null;
+      if (target) {
+        descriptor += " target: " + target.toString();
       }
     }
     if (this.parent) {

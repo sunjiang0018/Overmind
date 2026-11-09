@@ -9,11 +9,10 @@ import { Pathing } from "../../movement/Pathing";
 import { DismantleOverlord } from "../../overlords/situational/dismantler";
 import { AttackStructurePriorities } from "../../priorities/priorities_structures";
 import { profile } from "../../profiler/decorator";
-import { Visualizer } from "../../visuals/Visualizer";
 import { Directive } from "../Directive";
 
 interface DirectiveModularDismantleMemory extends FlagMemory {
-  targetId?: string;
+  targetId?: Id<Structure>;
   numberSpots?: number;
   attackInsteadOfDismantle?: boolean;
   onlyKillRampart?: boolean;
@@ -112,9 +111,5 @@ export class DirectiveModularDismantle extends Directive {
     if (isPositionVisible(this.pos) && !this.getTarget()) {
       this.remove();
     }
-  }
-
-  visuals(): void {
-    Visualizer.marker(this.pos, { color: "yellow" });
   }
 }

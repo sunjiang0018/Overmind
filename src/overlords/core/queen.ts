@@ -52,7 +52,7 @@ export class QueenOverlord extends Overlord {
 
   private rechargeActions(queen: Zerg): void {
     if (this.colony?.roomPlanner?.memory.logisticsPolicy?.queenBufferFirst) {
-      const wanted = queen.carryCapacity - queen.carry.energy;
+      const wanted = queen.store.getCapacity() - queen.store.energy;
       if (wanted <= 0) return;
       const batteries = this.hatchery.batteries.filter((b) => getStoredEnergy(b) > 0);
       // A full buffer supports one full load; a live Link holds only 800.
@@ -101,13 +101,13 @@ export class QueenOverlord extends Overlord {
       // Can energy be moved from the link to the battery?
       if (battery && !isStructureFull(battery) && !isStructureEmpty(this.hatchery.link)) {
         // Move energy to battery as needed
-        if (queen.carry.energy < queen.carryCapacity) {
+        if (queen.store.energy < queen.store.getCapacity()) {
           queen.task = Tasks.withdraw(this.hatchery.link);
         } else {
           queen.task = Tasks.transfer(battery);
         }
       } else {
-        if (queen.carry.energy < queen.carryCapacity) {
+        if (queen.store.energy < queen.store.getCapacity()) {
           // make sure you're recharged
           if (!isStructureEmpty(this.hatchery.link)) {
             queen.task = Tasks.withdraw(this.hatchery.link);
@@ -117,14 +117,14 @@ export class QueenOverlord extends Overlord {
         }
       }
     } else {
-      if (battery && queen.carry.energy < queen.carryCapacity) {
+      if (battery && queen.store.energy < queen.store.getCapacity()) {
         queen.task = Tasks.withdraw(battery);
       }
     }
   }
 
   private handleQueen(queen: Zerg): void {
-    if (queen.carry.energy > 0) {
+    if (queen.store.energy > 0) {
       this.supplyActions(queen);
     } else {
       this.rechargeActions(queen);

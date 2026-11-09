@@ -224,7 +224,7 @@ export class ExpansionEvaluator {
     }
 
     // compute a possible bunker position
-    const bunkerLocation = BasePlanner.getBunkerLocation(room, false);
+    const bunkerLocation = BasePlanner.getBunkerLocation(room);
     if (!bunkerLocation) {
       RoomIntel.setExpansionData(room.name, false);
       log.info(`Room ${room.name} is uninhabitable because a bunker can't be built here!`);

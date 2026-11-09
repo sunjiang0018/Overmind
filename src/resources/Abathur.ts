@@ -131,7 +131,7 @@ export const baseStockAmounts: { [key: string]: number } = {
 };
 
 export interface Reaction {
-  mineralType: string;
+  mineralType: ResourceConstant;
   amount: number;
 }
 

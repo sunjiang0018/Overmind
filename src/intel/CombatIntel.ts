@@ -26,7 +26,6 @@ import { profile } from "../profiler/decorator";
 import { BOOST_TIERS } from "../resources/map_resources";
 import { Cartographer } from "../utilities/Cartographer";
 import { getBodyBoosts } from "../utilities/creepUtils";
-import { Visualizer } from "../visuals/Visualizer";
 import { toCreep, Zerg } from "../zerg/Zerg";
 import { RoomIntel } from "./RoomIntel";
 import { sortBy, last, sum, min, max, unique, flatten } from "../utilities/native";
@@ -93,7 +92,7 @@ export class CombatIntel {
     if (room) {
       let expectedDamage = 0;
       for (const tower of getRoomTowers(room)) {
-        if (tower.energy > 0 || ignoreEnergy) {
+        if (tower.store[RESOURCE_ENERGY] > 0 || ignoreEnergy) {
           expectedDamage += this.singleTowerDamage(pos.getRangeTo(tower));
         }
       }
@@ -158,8 +157,6 @@ export class CombatIntel {
           );
         }
       });
-
-      Visualizer.displayCostMatrix(matrix, room.name);
       console.log(
         `Cost matrix cpu used in ${getRoomPrint(room)} = ${Game.cpu.getUsed() - cpuUsed}`,
       );
@@ -201,8 +198,6 @@ export class CombatIntel {
           );
         }
       });
-
-      Visualizer.displayCostMatrix(matrix, room.name);
       console.log(
         `Cost matrix cpu used in ${getRoomPrint(room)} = ${Game.cpu.getUsed() - cpuUsed}`,
       );

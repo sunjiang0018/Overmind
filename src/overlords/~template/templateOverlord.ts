@@ -147,12 +147,12 @@ export class TemplateOverlord extends Overlord {
       return;
     }
     // You're in the room, upgrade if you have energy
-    if (upgrader.carry.energy > 0) {
+    if (upgrader.store.energy > 0) {
       upgrader.task = Tasks.upgrade(this.colony.controller);
       return;
     }
     // If you're out of energy, recharge from link or battery
-    if (this.colony.upgradeSite.link && this.colony.upgradeSite.link.energy > 0) {
+    if (this.colony.upgradeSite.link && this.colony.upgradeSite.link.store[RESOURCE_ENERGY] > 0) {
       upgrader.task = Tasks.withdraw(this.colony.upgradeSite.link);
       return;
     }
@@ -195,7 +195,7 @@ export class TemplateOverlord extends Overlord {
 
   private handleWorker(worker: Zerg): void {
     // Get energy if needed
-    if (worker.carry.energy == 0) {
+    if (worker.store.energy == 0) {
       worker.task = Tasks.recharge();
       return;
     }

@@ -111,8 +111,8 @@ export class NukePlanner {
     if (
       !colony.nuker ||
       colony.nuker.cooldown > 0 ||
-      colony.nuker.ghodium < colony.nuker.ghodiumCapacity ||
-      colony.nuker.energy < colony.nuker.energyCapacity
+      colony.nuker.store[RESOURCE_GHODIUM] < colony.nuker.store.getCapacity(RESOURCE_GHODIUM) ||
+      colony.nuker.store[RESOURCE_ENERGY] < colony.nuker.store.getCapacity(RESOURCE_ENERGY)
     ) {
       return;
     }

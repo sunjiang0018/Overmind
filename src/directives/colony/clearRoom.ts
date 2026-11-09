@@ -93,7 +93,10 @@ export class DirectiveClearRoom extends Directive {
           DirectiveHaul.createIfNotPresent(s.pos, "pos");
           continue;
         }
-        if (s.structureType == STRUCTURE_NUKER && (s as StructureNuker).energy > 50000) {
+        if (
+          s.structureType == STRUCTURE_NUKER &&
+          (s as StructureNuker).store[RESOURCE_ENERGY] > 50000
+        ) {
           DirectiveHaul.createIfNotPresent(s.pos, "pos");
         }
         if (keepRoads && s.structureType == STRUCTURE_ROAD) {

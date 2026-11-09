@@ -540,9 +540,4 @@ export abstract class Directive {
   // removal(): void {
   //
   // }
-
-  /**
-   * Override Directive.visuals() to display any relevant information via room visuals
-   */
-  visuals(): void {}
 }

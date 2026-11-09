@@ -379,7 +379,10 @@ export class MiningOverlord extends Overlord {
     if (this.link) {
       // If the link will be full with next deposit from the miner
       const minerCapacity = 150;
-      if (this.link.energy + minerCapacity > this.link.energyCapacity) {
+      if (
+        this.link.store[RESOURCE_ENERGY] + minerCapacity >
+        this.link.store.getCapacity(RESOURCE_ENERGY)
+      ) {
         this.colony.linkNetwork.requestTransmit(this.link);
       }
     }
@@ -407,12 +410,12 @@ export class MiningOverlord extends Overlord {
     if (this.container) {
       if (
         this.container.hits < this.container.hitsMax &&
-        miner.carry.energy >=
-          Math.min(miner.carryCapacity, REPAIR_POWER * miner.getActiveBodyparts(WORK))
+        miner.store.energy >=
+          Math.min(miner.store.getCapacity(), REPAIR_POWER * miner.getActiveBodyparts(WORK))
       ) {
         return miner.goRepair(this.container);
       } else {
-        if (sum(miner.carry) < miner.carryCapacity) {
+        if (sum(miner.store) < miner.store.getCapacity()) {
           return miner.goHarvest(this.source!);
         } else {
           return miner.goTransfer(this.container);
@@ -423,8 +426,8 @@ export class MiningOverlord extends Overlord {
     // Build output site
     if (this.constructionSite) {
       if (
-        miner.carry.energy >=
-        Math.min(miner.carryCapacity, BUILD_POWER * miner.getActiveBodyparts(WORK))
+        miner.store.energy >=
+        Math.min(miner.store.getCapacity(), BUILD_POWER * miner.getActiveBodyparts(WORK))
       ) {
         return miner.goBuild(this.constructionSite);
       } else {
@@ -435,7 +438,7 @@ export class MiningOverlord extends Overlord {
     // Drop mining
     if (this.allowDropMining) {
       miner.goHarvest(this.source!);
-      if (miner.carry.energy > 0.8 * miner.carryCapacity) {
+      if (miner.store.energy > 0.8 * miner.store.getCapacity()) {
         // try to drop on top of largest drop if full
         const biggestDrop = maxBy(
           miner.pos.findInRange(getRoomDroppedEnergy(miner.room), 1),
@@ -486,7 +489,7 @@ export class MiningOverlord extends Overlord {
         // approach mining site
         if (this.goToMiningSite(miner)) return;
       }
-      if (miner.carry.energy > 0.9 * miner.carryCapacity) {
+      if (miner.store.energy > 0.9 * miner.store.getCapacity()) {
         const result = miner.transfer(this.link, RESOURCE_ENERGY);
         if (
           result == ERR_FULL &&
@@ -532,8 +535,8 @@ export class MiningOverlord extends Overlord {
     if (this.container) {
       if (
         this.container.hits < this.container.hitsMax &&
-        miner.carry.energy >=
-          Math.min(miner.carryCapacity, REPAIR_POWER * miner.getActiveBodyparts(WORK))
+        miner.store.energy >=
+          Math.min(miner.store.getCapacity(), REPAIR_POWER * miner.getActiveBodyparts(WORK))
       ) {
         return miner.repair(this.container);
       } else {
@@ -545,8 +548,8 @@ export class MiningOverlord extends Overlord {
     if (this.constructionSite) {
       // standard miners won't have both a container and a construction site
       if (
-        miner.carry.energy >=
-        Math.min(miner.carryCapacity, BUILD_POWER * miner.getActiveBodyparts(WORK))
+        miner.store.energy >=
+        Math.min(miner.store.getCapacity(), BUILD_POWER * miner.getActiveBodyparts(WORK))
       ) {
         return miner.build(this.constructionSite);
       } else {
@@ -557,7 +560,7 @@ export class MiningOverlord extends Overlord {
     // Drop mining
     if (this.allowDropMining) {
       this.harvestOrSleep(miner, source);
-      if (miner.carry.energy > 0.8 * miner.carryCapacity) {
+      if (miner.store.energy > 0.8 * miner.store.getCapacity()) {
         // move over the drop when you're close to full
         const biggestDrop = maxBy(
           miner.pos.findInRange(getRoomDroppedEnergy(miner.room), 1),
@@ -567,7 +570,7 @@ export class MiningOverlord extends Overlord {
           miner.goTo(biggestDrop);
         }
       }
-      if (miner.carry.energy == miner.carryCapacity) {
+      if (miner.store.energy == miner.store.getCapacity()) {
         // drop when you are full
         miner.drop(RESOURCE_ENERGY);
       }
@@ -592,8 +595,8 @@ export class MiningOverlord extends Overlord {
     if (this.container) {
       if (
         this.container.hits < this.container.hitsMax &&
-        miner.carry.energy >=
-          Math.min(miner.carryCapacity, REPAIR_POWER * miner.getActiveBodyparts(WORK))
+        miner.store.energy >=
+          Math.min(miner.store.getCapacity(), REPAIR_POWER * miner.getActiveBodyparts(WORK))
       ) {
         return miner.repair(this.container);
       } else {
@@ -605,8 +608,8 @@ export class MiningOverlord extends Overlord {
     if (this.constructionSite) {
       // standard miners won't have both a container and a construction site
       if (
-        miner.carry.energy >=
-        Math.min(miner.carryCapacity, BUILD_POWER * miner.getActiveBodyparts(WORK))
+        miner.store.energy >=
+        Math.min(miner.store.getCapacity(), BUILD_POWER * miner.getActiveBodyparts(WORK))
       ) {
         return miner.build(this.constructionSite);
       } else {
@@ -617,7 +620,7 @@ export class MiningOverlord extends Overlord {
     // Drop mining
     if (this.allowDropMining) {
       this.harvestOrSleep(miner, source);
-      if (miner.carry.energy > 0.8 * miner.carryCapacity) {
+      if (miner.store.energy > 0.8 * miner.store.getCapacity()) {
         // move over the drop when you're close to full
         const biggestDrop = maxBy(
           miner.pos.findInRange(getRoomDroppedEnergy(miner.room), 1),
@@ -627,7 +630,7 @@ export class MiningOverlord extends Overlord {
           miner.goTo(biggestDrop);
         }
       }
-      if (miner.carry.energy == miner.carryCapacity) {
+      if (miner.store.energy == miner.store.getCapacity()) {
         // drop when you are full
         miner.drop(RESOURCE_ENERGY);
       }
@@ -649,7 +652,7 @@ export class MiningOverlord extends Overlord {
       } else {
         miner.harvest(this.secondSource!);
       }
-      if (miner.carry.energy > 0.9 * miner.carryCapacity) {
+      if (miner.store.energy > 0.9 * miner.store.getCapacity()) {
         miner.transfer(this.link, RESOURCE_ENERGY);
       }
       return;
@@ -661,8 +664,8 @@ export class MiningOverlord extends Overlord {
     if (this.container) {
       if (
         this.container.hits < this.container.hitsMax &&
-        miner.carry.energy >=
-          Math.min(miner.carryCapacity, REPAIR_POWER * miner.getActiveBodyparts(WORK))
+        miner.store.energy >=
+          Math.min(miner.store.getCapacity(), REPAIR_POWER * miner.getActiveBodyparts(WORK))
       ) {
         return miner.repair(this.container);
       } else if (this.source && this.source.energy > 0) {
@@ -675,8 +678,8 @@ export class MiningOverlord extends Overlord {
     // Build output site
     if (this.constructionSite) {
       if (
-        miner.carry.energy >=
-        Math.min(miner.carryCapacity, BUILD_POWER * miner.getActiveBodyparts(WORK))
+        miner.store.energy >=
+        Math.min(miner.store.getCapacity(), BUILD_POWER * miner.getActiveBodyparts(WORK))
       ) {
         return miner.build(this.constructionSite);
       } else {
@@ -687,7 +690,7 @@ export class MiningOverlord extends Overlord {
     // Drop mining
     if (this.allowDropMining) {
       miner.harvest(this.source!);
-      if (miner.carry.energy > 0.8 * miner.carryCapacity) {
+      if (miner.store.energy > 0.8 * miner.store.getCapacity()) {
         // move over the drop when you're close to full
         const biggestDrop = maxBy(
           miner.pos.findInRange(getRoomDroppedEnergy(miner.room), 1),
@@ -697,7 +700,7 @@ export class MiningOverlord extends Overlord {
           miner.goTo(biggestDrop);
         }
       }
-      if (miner.carry.energy == miner.carryCapacity) {
+      if (miner.store.energy == miner.store.getCapacity()) {
         // drop when you are full
         miner.drop(RESOURCE_ENERGY);
       }

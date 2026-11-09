@@ -18,7 +18,6 @@ import { DirectiveStronghold } from "../../directives/situational/stronghold";
 import { OverlordPriority } from "../../priorities/priorities_overlords";
 import { profile } from "../../profiler/decorator";
 import { getCacheExpiration, posFromReadableName } from "../../utilities/utils";
-import { Visualizer } from "../../visuals/Visualizer";
 import { CombatZerg } from "../../zerg/CombatZerg";
 import { CombatOverlord, CombatOverlordMemory } from "../CombatOverlord";
 import { flatten } from "../../utilities/native";
@@ -96,14 +95,6 @@ export class StrongholdOverlord extends CombatOverlord {
 
     // Array where first index is how many hostile locations there are
     const safeSpots: RoomPosition[][] = this.findSafeLocation(shootPositions, avoidLocs);
-    safeSpots.forEach((distanceArray, hostilesIndex) =>
-      distanceArray.forEach((spot) =>
-        Visualizer.marker(spot, {
-          color: StrongholdOverlord.numberToColor(hostilesIndex),
-          frames: 2,
-        }),
-      ),
-    );
 
     // If you can safely attack goal, do that
     if (safeSpots[0].length > 0) {
@@ -283,7 +274,6 @@ export class StrongholdOverlord extends CombatOverlord {
           if (mineral) {
             avoids = avoids.concat(roomPositionGetPositionsInRange(mineral.pos, 4, false, false));
           }
-          avoids.forEach((av) => Visualizer.circle(av));
           killer.goTo(attackPos!, { pathOpts: { obstacles: avoids } });
         }
       }
@@ -302,33 +292,7 @@ export class StrongholdOverlord extends CombatOverlord {
     }
   }
 
-  static numberToColor(colorNumber: number) {
-    switch (colorNumber) {
-      case 0:
-        return "green";
-      case 1:
-        return "yellow";
-      case 2:
-        return "orange";
-      default:
-        return "red";
-    }
-  }
-
   init() {
-    if (this.memory.attackingPosition) {
-      const attackPos = posFromReadableName(this.memory.attackingPosition);
-      if (attackPos) {
-        Visualizer.marker(attackPos, "white");
-      }
-    }
-    if (this.memory.target && Game.getObjectById(this.memory.target.id)) {
-      const target = Game.getObjectById(this.memory.target.id) as RoomObject;
-      if (target) {
-        Visualizer.marker(target.pos, "black");
-      }
-    }
-
     if (this.directive.memory.state >= 3) {
       return; // No need to spawn more
     }
@@ -384,7 +348,6 @@ export class StrongholdOverlord extends CombatOverlord {
     // 		avoids = avoids.concat(this.directive.room.mineral.pos.getPositionsInRange(4, false, false))
     // 	}
     // }
-    // avoids.forEach(av => Visualizer.circle(av, 'blue'));
     // log.info(`Running stronghold overlord ${this.print}`);
     this.autoRun(this.strongholdKillers, (killer) => this.handleKiller(killer));
   }

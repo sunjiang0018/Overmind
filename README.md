@@ -46,7 +46,8 @@ Use Node.js 24.11 or newer within the 24.x line (`nvm use`) and pnpm 12.16.1 (`p
 - Compile and deploy to public server: `npm run push-main`
 - Compile and deploy to private server: `npm run push-pserver`
 - Compile without deploying: `npm run build`
-- Run lint and type checking: `pnpm run check`
+- Run formatting, lint, type checking, and deprecated API checks: `pnpm run check`
+- Scan source, tests, and JavaScript tooling for deprecated APIs: `pnpm run check:apis`
 - Run all TypeScript tests, including a type-checked build and bundle runtime tests: `pnpm test`
 - Generate API documentation in `dist/docs`: `npm run docs`
 
@@ -58,6 +59,7 @@ Both type checking and bundling use Vite+: `pnpm run typecheck` invokes Vite+'s 
 
 ### Development notes
 
+- Use `creep.store` and `store.getCapacity()` on engine creeps and Zerg wrappers; the wrappers no longer expose `carry` or `carryCapacity`. Structure resources and capacities also use the Store API; pass a resource type for restricted stores such as labs and nukers. `check:apis` checks the installed declarations' `@deprecated` tags and resolved call overloads, including legacy code under `src/deprecated`.
 - Persistent Memory key enums live in `src/memory/MemoryKeys.ts` and must be explicitly imported. Keep their values stable so existing saved Memory remains readable.
 - To change the output directory, use `pnpm exec vp pack --out-dir <directory>`. Builds clean the selected output directory.
 - Validate the terrain layout with `python3 scripts/plan-e58s42.py --check`; its input is `scripts/fixtures/E58S42.json`.

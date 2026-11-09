@@ -1,7 +1,7 @@
 import { createGameRuntime } from "./game-runtime";
 import type { TestScope } from "./types";
 // Explicit dependencies for extracted business-method tests with legacy-shaped fixtures.
-const api: Record<string, [string, string, boolean]> = {
+const api: Record<string, [string, string | null, boolean]> = {
   getCreepBoosts: ["Creep", "boosts", false],
   getCreepBoostCounts: ["Creep", "boostCounts", false],
   getCreepApproxMoveSpeed: ["Creep", "approxMoveSpeed", false],
@@ -66,18 +66,6 @@ const api: Record<string, [string, string, boolean]> = {
   roomPositionFindClosestByLimitedRange: ["RoomPosition", "findClosestByLimitedRange", true],
   roomPositionFindClosestByMultiRoomRange: ["RoomPosition", "findClosestByMultiRoomRange", true],
   roomPositionFindClosestByRangeThenPath: ["RoomPosition", "findClosestByRangeThenPath", true],
-  roomVisualInfoBox: ["RoomVisual", "infoBox", true],
-  roomVisualMultitext: ["RoomVisual", "multitext", true],
-  roomVisualBox: ["RoomVisual", "box", true],
-  roomVisualStructure: ["RoomVisual", "structure", true],
-  roomVisualConnectRoads: ["RoomVisual", "connectRoads", true],
-  roomVisualSpeech: ["RoomVisual", "speech", true],
-  roomVisualAnimatedPosition: ["RoomVisual", "animatedPosition", true],
-  roomVisualTest: ["RoomVisual", "test", true],
-  roomVisualResource: ["RoomVisual", "resource", true],
-  roomVisualFluid: ["RoomVisual", "_fluid", true],
-  roomVisualMineral: ["RoomVisual", "_mineral", true],
-  roomVisualCompound: ["RoomVisual", "_compound", true],
   isStructureWalkable: ["Structures", "isWalkable", false],
   getStoredEnergy: ["Structures", "energy", false],
   isStructureFull: ["Structures", "isFull", false],
@@ -86,7 +74,7 @@ const api: Record<string, [string, string, boolean]> = {
   isControllerSignedByMe: ["Structures", "signedByMe", false],
   isControllerSignedByScreeps: ["Structures", "signedByScreeps", false],
   structureControllerNeedsReserving: ["Structures", "needsReserving", true],
-  getStructureLinkStoreCapacity: ["Structures", "storeCapacity", false],
+  getStructureLinkStoreCapacity: ["Structures", null, false],
   getStoreContents: ["Structures", "contents", false],
   isTerminalReady: ["Structures", "isReady", false],
   hasTerminalReceived: ["Structures", "hasReceived", false],
@@ -124,7 +112,7 @@ function installGameFixtures(context: TestScope) {
   const modules: Record<string, TestScope> = {};
   for (const [name, [module, property, method]] of Object.entries(api)) {
     const fn = (receiver: any, ...args: any[]) => {
-      if (receiver && property in Object(receiver)) {
+      if (receiver && property && property in Object(receiver)) {
         return method ? receiver[property](...args) : receiver[property];
       }
       return runtime.load(module)[name](receiver, ...args);

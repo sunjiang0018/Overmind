@@ -1,7 +1,6 @@
 import { isPositionVisible } from "../../game/RoomPosition";
 import { AttackStructurePriorities } from "../../priorities/priorities_structures";
 import { profile } from "../../profiler/decorator";
-import { Visualizer } from "../../visuals/Visualizer";
 import { Directive } from "../Directive";
 
 /**
@@ -37,9 +36,5 @@ export class DirectiveTargetSiege extends Directive {
     if (isPositionVisible(this.pos) && !this.getTarget()) {
       this.remove();
     }
-  }
-
-  visuals(): void {
-    Visualizer.marker(this.pos, { color: "orange" });
   }
 }

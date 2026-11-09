@@ -19,7 +19,6 @@ import { upgradeTaskName } from "../../tasks/instances/upgrade";
 import { Tasks } from "../../tasks/Tasks";
 import { Cartographer, ROOMTYPE_CONTROLLER } from "../../utilities/Cartographer";
 import { minBy } from "../../utilities/utils";
-import { Visualizer } from "../../visuals/Visualizer";
 import { Zerg } from "../../zerg/Zerg";
 import { Overlord } from "../Overlord";
 import { isSouthDefenseActive } from "../../strategy/colonyDefense";
@@ -153,7 +152,6 @@ export class WorkerOverlord extends Overlord {
           DirectiveNukeResponse.shouldReinforceLocation(rampart.pos)
         ) {
           this.nukeDefenseRamparts.push(rampart);
-          Visualizer.marker(rampart.pos, { color: "gold" });
           this.nukeDefenseHitsRemaining[rampart.id] = Math.min(neededHits - rampart.hits, 0);
         }
       }
@@ -465,7 +463,7 @@ export class WorkerOverlord extends Overlord {
   }
 
   private handleWorker(worker: Zerg) {
-    if (worker.carry.energy > 0) {
+    if (worker.store.energy > 0) {
       // TODO Add high priority to block controller with ramparts/walls in case of downgrade attack
       // FIXME workers get stalled at controller in case of downgrade attack
       // Upgrade controller if close to downgrade or if getting controller attacked/was downgraded

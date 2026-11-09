@@ -108,59 +108,6 @@ test("retired scouts without a home spawn are removed instead of becoming perman
   assert.equal(retired, 1);
 });
 
-test("visuals master switch suppresses direct rendering even when saved Memory enables it", () => {
-  const settings = { ENABLE_VISUALS: false };
-  let renders = 0;
-  const context: TestScope = {
-    exports: {},
-    Memory: { settings: { enableVisuals: true } },
-    require: (name: string) =>
-      name.includes("~settings") ? settings : { profile: <T>(cls: T) => cls },
-    RoomVisual: class {
-      constructor() {
-        renders++;
-      }
-      animatedPosition() {
-        return this;
-      }
-    },
-  };
-  evaluate(fs.readFileSync("src/visuals/Visualizer.ts", "utf8"), context);
-  const visual = context.exports.Visualizer;
-  const pos = { x: 1, y: 2, roomName: "E58S42" };
-  visual.marker(pos);
-  visual.circle(pos);
-  visual.rect(pos);
-  visual.drawRoads([]);
-  visual.drawPath([]);
-  visual.drawLogo();
-  visual.drawHUD();
-  visual.drawGraphs();
-  visual.drawNotifications([]);
-  visual.visuals();
-  visual.displayCostMatrix({});
-  visual.text("test", pos);
-  visual.barGraph(0.5, pos);
-  visual.section("test", pos, 5, 5);
-  visual.infoBox("test", [], pos, 5);
-  visual.table([["test"]], pos);
-  visual.multitext(["test"], pos);
-  visual.showInfo([], { pos });
-  assert.equal(renders, 0);
-  settings.ENABLE_VISUALS = true;
-  visual.marker(pos);
-  assert.equal(renders, 1);
-  context.Memory.settings.enableVisuals = false;
-  visual.marker(pos);
-  assert.equal(renders, 1);
-});
-
-test("outer visual dispatcher does no work when rendering is disabled", () => {
-  const context: TestScope = { exports: {}, Visualizer: { enabled: false } };
-  const Subject = loadClass("src/Overmind.ts", "Overmind", ["visuals"], context);
-  new Subject().visuals(); // No Game, colonies, or overseer should be accessed.
-});
-
 test("outpost patrols are staggered; an observed threat is handled on that room scheduled tick", () => {
   const context: TestScope = scheduleContext();
   const defended: [number, string][] = [];

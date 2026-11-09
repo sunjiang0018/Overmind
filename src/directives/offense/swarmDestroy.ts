@@ -2,7 +2,6 @@ import { getRoomHostileStructures, getRoomHostiles } from "../../game/Room";
 import { log } from "../../console/log";
 import { SwarmDestroyerOverlord } from "../../overlords/offense/swarmDestroyer";
 import { profile } from "../../profiler/decorator";
-import { Visualizer } from "../../visuals/Visualizer";
 import { Directive } from "../Directive";
 
 /**
@@ -41,9 +40,5 @@ export class DirectiveSwarmDestroy extends Directive {
       log.notify(`Swarm destroyer mission at ${this.pos.roomName} completed successfully.`);
       this.remove();
     }
-  }
-
-  visuals(): void {
-    Visualizer.marker(this.pos, { color: "red" });
   }
 }

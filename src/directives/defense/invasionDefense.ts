@@ -91,7 +91,7 @@ export class DirectiveInvasionDefense extends Directive {
       const playerMem = mem[creep.owner.username];
       if (!playerMem.creeps[creep.name]) {
         playerMem.creeps[creep.name] = Game.time;
-        const creepType = creep.name.substr(0, creep.name.indexOf(" "));
+        const creepType = creep.name.slice(0, Math.max(0, creep.name.indexOf(" ")));
         if (creepType == creep.name) {
           // memory protection if they don't split name
           return;

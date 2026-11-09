@@ -185,7 +185,6 @@ export class Mem {
         signature: DEFAULT_OVERMIND_SIGNATURE,
         operationMode: DEFAULT_OPERATION_MODE,
         log: {},
-        enableVisuals: true,
         resourceCollectionMode: 0,
         allies: [MY_USERNAME],
         powerCollection: {

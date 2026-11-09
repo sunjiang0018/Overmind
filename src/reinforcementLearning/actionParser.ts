@@ -40,9 +40,10 @@ export class ActionParser {
   private static parseAction(actor: NeuralZerg, action: RLAction, autoEngage = true): boolean {
     const command: string = action[0];
     const predicate: any = action[1];
-    // @ts-ignore
     const targ: RoomObject | null =
-      typeof predicate == "string" ? Game.getObjectById(predicate) : null;
+      typeof predicate == "string"
+        ? Game.getObjectById(predicate as Id<RoomObject & _HasId>)
+        : null;
 
     switch (command) {
       case "move":

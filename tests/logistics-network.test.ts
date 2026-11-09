@@ -1,3 +1,4 @@
+import { createStore } from "./helpers/store";
 import { classMembers } from "./helpers/source";
 import type { TestScope } from "./helpers/types";
 import { test } from "vite-plus/test";
@@ -45,8 +46,8 @@ test("transport predictions leave read-only live cargo unchanged for energy and 
     requests: [{ resourceType: "energy" }],
     predictedRequestAmount: () => -200,
   });
-  const original = Object.freeze({ energy: 100 });
-  const transport = { task: { target: { id: "source" } }, carry: original, carryCapacity: 1000 };
+  const original = Object.freeze(createStore({ energy: 100 }, 1000));
+  const transport = { task: { target: { id: "source" } }, store: original };
   assert.deepEqual(net.computePredictedTransporterCarry(transport), { energy: 300 });
   assert.deepEqual(original, { energy: 100 });
   net.requests[0] = { resourceType: "all", target: { store: { energy: 100, H: 100 } } };
@@ -151,8 +152,7 @@ function transporterHarness(
   const overlord = Object.assign(new Transport(), { colony });
   const transporter: TestScope = {
     name: "transport",
-    carry: { energy },
-    carryCapacity: 1200,
+    store: createStore({ energy }, 1200),
     hasMineralsInCarry: false,
     pos: {},
     task: null,
@@ -241,7 +241,7 @@ test("emergency worker supply skips miners, spawning, remote, full and inactive 
 test("mixed cargo can still deliver its energy in a colony without Storage", () => {
   const h = transporterHarness(100);
   delete h.colony.storage;
-  h.transporter.carry.H = 100;
+  h.transporter.store.H = 100;
   h.transporter.hasMineralsInCarry = true;
   const worker = workerTarget();
   h.colony.creeps = [worker];
@@ -273,7 +273,7 @@ test("no Storage and no energy consumer leaves loaded cargo intact", () => {
   h.colony.spawns = [energyTarget("spawn", 300, 300)];
   h.overlord.handleSmolTransporter(h.transporter);
   assert.equal(h.transporter.task, null);
-  assert.equal(h.transporter.carry.energy, 200);
+  assert.equal(h.transporter.store.energy, 200);
 });
 
 test("loaded transports return to Storage when the only request is already covered", () => {
@@ -290,7 +290,7 @@ test("loaded transports return to Storage when the only request is already cover
 
 test("unfulfillable requests unload minerals or park empty transports without zero-amount withdrawals", () => {
   const minerals = transporterHarness(0);
-  minerals.transporter.carry.H = 100;
+  minerals.transporter.store.H = 100;
   minerals.transporter.hasMineralsInCarry = true;
   minerals.overlord.handleSmolTransporter(minerals.transporter);
   assert.equal(minerals.transporter.task.name, "transferAll");

@@ -5,15 +5,12 @@ import { getRoomPositionPrint, roomPositionLookForStructure } from "../game/Room
 import { log } from "../console/log";
 import { isCreep, isPowerCreep, isStandardZerg } from "../declarations/typeGuards";
 import { CombatIntel } from "../intel/CombatIntel";
-import { Movement } from "../movement/Movement";
 import { Overlord } from "../overlords/Overlord";
 import { profile } from "../profiler/decorator";
 import { BOOST_PARTS } from "../resources/map_resources";
 import { initializeTask } from "../tasks/initializer";
 import { MIN_LIFETIME_FOR_BOOST } from "../tasks/instances/getBoosted";
 import { Task } from "../tasks/Task";
-import { stringToColorHash } from "../utilities/utils";
-import { Visualizer } from "../visuals/Visualizer";
 import { AnyZerg } from "./AnyZerg";
 import { countBy, isEmpty, cloneDeep, pull, remove } from "../utilities/native";
 
@@ -42,13 +39,11 @@ export class Zerg extends AnyZerg {
   isStandardZerg: true;
   creep: Creep; // The creep that this wrapper class will control
   body: BodyPartDefinition[]; // These properties are all wrapped from this.creep.* to this.*
-  carry: StoreDefinition; // |
   store: StoreDefinition; // |
-  carryCapacity: number; // |
   fatigue: number; // |
   hits: number; // |
   hitsMax: number; // |
-  id: string; // |
+  id: Id<Creep>; // |
   memory: CreepMemory; // | See the ICreepMemory interface for structure
   name: string; // |
   pos: RoomPosition; // |
@@ -73,9 +68,7 @@ export class Zerg extends AnyZerg {
     // Copy over creep references
     // this.creep = creep;
     this.body = creep.body;
-    // this.carry = creep.carry;
     // this.store = creep.store;
-    // this.carryCapacity = creep.carryCapacity;
     this.fatigue = creep.fatigue;
     // this.hits = creep.hits;
     // this.hitsMax = creep.hitsMax;
@@ -115,9 +108,7 @@ export class Zerg extends AnyZerg {
       // this.pos = creep.pos;
       // this.nextPos = creep.pos;
       this.body = creep.body;
-      // this.carry = creep.carry;
       // this.store = creep.store;
-      // this.carryCapacity = creep.carryCapacity;
       this.fatigue = creep.fatigue;
       // this.hits = creep.hits;
       // this.memory = creep.memory;
@@ -600,22 +591,10 @@ export class Zerg extends AnyZerg {
     return !this.task || !this.task.isValid();
   }
 
-  private debugger(): void {
-    if (this.task && this.task.targetPos) {
-      const color = stringToColorHash(this.name);
-      Visualizer.circle(this.task.targetPos, color, { radius: 0.45 });
-      // Visualizer.circle(this.pos, color, {radius: 0.45});
-      Movement.visualizeMemorizedPath(this, color);
-    }
-  }
-
   /**
    * Execute the task you currently have.
    */
   run(): number | undefined {
-    if (this.memory.debug) {
-      this.debugger();
-    }
     if (this.task) {
       return this.task.run();
     }

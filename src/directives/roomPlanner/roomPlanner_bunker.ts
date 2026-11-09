@@ -1,6 +1,4 @@
 import { profile } from "../../profiler/decorator";
-import { bunkerLayout } from "../../roomPlanner/layouts/bunker";
-import { Visualizer } from "../../visuals/Visualizer";
 import { Directive } from "../Directive";
 
 /**
@@ -23,8 +21,4 @@ export class DirectiveRPBunker extends Directive {
   }
 
   run(): void {}
-
-  visuals(): void {
-    Visualizer.drawLayout(bunkerLayout, this.pos);
-  }
 }

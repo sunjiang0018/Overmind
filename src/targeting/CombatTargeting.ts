@@ -31,7 +31,6 @@ import {
 } from "../priorities/priorities_structures";
 import { profile } from "../profiler/decorator";
 import { maxBy } from "../utilities/utils";
-import { Visualizer } from "../visuals/Visualizer";
 import { Swarm } from "../zerg/Swarm";
 import { Zerg } from "../zerg/Zerg";
 import { MY_USERNAME } from "../~settings";
@@ -330,7 +329,6 @@ export class CombatTargeting {
     swarm: Swarm,
     roomName: string,
     randomness = 0,
-    displayCostMatrix = false,
   ): Structure | undefined {
     const room = Game.rooms[roomName];
     // Don't accidentally destroy your own shit
@@ -414,9 +412,6 @@ export class CombatTargeting {
           const randomFactor = Math.min(Math.round(randomness * Math.random()), 100);
           const cost = 100 + Math.round((barrier.hits / maxWallHits) * 100) + randomFactor;
           MatrixLib.setToMaxCostAfterMaxPooling(matrix, [barrier], swarm.width, swarm.height, cost);
-        }
-        if (displayCostMatrix) {
-          Visualizer.displayCostMatrix(matrix, roomName);
         }
         return matrix;
       },

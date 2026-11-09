@@ -56,7 +56,7 @@ import {
   minBy,
   onPublicServer,
 } from "./utilities/utils";
-import { MUON, MY_USERNAME, SHOW_ROOM_HUD, USE_TRY_CATCH } from "./~settings";
+import { MUON, MY_USERNAME, USE_TRY_CATCH } from "./~settings";
 import { groupBy, remove, sum, compact } from "./utilities/native";
 
 // export const DIRECTIVE_CHECK_FREQUENCY = 2;
@@ -669,57 +669,5 @@ export class Overseer implements IOverseer {
     }
 
     this.placeDirectives();
-  }
-
-  getCreepReport(colony: Colony): string[][] {
-    const spoopyBugFix = false;
-    const roleOccupancy: { [role: string]: [number, number] } = {};
-
-    for (const overlord of this.overlordsByColony[colony.name]) {
-      for (const role in overlord.creepUsageReport) {
-        const report = overlord.creepUsageReport[role];
-        if (report == undefined) {
-          if (Game.time % 100 == 0) {
-            log.info(`Role ${role} is not reported by ${overlord.ref}!`);
-          }
-        } else {
-          if (roleOccupancy[role] == undefined) {
-            roleOccupancy[role] = [0, 0];
-          }
-          roleOccupancy[role][0] += report[0];
-          roleOccupancy[role][1] += report[1];
-          if (spoopyBugFix) {
-            // bizzarely, if you comment these lines out, the creep report is incorrect
-            log.debug(`report: ${JSON.stringify(report)}`);
-            log.debug(`occupancy: ${JSON.stringify(roleOccupancy)}`);
-          }
-        }
-      }
-    }
-
-    // let padLength = _.max(_.map(_.keys(roleOccupancy), str => str.length)) + 2;
-    const roledata: string[][] = [];
-    for (const role in roleOccupancy) {
-      const [current, needed] = roleOccupancy[role];
-      // if (needed > 0) {
-      // 	stringReport.push('| ' + `${role}:`.padRight(padLength) +
-      // 					  `${Math.floor(100 * current / needed)}%`.padLeft(4));
-      // }
-      roledata.push([role, `${current}/${needed}`]);
-    }
-    return roledata;
-  }
-
-  visuals(): void {
-    for (const directive of this.directives) {
-      directive.visuals();
-    }
-    for (const overlord of this.overlords) {
-      overlord.visuals();
-    }
-    if (SHOW_ROOM_HUD) this.notifier.visuals();
-    // for (let colony of this.colonies) {
-    // 	this.drawCreepReport(colony);
-    // }
   }
 }

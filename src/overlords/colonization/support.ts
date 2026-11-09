@@ -251,7 +251,10 @@ export class ColonySupportOverlord extends Overlord {
     if (builder.spawning) return;
     const mobilized = isSouthDefenseActive(child);
     if (mobilized) builder.task = null;
-    if (builder.room.name == this.colony.name && builder.store.energy < builder.carryCapacity) {
+    if (
+      builder.room.name == this.colony.name &&
+      builder.store.energy < builder.store.getCapacity()
+    ) {
       if (this.withdrawFromParent(builder)) return;
     }
     if (!builder.safelyInRoom(child.name)) {

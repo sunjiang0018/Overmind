@@ -1,0 +1,10 @@
+export const asciiLogoSmall: string[] = [
+  " _____  _    _ _______  ______ _______ _____ __   _ ______ ",
+  "|     |  \\  /  |______ |_____/ |  |  |   |   | \\  | |     \\",
+  "|_____|   \\/   |______ |    \\_ |  |  | __|__ |  \\_| |_____/",
+];
+
+export const asciiLogoRL: string[] = [
+  ...asciiLogoSmall,
+  "....... R E I N F O R C E M E N T   L E A R N I N G .......",
+];

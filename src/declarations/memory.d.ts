@@ -58,7 +58,6 @@ declare global {
       signature: string;
       operationMode: operationMode;
       log: any;
-      enableVisuals: boolean;
       allies: string[];
       resourceCollectionMode: resourceCollectionMode;
       powerCollection: {
@@ -85,7 +84,6 @@ declare global {
         [colonyName: string]: {
           init: number;
           run: number;
-          visuals: number;
         };
       };
     };

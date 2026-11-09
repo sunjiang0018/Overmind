@@ -15,8 +15,8 @@ export class OperateExtension extends Power {
 
   operatePower() {
     if (
-      this.powerCreep.carry.ops &&
-      this.powerCreep.carry.ops > 2 &&
+      this.powerCreep.store.ops &&
+      this.powerCreep.store.ops > 2 &&
       this.powerCreep.room &&
       this.powerCreep.room.energyAvailable < this.powerCreep.room.energyCapacityAvailable * 0.5
     ) {

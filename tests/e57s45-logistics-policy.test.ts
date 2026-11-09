@@ -1,3 +1,4 @@
+import { createStore } from "./helpers/store";
 import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -25,9 +26,8 @@ function linkRuntime(storageFirst = true) {
     return {
       id,
       x,
-      energy,
+      store: createStore({ energy }, { energy: 800 }),
       cooldown,
-      energyCapacity: 800,
       pos: {
         findClosestByRange: (links: TestScope[]) =>
           [...links].sort((a, b) => Math.abs(a.x - x) - Math.abs(b.x - x))[0],
@@ -57,7 +57,7 @@ test("empty storage-side link receives mine output before a hungry controller", 
 
 test("two simultaneous mines do not reserve the same storage-link capacity twice", () => {
   const r = linkRuntime();
-  r.core.energy = 100;
+  r.core.store.energy = 100;
   r.network.transmit = [r.link("west", 0, 800), r.link("north", 9, 800)];
   r.network.run();
   assert.deepEqual(r.calls, [{ from: "north", to: "core", amount: 700, result: constants.OK }]);
@@ -69,7 +69,7 @@ test("two simultaneous mines do not reserve the same storage-link capacity twice
 
 test("full storage hub forwards existing surplus so controller is not starved", () => {
   const r = linkRuntime();
-  r.core.energy = 800;
+  r.core.store.energy = 800;
   r.network.transmit = [r.link("mine", 0, 800), r.core];
   r.network.receive = [r.link("controller", 1, 0)];
   r.network.run();
@@ -159,15 +159,14 @@ test("a full mining link falls back to the retained buffer instead of stalling h
   );
   const Probe = new Function("scope", `with(scope){${code}}`)({ ...constants, Game: { time: 2 } });
   const buffer = { energy: 0 };
-  const link = { energy: 800 };
+  const link = { store: createStore({ energy: 800 }, { energy: 800 }) };
   const miner: TestScope = {
-    carry: { energy: 50 },
-    carryCapacity: 50,
+    store: createStore({ energy: 50 }, 50),
     harvest: () => constants.OK,
     transfer(target: TestScope) {
       if (target === link) return constants.ERR_FULL;
-      target.energy += this.carry.energy;
-      this.carry.energy = 0;
+      target.energy += this.store.energy;
+      this.store.energy = 0;
       return constants.OK;
     },
   };
@@ -180,6 +179,6 @@ test("a full mining link falls back to the retained buffer instead of stalling h
   });
   probe.linkMiningActions(miner);
   assert.equal(buffer.energy, 50);
-  assert.equal(miner.carry.energy, 0);
-  assert.equal(link.energy, 800);
+  assert.equal(miner.store.energy, 0);
+  assert.equal(link.store.energy, 800);
 });

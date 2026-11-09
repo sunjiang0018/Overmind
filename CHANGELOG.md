@@ -6,14 +6,15 @@ Changelog format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0
 
 ### Added
 
+- Added `pnpm run check:apis`, included in `check`, to detect deprecated API references and call signatures across source, tests, and JavaScript tooling.
 - Added structure type guards which help clean up the `RoomPlanner` code substantially.
 - Changed `LogisticsRequestTarget` to include directives and `Zerg` objects. Now workers can directly request energy from transporters at low RCL.
 - Added `DirectiveDrop` logistics directive. At low RCL this causes transporters to pick up energy and place it in a stockpile on the ground before containers are built.
-- Added memorized path vizualition to `Movement` which integrates with the `Zerg` debugger.
-- Improved Zerg debugger to show task and target. Use `debug(queen_0)` (or Zerg name) to activate the debugger to see what your creep is doing. Only works for standard Zerg which primarily use tasks.
 
 ### Changed
 
+- Migrated creep and Zerg cargo, structure resources, and capacities to the Screeps Store API, including the legacy terminal network. Removed the Zerg `carry` and `carryCapacity` aliases; use `store` and `store.getCapacity()` instead.
+- Replaced `String.substr` with equivalent `slice` calls and switched persisted object IDs to `Id<T>` for current `Game.getObjectById` overloads, preserving existing Memory values and packed encodings.
 - Spun up Overmind for the first time in almost 4 years. Had to make a lot of modernization changes to the codebase to get it to run. Good luck merging these into your forks!
 - Entered Season 6 of Screeps! This is my first time running Overmind from scratch in a long time, and it's a little rough around the edges in the early game. I've included a large number of early game optimizations:
   - Changed the calculations which determine the number of workers to spawn at early levels to incorporate transporter capacity. This should result in a smoother early game.

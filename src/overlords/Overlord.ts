@@ -615,6 +615,4 @@ export abstract class Overlord {
       creep.run();
     }
   }
-
-  visuals(): void {}
 }

@@ -1,10 +1,8 @@
 import { getRoomHostileStructures, getRoomHostiles } from "../../game/Room";
 import { log } from "../../console/log";
-import { CombatIntel } from "../../intel/CombatIntel";
 import { DistractionOverlord } from "../../overlords/defense/distraction";
 import { PairDestroyerOverlord } from "../../overlords/offense/pairDestroyer";
 import { profile } from "../../profiler/decorator";
-import { Visualizer } from "../../visuals/Visualizer";
 import { Directive } from "../Directive";
 
 /**
@@ -43,11 +41,5 @@ export class DirectivePairDestroy extends Directive {
       log.notify(`Pair destroyer mission at ${this.pos.roomName} completed successfully.`);
       this.remove();
     }
-  }
-
-  visuals(): void {
-    Visualizer.marker(this.pos, { color: "red" });
-    const fallback = CombatIntel.getFallbackFrom(this.pos);
-    Visualizer.marker(fallback, { color: "green" });
   }
 }

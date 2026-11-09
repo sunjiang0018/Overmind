@@ -32,7 +32,6 @@ import { BuildPriorities, DemolishStructurePriorities } from "../priorities/prio
 import { profile } from "../profiler/decorator";
 import { bullet } from "../utilities/stringConstants";
 import { hasMinerals, maxBy, onPublicServer } from "../utilities/utils";
-import { Visualizer } from "../visuals/Visualizer";
 import { MY_USERNAME } from "../~settings";
 import { BarrierPlanner } from "./BarrierPlanner";
 import { bunkerLayout } from "./layouts/bunker";
@@ -1081,7 +1080,6 @@ export class RoomPlanner {
   run(): void {
     if (this.active) {
       this.make();
-      this.visuals();
     } else {
       // Build missing structures from the layout
       if (this.shouldRecheck()) {
@@ -1105,16 +1103,5 @@ export class RoomPlanner {
         log.warning(`No bunker placement!`);
       }
     }
-  }
-
-  visuals(): void {
-    // Draw the map
-    if (getAutonomyLevel() < Autonomy.Automatic) {
-      const expansionData = RoomIntel.getExpansionData(this.colony.room.name);
-      if (expansionData) {
-        Visualizer.drawLayout(bunkerLayout, expansionData.bunkerAnchor, { opacity: 0.2 });
-      }
-    }
-    Visualizer.drawStructureMap(this.map);
   }
 }

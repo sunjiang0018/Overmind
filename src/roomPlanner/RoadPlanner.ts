@@ -18,7 +18,6 @@ import { MatrixTypes, Pathing } from "../movement/Pathing";
 import { profile } from "../profiler/decorator";
 import { packCoord, packCoordList, unpackCoordListAsPosList } from "../utilities/packrat";
 import { getCacheExpiration, onPublicServer, posFromReadableName } from "../utilities/utils";
-import { Visualizer } from "../visuals/Visualizer";
 import { hasRoomOverride } from "./roomOverrides";
 import { RoomPlanner } from "./RoomPlanner";
 import { groupBy, unique, sortBy, range, remove, compact, memoize } from "../utilities/native";
@@ -491,7 +490,6 @@ export class RoadPlanner {
       if (this.roomPlanner.storagePos) {
         this.buildRoadNetwork(this.roomPlanner.storagePos, this.roomPlanner.getObstacles());
       }
-      this.visuals();
     } else {
       // Once in a blue moon, recalculate the entire network and write to memory to keep it up to date
       if (Game.time % RoadPlanner.settings.recalculateRoadNetworkInterval == this.colony.id) {
@@ -512,10 +510,5 @@ export class RoadPlanner {
         this.buildMissing();
       }
     }
-  }
-
-  visuals(): void {
-    // Draw the map
-    Visualizer.drawRoads(this.roadPositions);
   }
 }

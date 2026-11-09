@@ -396,8 +396,8 @@ export class LogisticsNetwork {
         const request = this.requests[requestID];
         if (request) {
           // Predict on a copy: Screeps Store properties are read-only, and forecasts must not alter live cargo.
-          const carry = { ...transporter.carry } as ResourceAmounts;
-          const remainingCapacity = transporter.carryCapacity - sum(carry);
+          const carry = { ...transporter.store } as ResourceAmounts;
+          const remainingCapacity = transporter.store.getCapacity() - sum(carry);
           const resourceAmount =
             -1 * this.predictedRequestAmount(transporter, request, nextAvailability);
           // ^ need to multiply amount by -1 since transporter is doing complement of what request needs
@@ -424,7 +424,7 @@ export class LogisticsNetwork {
         }
       }
     }
-    return { ...transporter.carry };
+    return { ...transporter.store };
   }
 
   /**
@@ -487,7 +487,7 @@ export class LogisticsNetwork {
       // TODO: this is incorrect; should incorporate request amount
       const resourceInflux = sum(
         otherTargetingTransporters,
-        (other) => other.carry[<ResourceConstant>request.resourceType] || 0,
+        (other) => other.store[<ResourceConstant>request.resourceType] || 0,
       );
       predictedAmount = Math.max(predictedAmount - resourceInflux, 0);
       return predictedAmount;
@@ -509,7 +509,7 @@ export class LogisticsNetwork {
       }
       const resourceOutflux = sum(
         otherTargetingTransporters,
-        (other) => other.carryCapacity - sum(other.carry),
+        (other) => other.store.getCapacity() - sum(other.store),
       );
       predictedAmount = Math.min(predictedAmount + resourceOutflux, 0);
       return predictedAmount;
@@ -538,7 +538,7 @@ export class LogisticsNetwork {
       carry = this.predictedTransporterCarry(transporter);
     } else {
       // If you are targeting the requestor, use current carry for computations
-      carry = transporter.carry;
+      carry = transporter.store;
     }
 
     // requestInput instance, needs refilling
@@ -561,14 +561,17 @@ export class LogisticsNetwork {
         dt: dt_direct,
         targetRef: getRoomObjectRef(request.target),
       });
-      if ((carry[request.resourceType] || 0) > amount || sum(carry) == transporter.carryCapacity) {
+      if (
+        (carry[request.resourceType] || 0) > amount ||
+        sum(carry) == transporter.store.getCapacity()
+      ) {
         return choices; // Return early if you already have enough resources to go direct or are already full
       }
       // Change in resources if transporter picks up resources from a buffer first
       for (const buffer of this.buffers) {
         const dQ_buffer = Math.min(
           amount,
-          transporter.carryCapacity,
+          transporter.store.getCapacity(),
           buffer.store[request.resourceType] || 0,
         );
         const dt_buffer =
@@ -587,7 +590,7 @@ export class LogisticsNetwork {
     // requestOutput instance, needs pickup
     else if (amount < 0) {
       // Change in resources if transporter goes straight to the output
-      const remainingCarryCapacity = transporter.carryCapacity - sum(carry);
+      const remainingCarryCapacity = transporter.store.getCapacity() - sum(carry);
       const dQ_direct = Math.min(Math.abs(amount), remainingCarryCapacity);
       const dt_direct =
         roomPositionGetMultiRoomRangeTo(newPos, request.target.pos) *
@@ -600,7 +603,7 @@ export class LogisticsNetwork {
       });
       if (
         remainingCarryCapacity >= Math.abs(amount) ||
-        remainingCarryCapacity == transporter.carryCapacity
+        remainingCarryCapacity == transporter.store.getCapacity()
       ) {
         return choices; // Return early you have sufficient free space or are empty
       }
@@ -608,8 +611,8 @@ export class LogisticsNetwork {
       for (const buffer of this.buffers) {
         const dQ_buffer = Math.min(
           Math.abs(amount),
-          transporter.carryCapacity,
-          buffer.storeCapacity - sum(buffer.store),
+          transporter.store.getCapacity(),
+          buffer.store.getCapacity() - sum(buffer.store),
         );
         const dt_buffer =
           roomPositionGetMultiRoomRangeTo(newPos, buffer.pos) *

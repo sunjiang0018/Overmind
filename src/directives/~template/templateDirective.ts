@@ -4,7 +4,6 @@ import { $ } from "../../caching/GlobalCache";
 import { log } from "../../console/log";
 import { TemplateOverlord } from "../../overlords/~template/templateOverlord";
 import { profile } from "../../profiler/decorator";
-import { Visualizer } from "../../visuals/Visualizer";
 import { Directive } from "../Directive";
 import { NotifierPriority } from "../Notifier";
 import { defaultsDeep } from "../../utilities/native";
@@ -107,7 +106,6 @@ export class DirectiveTemplate extends Directive {
   /**
    * init() tips:
    * - Calls to this.alert() should generally be placed in init() rather than run, but this is not a hard requirement
-   * - Only place alerts for things that are actually important enough to warrrant screen space
    *
    */
   init(): void {
@@ -133,9 +131,5 @@ export class DirectiveTemplate extends Directive {
     ) {
       this.remove();
     }
-  }
-
-  visuals(): void {
-    Visualizer.marker(this.pos, { color: "red" });
   }
 }

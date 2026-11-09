@@ -147,7 +147,7 @@ export class BunkerQueenOverlord extends Overlord {
 
     // Step 1: empty all contents (this shouldn't be necessary since queen is normally empty at this point)
     let queenPos = queen.pos;
-    if (sum(queen.carry) > 0) {
+    if (sum(queen.store) > 0) {
       const transferTarget = this.colony.terminal || this.colony.storage || this.batteries[0];
       if (transferTarget) {
         tasks.push(Tasks.transferAll(transferTarget));
@@ -172,7 +172,7 @@ export class BunkerQueenOverlord extends Overlord {
     const supplyTasks: Task<any>[] = [];
     for (const request of supplyRequests) {
       // stop when carry will be full
-      const remainingAmount = queen.carryCapacity - sum(queenCarry);
+      const remainingAmount = queen.store.getCapacity() - sum(queenCarry);
       if (remainingAmount == 0) break;
       // figure out how much you can withdraw
       let amount = Math.min(request.amount, remainingAmount);
@@ -257,7 +257,7 @@ export class BunkerQueenOverlord extends Overlord {
     const tasks: Task<any>[] = [];
     const transferTarget = this.colony.terminal || this.colony.storage || this.batteries[0];
     // Step 1: empty all contents (this shouldn't be necessary since queen is normally empty at this point)
-    if (sum(queen.carry) > 0) {
+    if (sum(queen.store) > 0) {
       if (transferTarget) {
         tasks.push(Tasks.transferAll(transferTarget));
       } else {
@@ -279,7 +279,7 @@ export class BunkerQueenOverlord extends Overlord {
     }
     for (const request of withdrawRequests) {
       // stop when carry will be full
-      const remainingAmount = queen.carryCapacity - sum(queenCarry);
+      const remainingAmount = queen.store.getCapacity() - sum(queenCarry);
       if (remainingAmount == 0) break;
       // figure out how much you can withdraw
       const amount = Math.min(request.amount, remainingAmount);
@@ -366,7 +366,7 @@ export class BunkerQueenOverlord extends Overlord {
       this.colony.controller.safeModeAvailable < 3 &&
       this.colony.terminal &&
       this.colony.terminal.store[RESOURCE_GHODIUM] >= 1000 &&
-      queen.carryCapacity >= 1000
+      queen.store.getCapacity() >= 1000
     ) {
       // Only use 1 queen to avoid adding 2 safemodes
       if (queen.name == sortBy(this.queens, (q) => q.name)[0].name) {

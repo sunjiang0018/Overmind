@@ -27,7 +27,6 @@ import { profile } from "../profiler/decorator";
 import { Cartographer, ROOMTYPE_SOURCEKEEPER } from "../utilities/Cartographer";
 import { unpackPosList } from "../utilities/packrat";
 import { color, isAlly, rgbToHex } from "../utilities/utils";
-import { Visualizer } from "../visuals/Visualizer";
 import { cloneDeep, defaults, isEmpty, max, compactMap } from "../utilities/native";
 
 // Properties and sub-properties here shouldn't be undefined
@@ -1103,13 +1102,6 @@ export class MatrixLib {
     }
 
     console.log(msg);
-  }
-
-  /**
-   * Visualizes the cost matrix as a room visual. Shortcut to Visualizer.displayCostMatrix()
-   */
-  static visualize(matrix: CostMatrix, roomName?: string): void {
-    Visualizer.displayCostMatrix(matrix, roomName);
   }
 
   static testMatrices: { [key: string]: () => CostMatrix } = {

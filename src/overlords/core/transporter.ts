@@ -114,7 +114,7 @@ export class TransportOverlord extends Overlord {
   }
 
   private supplyWithoutStorage(transporter: Zerg): boolean {
-    if (this.colony.storage || !transporter.carry.energy) return false;
+    if (this.colony.storage || !transporter.store.energy) return false;
 
     const spawnTargets = [...this.colony.spawns, ...this.colony.extensions].filter(
       (target) => target.store.getFreeCapacity(RESOURCE_ENERGY) > 0,
@@ -172,7 +172,7 @@ export class TransportOverlord extends Overlord {
           const buffer = deref(bestChoice.targetRef) as BufferTarget;
           const withdrawAmount = Math.min(
             buffer.store[request.resourceType] || 0,
-            transporter.carryCapacity - sum(transporter.carry),
+            transporter.store.getCapacity() - sum(transporter.store),
             amount,
           );
           task = task.fork(Tasks.withdraw(buffer, request.resourceType, withdrawAmount));
@@ -219,7 +219,7 @@ export class TransportOverlord extends Overlord {
     } else {
       if (this.supplyWithoutStorage(transporter)) return;
       // If nothing to do, put everything in a store structure
-      if (sum(transporter.carry) > 0) {
+      if (sum(transporter.store) > 0) {
         if (transporter.hasMineralsInCarry) {
           const target = this.colony.terminal || this.colony.storage;
           if (target) {

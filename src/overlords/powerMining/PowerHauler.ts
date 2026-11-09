@@ -50,7 +50,7 @@ export class PowerHaulingOverlord extends Overlord {
   init() {}
 
   private handleHauler(hauler: Zerg) {
-    if (sum(hauler.carry) == 0) {
+    if (sum(hauler.store) == 0) {
       if (this.directive.memory.state >= 4) {
         // FIXME: Maybe ditch this and put it as a separate on-finishing method to reassign
         hauler.say("💀 RIP 💀", true);
@@ -103,7 +103,7 @@ export class PowerHaulingOverlord extends Overlord {
     } else {
       // Travel to colony room and deposit resources
       if (hauler.inSameRoomAs(this.colony)) {
-        for (const [resourceType, amount] of getStoreContents(hauler.carry)) {
+        for (const [resourceType, amount] of getStoreContents(hauler.store)) {
           if (amount == 0) continue;
           if (resourceType == RESOURCE_ENERGY) {
             // prefer to put energy in storage
@@ -119,7 +119,7 @@ export class PowerHaulingOverlord extends Overlord {
             }
           } else {
             // prefer to put minerals in terminal
-            this.directive.memory.totalCollected += hauler.carry.power || 0;
+            this.directive.memory.totalCollected += hauler.store.power || 0;
             if (this.colony.terminal && sum(this.colony.terminal.store) < TERMINAL_CAPACITY) {
               hauler.task = Tasks.transfer(this.colony.terminal, resourceType);
               return;
@@ -138,7 +138,7 @@ export class PowerHaulingOverlord extends Overlord {
   }
 
   checkIfStillCarryingPower() {
-    return this.haulers.find((hauler) => hauler.carry.power != undefined && hauler.carry.power > 0);
+    return this.haulers.find((hauler) => hauler.store.power != undefined && hauler.store.power > 0);
   }
 
   run() {

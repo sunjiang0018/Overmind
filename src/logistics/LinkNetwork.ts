@@ -50,7 +50,7 @@ export class LinkNetwork {
   getDropoffAvailability(link: StructureLink): number {
     const dest = this.colony.commandCenter ? this.colony.commandCenter.pos : this.colony.pos;
     const usualCooldown = link.pos.getRangeTo(dest);
-    if (link.energy > this.settings.linksTrasmitAt) {
+    if (link.store[RESOURCE_ENERGY] > this.settings.linksTrasmitAt) {
       // Energy will be sent next time cooldown == 0
       return link.cooldown + usualCooldown;
     } else {
@@ -79,7 +79,10 @@ export class LinkNetwork {
         sender.cooldown > 0
       )
         return false;
-      const amount = Math.min(sender.energy, receiver.energyCapacity - receiver.energy);
+      const amount = Math.min(
+        sender.store[RESOURCE_ENERGY],
+        receiver.store.getCapacity(RESOURCE_ENERGY) - receiver.store[RESOURCE_ENERGY],
+      );
       if (amount <= 0 || sender.transferEnergy(receiver, amount) != OK) return false;
       sent.add(sender.id);
       // One accepted packet per receiver avoids reserving the same capacity
@@ -94,7 +97,7 @@ export class LinkNetwork {
           sender.id != receiver.id &&
           !sent.has(sender.id) &&
           sender.cooldown == 0 &&
-          sender.energy > 0,
+          sender.store[RESOURCE_ENERGY] > 0,
       );
       while (candidates.length > 0) {
         const sender = receiver.pos.findClosestByRange(candidates)!;
@@ -136,8 +139,8 @@ export class LinkNetwork {
       if (closestTransmitLink) {
         // Send min of (all the energy in sender link, amount of available space in receiver link)
         const amountToSend = min([
-          closestTransmitLink.energy,
-          receiveLink.energyCapacity - receiveLink.energy,
+          closestTransmitLink.store[RESOURCE_ENERGY],
+          receiveLink.store.getCapacity(RESOURCE_ENERGY) - receiveLink.store[RESOURCE_ENERGY],
         ]);
         closestTransmitLink.transferEnergy(receiveLink, amountToSend);
         remove(this.transmit, (link) => link == closestTransmitLink);

@@ -6,7 +6,7 @@ import { isStructureWalkable } from "./Structures";
 
 // Cache structure IDs across ticks; resolve live objects into an external cache each tick.
 
-const roomStructureIDs: { [roomName: string]: { [structureType: string]: string[] } } = {};
+const roomStructureIDs: { [roomName: string]: { [structureType: string]: Id<Structure>[] } } = {};
 const roomStructuresExpiration: { [roomName: string]: number } = {};
 const multipleList = [
   STRUCTURE_SPAWN,
@@ -45,7 +45,7 @@ export function refreshRoomStructureCache(room: Room): void {
     Game.time > roomStructuresExpiration[room.name]
   ) {
     roomStructuresExpiration[room.name] = getCacheExpiration(STRUCTURE_TIMEOUT);
-    const ids: { [structureType: string]: string[] } = {};
+    const ids: { [structureType: string]: Id<Structure>[] } = {};
     for (const structure of room.find(FIND_STRUCTURES)) {
       const type = structure.structureType;
       if (Object.hasOwn(ids, type)) ids[type].push(structure.id);
@@ -59,7 +59,7 @@ function multiple<T extends Structure>(type: StructureConstant): (room: Room) =>
   return createTickCache((room: Room): T[] => {
     refreshRoomStructureCache(room);
     const ids = roomStructureIDs[room.name][type];
-    return ids ? (compact(ids.map(Game.getObjectById)) as T[]) : [];
+    return ids ? (compact(ids.map((id) => Game.getObjectById(id))) as T[]) : [];
   });
 }
 
@@ -126,7 +126,7 @@ export const getRoomMineral = createTickCache(
 export const getRoomRepairables = createTickCache((room: Room): Structure[] => {
   refreshRoomStructureCache(room);
   const cached = roomStructureIDs[room.name].repairables;
-  if (cached) return compact(cached.map(Game.getObjectById)) as Structure[];
+  if (cached) return compact(cached.map((id) => Game.getObjectById(id))) as Structure[];
   let repairables: Structure[] = [];
   for (const type of singleList) {
     if (!notRepairable.includes(type)) {

@@ -1,4 +1,3 @@
-import { roomVisualStructure } from "../game/RoomVisual";
 import {
   getRoomPositionPrint,
   roomPositionAvailableNeighbors,
@@ -12,7 +11,6 @@ import { Mem } from "../memory/Memory";
 import { profile } from "../profiler/decorator";
 import { packCoord, packCoordList, unpackCoordListAsPosList } from "../utilities/packrat";
 import { minMax } from "../utilities/utils";
-import { Visualizer } from "../visuals/Visualizer";
 import { BUNKER_RADIUS, bunkerLayout, insideBunkerBounds } from "./layouts/bunker";
 import { hasRoomOverride } from "./roomOverrides";
 import { colonyCriticalRamparts, isControllerRampartDeferred } from "../strategy/colonyDefense";
@@ -72,7 +70,7 @@ export class BarrierPlanner {
       rectArray.push({ x1: x1, y1: y1, x2: x2, y2: y2 });
     }
     // Get Min cut
-    const barrierCoords = getCutTiles(this.colony.name, rectArray, false, 2, false);
+    const barrierCoords = getCutTiles(this.colony.name, rectArray, false, 2);
     let positions = barrierCoords.map(
       (coord) => new RoomPosition(coord.x, coord.y, this.colony.name),
     );
@@ -106,7 +104,7 @@ export class BarrierPlanner {
       rectArray.push({ x1: x1, y1: y1, x2: x2, y2: y2 });
     }
     // Get Min cut
-    const barrierCoords = getCutTiles(this.colony.name, rectArray, true, 2, false);
+    const barrierCoords = getCutTiles(this.colony.name, rectArray, true, 2);
     return barrierCoords.map((coord) => new RoomPosition(coord.x, coord.y, this.colony.name));
   }
 
@@ -263,7 +261,6 @@ export class BarrierPlanner {
           this.colony.controller.pos,
         );
       }
-      this.visuals();
     } else {
       if (
         !this.roomPlanner.memory.relocating &&
@@ -275,13 +272,6 @@ export class BarrierPlanner {
           this.buildMissingBunkerRamparts();
         }
       }
-    }
-  }
-
-  visuals(): void {
-    if (!Visualizer.enabled) return;
-    for (const pos of this.barrierPositions) {
-      roomVisualStructure(this.colony.room.visual, pos.x, pos.y, STRUCTURE_RAMPART);
     }
   }
 }

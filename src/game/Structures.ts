@@ -42,7 +42,7 @@ export function structureControllerNeedsReserving(
 }
 
 export function getStructureLinkStoreCapacity(structure: StructureLink): number {
-  return structure.energyCapacity;
+  return structure.store.getCapacity(RESOURCE_ENERGY);
 }
 
 export function getStoreContents(store: ResourceAmounts): [ResourceConstant, number][] {
@@ -75,9 +75,9 @@ export function isStructureFull(structure: FillableStructure): boolean {
     structure.structureType === STRUCTURE_STORAGE ||
     structure.structureType === STRUCTURE_TERMINAL
   ) {
-    return sum(structure.store) >= structure.storeCapacity;
+    return sum(structure.store) >= structure.store.getCapacity();
   }
-  return structure.energy >= structure.energyCapacity;
+  return structure.store[RESOURCE_ENERGY] >= structure.store.getCapacity(RESOURCE_ENERGY);
 }
 
 export function isStructureEmpty(structure: FillableStructure): boolean {
@@ -88,7 +88,7 @@ export function isStructureEmpty(structure: FillableStructure): boolean {
   ) {
     return sum(structure.store) === 0;
   }
-  return structure.energy === 0;
+  return structure.store[RESOURCE_ENERGY] === 0;
 }
 
 /** Record a successful intent without adding bookkeeping fields to engine terminals. */

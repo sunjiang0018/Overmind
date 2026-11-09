@@ -16,7 +16,6 @@ import { OverlordPriority } from "../../priorities/priorities_overlords";
 import { profile } from "../../profiler/decorator";
 import { CombatTargeting } from "../../targeting/CombatTargeting";
 import { minBy } from "../../utilities/utils";
-import { Visualizer } from "../../visuals/Visualizer";
 import { CombatZerg } from "../../zerg/CombatZerg";
 import { CombatOverlord, CombatOverlordMemory } from "../CombatOverlord";
 
@@ -252,11 +251,5 @@ export class SourceReaperOverlord extends CombatOverlord {
   run() {
     this.autoRun(this.reapers, (reaper) => this.handleReaper(reaper));
     this.autoRun(this.defenders, (defender) => this.handleDefender(defender));
-  }
-
-  visuals() {
-    if (this.room && this.targetLair) {
-      Visualizer.marker(this.targetLair.pos);
-    }
   }
 }

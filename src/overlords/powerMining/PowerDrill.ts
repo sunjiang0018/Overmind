@@ -6,7 +6,6 @@ import { DirectivePowerMine } from "../../directives/resource/powerMine";
 import { Mem } from "../../memory/Memory";
 import { OverlordPriority } from "../../priorities/priorities_overlords";
 import { profile } from "../../profiler/decorator";
-import { Visualizer } from "../../visuals/Visualizer";
 import { CombatZerg } from "../../zerg/CombatZerg";
 import { Zerg } from "../../zerg/Zerg";
 import { CombatOverlord, CombatOverlordMemory } from "../CombatOverlord";
@@ -223,12 +222,6 @@ export class PowerDrillOverlord extends CombatOverlord {
       );
       this.drills.forEach((drill) => drill.retire());
       this.coolant.forEach((coolant) => coolant.retire());
-    }
-  }
-
-  visuals() {
-    if (this.room && this.directive.powerBank) {
-      Visualizer.marker(this.directive.powerBank.pos);
     }
   }
 }

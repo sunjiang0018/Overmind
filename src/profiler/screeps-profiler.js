@@ -344,7 +344,6 @@ const Profiler = {
         {name: 'Room', val: global.Room},
         {name: 'RoomObject', val: global.RoomObject},
         {name: 'RoomPosition', val: global.RoomPosition},
-        {name: 'RoomVisual', val: global.RoomVisual},
         {name: 'Source', val: global.Source},
         {name: 'Structure', val: global.Structure},
         {name: 'StructureContainer', val: global.StructureContainer},

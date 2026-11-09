@@ -92,14 +92,12 @@ export abstract class AnyZerg {
   isAnyZerg: true;
   creep: AnyCreep; // The creep that this wrapper class will control
   // body: BodyPartDefinition[];    	 	// These properties are all wrapped from this.creep.* to this.*
-  carry: StoreDefinition; // |
   store: StoreDefinition; // |
-  carryCapacity: number; // |
   effects: RoomObjectEffect[];
   // fatigue: number;					// |
   hits: number; // |
   hitsMax: number; // |
-  id: string; // |
+  id: Id<AnyCreep>; // |
   memory: CreepMemory; // | See the ICreepMemory interface for structure
   name: string; // |
   pos: RoomPosition; // |
@@ -120,9 +118,9 @@ export abstract class AnyZerg {
     // Copy over creep references
     this.creep = creep;
     // this.body = creep.body;
-    this.carry = creep.carry;
+
     this.store = creep.store;
-    this.carryCapacity = creep.carryCapacity;
+
     // this.fatigue = creep.fatigue;
     this.effects = creep.effects!;
     this.hits = creep.hits;
@@ -172,9 +170,9 @@ export abstract class AnyZerg {
       this.pos = creep.pos;
       this.nextPos = creep.pos;
       // this.body = creep.body;
-      this.carry = creep.carry;
+
       this.store = creep.store;
-      this.carryCapacity = creep.carryCapacity;
+
       // this.fatigue = creep.fatigue;
       this.hits = creep.hits;
       this.memory = creep.memory;
@@ -317,7 +315,7 @@ export abstract class AnyZerg {
   // Carry methods
 
   get hasMineralsInCarry(): boolean {
-    for (const [resourceType, amount] of getStoreContents(this.carry)) {
+    for (const [resourceType, amount] of getStoreContents(this.store)) {
       if (resourceType != RESOURCE_ENERGY && amount > 0) {
         return true;
       }
@@ -433,7 +431,7 @@ export abstract class AnyZerg {
         Movement.flee(this, avoidGoals, fleeOptions.dropEnergy, moveOptions) != undefined;
       if (fleeing) {
         // Drop energy if needed
-        if (fleeOptions.dropEnergy && this.carry.energy > 0) {
+        if (fleeOptions.dropEnergy && this.store.energy > 0) {
           const nearbyContainers = this.pos.findInRange(getRoomStorageUnits(this.room), 1);
           if (nearbyContainers.length > 0) {
             this.transfer(nearbyContainers[0], RESOURCE_ENERGY);
@@ -463,7 +461,7 @@ export abstract class AnyZerg {
     if (this.memory.avoidDanger) {
       if (this.memory.avoidDanger.timer > 0) {
         this.goToRoom(this.memory.avoidDanger.fallback);
-        if (opts.dropEnergy && this.carry.energy > 0) {
+        if (opts.dropEnergy && this.store.energy > 0) {
           this.drop(RESOURCE_ENERGY); // transfer energy to container check is only run on first danger tick
         }
         this.memory.avoidDanger.timer--;
@@ -525,7 +523,7 @@ export abstract class AnyZerg {
         fallback: fallback,
       };
 
-      if (opts.dropEnergy && this.carry.energy > 0) {
+      if (opts.dropEnergy && this.store.energy > 0) {
         const containersInRange = this.pos.findInRange(getRoomContainers(this.room), 1);
         const adjacentContainer = containersInRange[0];
         if (adjacentContainer) {

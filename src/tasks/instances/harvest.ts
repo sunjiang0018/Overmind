@@ -13,7 +13,7 @@ export class TaskHarvest extends Task<harvestTargetType> {
   }
 
   isValidTask() {
-    return sum(this.creep.carry) < this.creep.carryCapacity;
+    return sum(this.creep.store) < this.creep.store.getCapacity();
   }
 
   isValidTarget() {

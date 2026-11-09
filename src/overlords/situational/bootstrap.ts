@@ -46,7 +46,8 @@ export class BootstrappingOverlord extends Overlord {
     this.fillers = this.zerg(Roles.filler);
     // Calculate structures fillers can supply / withdraw from
     this.supplyStructures = [...this.colony.spawns, ...this.colony.extensions].filter(
-      (structure) => structure.energy < structure.energyCapacity,
+      (structure) =>
+        structure.store[RESOURCE_ENERGY] < structure.store.getCapacity(RESOURCE_ENERGY),
     );
     this.withdrawStructures = compact([
       this.colony.storage!,
@@ -163,7 +164,7 @@ export class BootstrappingOverlord extends Overlord {
   }
 
   private handleFiller(filler: Zerg) {
-    if (filler.carry.energy > 0) {
+    if (filler.store.energy > 0) {
       this.supplyActions(filler);
     } else {
       this.rechargeActions(filler);

@@ -3,7 +3,6 @@ import { getRoomPowerSpawn } from "../../game/RoomStructures";
 import { roomPositionInRangeToPos } from "../../game/RoomPosition";
 import { log } from "../../console/log";
 import { profile } from "../../profiler/decorator";
-import { Visualizer } from "../../visuals/Visualizer";
 import { Directive } from "../Directive";
 import { DirectiveNukeResponse } from "../situational/nukeResponse";
 import { GenerateOps } from "./powers/generateOps";
@@ -70,7 +69,6 @@ export class DirectiveBaseOperator extends Directive {
         range: 1,
         swampCost: 1,
         reusePath: 0,
-        visualizePathStyle: { lineStyle: "dashed", fill: "yellow" },
       });
     }
   }
@@ -88,7 +86,6 @@ export class DirectiveBaseOperator extends Directive {
         range: 1,
         swampCost: 1,
         reusePath: 0,
-        visualizePathStyle: { lineStyle: "solid" },
       });
     }
   }
@@ -111,10 +108,6 @@ export class DirectiveBaseOperator extends Directive {
         break;
       }
     }
-  }
-
-  visuals(): void {
-    Visualizer.marker(this.pos, { color: "red" });
   }
 
   run(): void {
@@ -168,7 +161,7 @@ export class DirectiveBaseOperator extends Directive {
         powerCreep.usePower(PWR_OPERATE_TOWER, towersToBoost[0]);
       }
       if (
-        (!powerCreep.carry.ops || powerCreep.carry.ops < 20) &&
+        (!powerCreep.store.ops || powerCreep.store.ops < 20) &&
         this.room.storage &&
         this.room.storage.store.ops &&
         this.room.storage.store.ops > 100

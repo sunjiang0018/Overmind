@@ -164,7 +164,7 @@ export class DirectivePoisonRoom extends Directive {
     }
     // Don't lock off the last position unless there's a creep with energy to build the site
     const enoughEnergyToBuildFinalWall = this.overlords.roomPoisoner.roomPoisoners.some(
-      (creep) => creep.carry.energy >= BUILD_POWER,
+      (creep) => creep.store.energy >= BUILD_POWER,
     );
     if (this.blockPositions.length == 1 && !enoughEnergyToBuildFinalWall) {
       return;

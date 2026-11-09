@@ -31,7 +31,7 @@ export class TaskWithdraw extends Task<withdrawTargetType> {
 
   isValidTask() {
     const amount = this.data.amount || 1;
-    return sum(this.creep.carry) <= this.creep.carryCapacity - amount;
+    return sum(this.creep.store) <= this.creep.store.getCapacity() - amount;
   }
 
   isValidTarget() {

@@ -130,16 +130,12 @@ interface IOvermind {
   run(): void;
 
   postRun(): void;
-
-  visuals(): void;
 }
 
 interface INotifier {
   alert(message: string, roomName: string, priority?: number): void;
 
   generateNotificationsList(links: boolean): string[];
-
-  visuals(): void;
 }
 
 interface IOverseer {
@@ -162,10 +158,6 @@ interface IOverseer {
   init(): void;
 
   run(): void;
-
-  getCreepReport(colony: any): string[][];
-
-  visuals(): void;
 }
 
 // interface TerminalState {
@@ -308,7 +300,7 @@ interface HasRef {
 }
 
 interface HasID {
-  id: Id;
+  id: Id<_HasId>;
 }
 
 type AnyStoreStructure =

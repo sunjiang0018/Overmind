@@ -20,14 +20,12 @@ import { profile } from "../profiler/decorator";
 import { insideBunkerBounds } from "../roomPlanner/layouts/bunker";
 import { rightArrow } from "../utilities/stringConstants";
 import { minBy } from "../utilities/utils";
-import { Visualizer } from "../visuals/Visualizer";
 import { AnyZerg, normalizeAnyZerg } from "../zerg/AnyZerg";
 import { Swarm } from "../zerg/Swarm";
 import { Zerg } from "../zerg/Zerg";
 import { getTerrainCosts, isExit, normalizePos, sameCoord } from "./helpers";
 import { Pathing, PathOptions } from "./Pathing";
 import {
-  groupBy,
   defaultsDeep,
   unique,
   sortBy,
@@ -112,7 +110,6 @@ export interface SwarmMoveOptions {
   stuckValue?: number; // creep is marked stuck after this many idle ticks
   maxRooms?: number; // maximum number of rooms to path through
   repathChance?: number; // probability of repathing on a given tick
-  displayCostMatrix?: boolean;
 }
 
 export interface CombatMoveOptions {
@@ -121,8 +118,6 @@ export interface CombatMoveOptions {
   approachBonus?: number;
   preferRamparts?: boolean;
   requireRamparts?: boolean;
-  displayCostMatrix?: boolean;
-  displayAvoid?: boolean;
   blockMyCreeps?: boolean;
   blockHostileCreeps?: boolean;
   blockAlliedCreeps?: boolean;
@@ -156,7 +151,6 @@ export class Movement {
         return NO_ACTION;
       }
       if (creep.fatigue > 0) {
-        Movement.circle(creep.pos, "aqua", 0.3);
         return ERR_TIRED;
       }
     }
@@ -270,13 +264,9 @@ export class Movement {
     // 	}
     // }
 
-    // uncomment to visualize destination
-    // this.circle(destination, "orange");
-
     // check if creep is stuck
     if (this.isStuck(creep, state)) {
       state.stuckCount++;
-      this.circle(creep.pos, "magenta", state.stuckCount * 0.3);
       // pushedCreep = this.pushCreep(creep);
     } else {
       state.stuckCount = 0;
@@ -347,17 +337,14 @@ export class Movement {
             `(${getRoomPositionPrint(creep.pos)} ${rightArrow} ${getRoomPositionPrint(destination)})`,
         );
       }
-      let color = "orange";
       if (ret.incomplete) {
         // uncommenting this is a great way to diagnose creep behavior issues
         log.debug(
           `Movement: incomplete path for ${creep.print}! ` +
             `(${getRoomPositionPrint(creep.pos)} ${rightArrow} ${getRoomPositionPrint(destination)})`,
         );
-        color = "red";
       }
-      this.circle(creep.pos, color);
-      moveData.path = Pathing.serializePath(creep.pos, ret.path, color);
+      moveData.path = Pathing.serializePath(creep.pos, ret.path);
 
       const roomsVisited = unique(ret.path.map((pos) => pos.roomName));
       if (!moveData.roomVisibility) {
@@ -388,7 +375,7 @@ export class Movement {
 
     // consume path
     if (state.stuckCount == 0 && !newPath) {
-      moveData.path = moveData.path.substr(1);
+      moveData.path = moveData.path.slice(1);
     }
     const nextDirection = parseInt(moveData.path[0], 10) as DirectionConstant;
 
@@ -398,28 +385,6 @@ export class Movement {
     this.serializeState(creep, destination, state, moveData, { x: nextPos.x, y: nextPos.y });
 
     return creep.move(nextDirection, !!opts.force);
-  }
-
-  static visualizeMemorizedPath(creep: AnyZerg, color: string = "aqua"): void {
-    // initialize data object
-    if (creep.memory._go && creep.memory._go.path) {
-      const directions = creep.memory._go.path.substr(1);
-      let pos = creep.pos;
-      const path: RoomPosition[] = [pos];
-      for (const direction of directions) {
-        const nextDirection = parseInt(direction, 10) as DirectionConstant;
-        const nextPos = roomPositionGetPositionAtDirection(pos, nextDirection);
-        path.push(nextPos);
-        pos = nextPos;
-      }
-      const positionsGroupedByRoom = groupBy(path, (pos) => pos.roomName);
-      for (const roomName in positionsGroupedByRoom) {
-        new RoomVisual(roomName).poly(positionsGroupedByRoom[roomName], {
-          stroke: color,
-          lineStyle: "dotted",
-        });
-      }
-    }
   }
 
   // /**
@@ -889,7 +854,6 @@ export class Movement {
     opts: SwarmMoveOptions = {},
   ): number {
     if (swarm.fatigue > 0) {
-      Movement.circle(swarm.anchor, "aqua", 0.3);
       console.log("tired");
       return ERR_TIRED;
     }
@@ -939,7 +903,6 @@ export class Movement {
     }
     if (stuck) {
       state.stuckCount++;
-      this.circle(swarm.anchor, "magenta", state.stuckCount * 0.3);
     } else {
       state.stuckCount = 0;
     }
@@ -979,21 +942,15 @@ export class Movement {
             `(${getRoomPositionPrint(swarm.anchor)} ${rightArrow} ${getRoomPositionPrint(destination)})`,
         );
       }
-      let color = "orange";
       if (ret.incomplete) {
         log.debug(
           `Movement: incomplete path for swarm with ${swarm.creeps[0].print}! ` +
             `(${getRoomPositionPrint(swarm.anchor)} ${rightArrow} ${getRoomPositionPrint(destination)})`,
         );
-        color = "red";
       }
-      this.circle(swarm.anchor, color);
-      moveData.path = Pathing.serializePath(swarm.anchor, ret.path, color);
+      moveData.path = Pathing.serializePath(swarm.anchor, ret.path);
       state.stuckCount = 0;
     }
-
-    // uncomment to visualize destination
-    this.circle(destination, "orange");
 
     // Serialize state for swarm
     moveData.state = [
@@ -1015,7 +972,7 @@ export class Movement {
 
     // consume path
     if (state.stuckCount == 0 && !newPath) {
-      moveData.path = moveData.path.substr(1);
+      moveData.path = moveData.path.slice(1);
     }
     const nextDirection = parseInt(moveData.path[0], 10) as DirectionConstant;
 
@@ -1087,7 +1044,6 @@ export class Movement {
       blockMyCreeps: true, // todo: is this necessary?
     });
 
-    const debug = false;
     const callback = (roomName: string) => {
       const room = swarm.roomsByName[roomName];
       const matrixOpts: Partial<MatrixOptions> = {
@@ -1109,9 +1065,6 @@ export class Movement {
         Movement.combatMoveCallbackModifier(room, matrix, approach, avoid, options);
         // TODO: ^ needs to take swarm size into account
       }
-      if (options.displayCostMatrix) {
-        Visualizer.displayCostMatrix(matrix, roomName);
-      }
       return matrix;
     };
 
@@ -1128,13 +1081,6 @@ export class Movement {
             })),
           ),
         ) as PathFinderGoal[];
-        if (options.displayAvoid) {
-          const room = swarm.rooms[0];
-          for (const avoid of allAvoid) {
-            const { x, y } = avoid.pos;
-            room.visual.text(avoid.range.toString(), x, y, { color: "ff0099" });
-          }
-        }
         const avoidRet = PathFinder.search(swarm.anchor, allAvoid, {
           roomCallback: callback,
           flee: true,
@@ -1143,7 +1089,6 @@ export class Movement {
           swampCost: 10,
         });
         if (avoidRet.path.length > 0) {
-          if (debug) Pathing.serializePath(swarm.anchor, avoidRet.path, "magenta");
           outcome = swarm.move(swarm.anchor.getDirectionTo(avoidRet.path[0]));
           if (outcome == OK) {
             return outcome;
@@ -1170,7 +1115,6 @@ export class Movement {
           swampCost: 10,
         });
         if (approachRet.path.length > 0) {
-          if (debug) Pathing.serializePath(swarm.anchor, approachRet.path, "cyan");
           outcome = swarm.move(swarm.anchor.getDirectionTo(approachRet.path[0]));
           if (outcome == OK) {
             return outcome;
@@ -1199,7 +1143,6 @@ export class Movement {
       blockAlliedCreeps: false,
     });
 
-    const debug = false;
     const callback = (roomName: string) => {
       const matrixOpts: Partial<MatrixOptions> = {
         blockExits: !opts.allowExit, // todo: maybe refactor allowExit => blockExits
@@ -1223,9 +1166,6 @@ export class Movement {
           MatrixLib.blockNonRamparts(matrix, creep.room);
         }
         Movement.combatMoveCallbackModifier(creep.room, matrix, approach, avoid, opts);
-        if (opts.displayCostMatrix) {
-          Visualizer.displayCostMatrix(matrix, roomName);
-        }
         return matrix;
       } else {
         if (Memory.rooms[roomName] && Memory.rooms[roomName][RMEM.AVOID]) return false;
@@ -1251,7 +1191,6 @@ export class Movement {
           swampCost: 10,
         });
         if (avoidRet.path.length > 0) {
-          if (debug) Pathing.serializePath(creep.pos, avoidRet.path, "magenta");
           outcome = creep.move(creep.pos.getDirectionTo(avoidRet.path[0]));
           if (outcome == OK) {
             return outcome;
@@ -1274,7 +1213,6 @@ export class Movement {
           swampCost: 10,
         });
         if (approachRet.path.length > 0) {
-          if (debug) Pathing.serializePath(creep.pos, approachRet.path, "cyan");
           outcome = creep.move(creep.pos.getDirectionTo(approachRet.path[0]));
           if (outcome == OK) {
             return outcome;
@@ -1302,7 +1240,6 @@ export class Movement {
           },
         );
         if (ret.path.length > 0) {
-          if (debug) Pathing.serializePath(creep.pos, ret.path, "green");
           outcome = creep.move(creep.pos.getDirectionTo(ret.path[0]));
           if (outcome == OK) {
             return outcome;
@@ -1465,7 +1402,7 @@ export class Movement {
           return NO_ACTION;
         }
         moveData.destination = last(ret.path);
-        moveData.path = Pathing.serializePath(creep.pos, ret.path, "purple");
+        moveData.path = Pathing.serializePath(creep.pos, ret.path);
       }
 
       // Call goTo to the final position in path
@@ -1562,19 +1499,6 @@ export class Movement {
       }
     }
     return stuck;
-  }
-
-  /**
-   * Draw a circle
-   */
-  private static circle(pos: RoomPosition, color: string, opacity?: number): RoomVisual {
-    return new RoomVisual(pos.roomName).circle(pos, {
-      radius: 0.45,
-      fill: "transparent",
-      stroke: color,
-      strokeWidth: 0.15,
-      opacity: opacity,
-    });
   }
 }
 

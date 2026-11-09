@@ -11,7 +11,7 @@ import { Cartographer } from "../utilities/Cartographer";
 import { EmpireAnalysis } from "../utilities/EmpireAnalysis";
 import { alignedNewline, bullet } from "../utilities/stringConstants";
 import { color, printRoomName, toColumns } from "../utilities/utils";
-import { asciiLogoRL, asciiLogoSmall } from "../visuals/logos";
+import { asciiLogoRL, asciiLogoSmall } from "./logos";
 import { DEFAULT_OVERMIND_SIGNATURE, USE_SCREEPS_PROFILER } from "../~settings";
 import { log } from "./log";
 import { max, isEmpty } from "../utilities/native";

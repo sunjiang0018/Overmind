@@ -9,7 +9,6 @@ import { RoomIntel } from "../../intel/RoomIntel";
 import { Mem } from "../../memory/Memory";
 import { OverlordPriority } from "../../priorities/priorities_overlords";
 import { profile } from "../../profiler/decorator";
-import { Visualizer } from "../../visuals/Visualizer";
 import { CombatZerg } from "../../zerg/CombatZerg";
 import { Swarm } from "../../zerg/Swarm";
 import { SwarmOverlord } from "../SwarmOverlord";
@@ -174,17 +173,6 @@ export class SwarmDestroyerOverlord extends SwarmOverlord {
     for (const ref of refs) {
       this.handleSwarm(this.swarms[ref], i);
       i++;
-    }
-  }
-
-  visuals() {
-    Visualizer.marker(this.fallback, { color: "green" });
-    for (const ref in this.swarms) {
-      const swarm = this.swarms[ref];
-      Visualizer.marker(swarm.anchor, { color: "blue" });
-      if (swarm.target) {
-        Visualizer.marker(swarm.target.pos, { color: "orange" });
-      }
     }
   }
 }

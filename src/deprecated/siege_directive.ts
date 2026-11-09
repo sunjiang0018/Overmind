@@ -4,7 +4,6 @@
 // import {Pathing} from '../../movement/Pathing';
 // import {DirectiveHealPoint} from './healPoint';
 // import {log} from '../../console/log';
-// import {Visualizer} from '../../visuals/Visualizer';
 //
 // interface DirectiveSiegeMemory extends FlagMemory {
 // 	recoveryWaypoint: ProtoPos;
@@ -83,13 +82,6 @@
 // 				this.recoveryFlag.remove();
 // 			}
 // 			this.remove();
-// 		}
-// 	}
-//
-// 	visuals(): void {
-// 		Visualizer.marker(this.pos, {color: 'red'});
-// 		if (!this.recoveryFlag) {
-// 			Visualizer.marker(this.recoveryWaypoint, {color: 'green'});
 // 		}
 // 	}
 // }

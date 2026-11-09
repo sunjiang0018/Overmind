@@ -1046,7 +1046,7 @@ export const bunkerCoordLookup = mapValues(_allBunkerCoords, (coordArr: Coord[])
 
 // Fast function for checking if a position is inside the bunker
 export function insideBunkerBounds(pos: RoomPosition, colony: Colony): boolean {
-  if (colony.roomPlanner.memory.bunkerData && colony.roomPlanner.memory.bunkerData.anchor) {
+  if (colony.roomPlanner.memory.bunkerData?.anchor) {
     const dx = bunkerLayout.data.anchor.x - colony.roomPlanner.memory.bunkerData.anchor.x;
     const dy = bunkerLayout.data.anchor.y - colony.roomPlanner.memory.bunkerData.anchor.y;
     const coord = { x: pos.x + dx, y: pos.y + dy };
@@ -1056,7 +1056,7 @@ export function insideBunkerBounds(pos: RoomPosition, colony: Colony): boolean {
 }
 
 export function getPosFromBunkerCoord(coord: Coord, colony: Colony): RoomPosition {
-  if (colony.roomPlanner.memory.bunkerData && colony.roomPlanner.memory.bunkerData.anchor) {
+  if (colony.roomPlanner.memory.bunkerData?.anchor) {
     let dx = colony.roomPlanner.memory.bunkerData.anchor.x - bunkerLayout.data.anchor.x;
     let dy = colony.roomPlanner.memory.bunkerData.anchor.y - bunkerLayout.data.anchor.y;
     return new RoomPosition(coord.x + dx, coord.y + dy, colony.room.name);

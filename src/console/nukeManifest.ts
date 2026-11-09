@@ -64,8 +64,8 @@ export function verifyLaunchManifest() {
       log.info(`${from} to ${to} is out of range!`);
     } else if (
       !nuker ||
-      nuker.ghodium < nuker.ghodiumCapacity ||
-      nuker.energy < nuker.energyCapacity
+      nuker.store[RESOURCE_GHODIUM] < nuker.store.getCapacity(RESOURCE_GHODIUM) ||
+      nuker.store[RESOURCE_ENERGY] < nuker.store.getCapacity(RESOURCE_ENERGY)
     ) {
       log.info(`Not enough resources in ${from} nuker!`);
     } else {

@@ -361,6 +361,4 @@ export class CombatPlanner {
   }
 
   run() {}
-
-  visuals() {}
 }

@@ -102,7 +102,6 @@ function loadBundle(file: string, { bucket = 9999 } = {}) {
     globalThis.RoomPosition = class RoomPosition {
       constructor(x, y, roomName) {Object.assign(this, {x, y, roomName});}
     };
-    globalThis.RoomVisual = class RoomVisual {};
     globalThis.Store = class Store {};
     globalThis.PathFinder = {CostMatrix: class CostMatrix {
       constructor() {this.data = new Uint8Array(2500);}

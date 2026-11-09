@@ -143,20 +143,20 @@ export class UpgradeSite extends HiveCluster {
 
   init(): void {
     // Register energy requests
-    if (this.link && this.link.energy < UpgradeSite.settings.linksRequestBelow) {
+    if (this.link && this.link.store[RESOURCE_ENERGY] < UpgradeSite.settings.linksRequestBelow) {
       this.colony.linkNetwork.requestReceive(this.link);
     }
     const inThreshold = this.colony.stage == ColonyStage.Larva ? 0.75 : 0.5;
     if (this.battery) {
       if (this.colony.stage == ColonyStage.Larva) {
-        if (getStoredEnergy(this.battery) < inThreshold * this.battery.storeCapacity) {
+        if (getStoredEnergy(this.battery) < inThreshold * this.battery.store.getCapacity()) {
           const workers = this.colony.overlords.work.workers;
           const energyPerTick =
             UPGRADE_CONTROLLER_POWER * sum(workers, (worker) => worker.getBodyparts(WORK));
           this.colony.logisticsNetwork.requestInput(this.battery, { dAmountdt: energyPerTick });
         }
       } else {
-        if (getStoredEnergy(this.battery) < inThreshold * this.battery.storeCapacity) {
+        if (getStoredEnergy(this.battery) < inThreshold * this.battery.store.getCapacity()) {
           const energyPerTick = UPGRADE_CONTROLLER_POWER * this.upgradePowerNeeded;
           this.colony.logisticsNetwork.requestInput(this.battery, { dAmountdt: energyPerTick });
         }
@@ -239,18 +239,5 @@ export class UpgradeSite extends HiveCluster {
     if (Game.time % 25 == 7 && this.colony.level >= 2) {
       this.buildBatteryIfMissing();
     }
-  }
-
-  visuals() {
-    // let info = [];
-    // if (this.controller.level != 8) {
-    // 	let progress = `${Math.floor(this.controller.progress / 1000)}K`;
-    // 	let progressTotal = `${Math.floor(this.controller.progressTotal / 1000)}K`;
-    // 	let percent = `${Math.floor(100 * this.controller.progress / this.controller.progressTotal)}`;
-    // 	info.push(`Progress: ${progress}/${progressTotal} (${percent}%)`);
-    //
-    // }
-    // info.push(`Downtime: ${this.memory.stats.downtime.toPercent()}`);
-    // Visualizer.showInfo(info, this);
   }
 }

@@ -27,7 +27,6 @@ import {
 } from "../roomPlanner/layouts/bunker";
 import { Stats } from "../stats/stats";
 import { ema, hasMinerals } from "../utilities/utils";
-import { Visualizer } from "../visuals/Visualizer";
 import { Zerg } from "../zerg/Zerg";
 import { HiveCluster } from "./_HiveCluster";
 import { difference, sum, sortBy, sortedIndex, remove, compact } from "../utilities/native";
@@ -285,7 +284,7 @@ export class Hatchery extends HiveCluster {
     // let refillSpawns = _.filter(this.spawns, spawn => spawn.energy < spawn.energyCapacity);
     // let refillExtensions = _.filter(this.extensions, extension => extension.energy < extension.energyCapacity);
     const refillTowers = this.towers.filter(
-      (tower) => tower.energy < this.settings.refillTowersBelow,
+      (tower) => tower.store[RESOURCE_ENERGY] < this.settings.refillTowersBelow,
     );
     // _.forEach(refillSpawns, spawn => this.transportRequests.requestInput(spawn, Priority.NormalLow));
     // _.forEach(refillExtensions, extension => this.transportRequests.requestInput(extension, Priority.NormalLow));
@@ -512,54 +511,5 @@ export class Hatchery extends HiveCluster {
     Stats.log(`colonies.${this.colony.name}.hatchery.overload`, overload);
 
     this.memory.stats = { overload, uptime, longUptime };
-  }
-
-  visuals(coord: Coord): Coord {
-    let { x, y } = coord;
-    const spawning: string[] = [];
-    const spawnProgress: [number, number][] = [];
-    this.spawns.forEach(function (spawn) {
-      if (spawn.spawning) {
-        spawning.push(spawn.spawning.name.split("_")[0]);
-        const timeElapsed = spawn.spawning.needTime - spawn.spawning.remainingTime;
-        spawnProgress.push([timeElapsed, spawn.spawning.needTime]);
-      }
-    });
-    const boxCoords = Visualizer.section(
-      `${this.colony.name} Hatchery`,
-      { x, y, roomName: this.room.name },
-      9.5,
-      3 + spawning.length + 0.1,
-    );
-    const boxX = boxCoords.x;
-    y = boxCoords.y + 0.25;
-
-    // Log energy
-    Visualizer.text("Energy", { x: boxX, y: y, roomName: this.room.name });
-    Visualizer.barGraph(
-      [this.room.energyAvailable, this.room.energyCapacityAvailable],
-      { x: boxX + 4, y: y, roomName: this.room.name },
-      5,
-    );
-    y += 1;
-
-    // Log uptime
-    const uptime = this.memory.stats.uptime;
-    Visualizer.text("Uptime", { x: boxX, y: y, roomName: this.room.name });
-    Visualizer.barGraph(uptime, { x: boxX + 4, y: y, roomName: this.room.name }, 5);
-    y += 1;
-
-    // Log overload status
-    const overload = this.memory.stats.overload;
-    Visualizer.text("Overload", { x: boxX, y: y, roomName: this.room.name });
-    Visualizer.barGraph(overload, { x: boxX + 4, y: y, roomName: this.room.name }, 5);
-    y += 1;
-
-    for (const i in spawning) {
-      Visualizer.text(spawning[i], { x: boxX, y: y, roomName: this.room.name });
-      Visualizer.barGraph(spawnProgress[i], { x: boxX + 4, y: y, roomName: this.room.name }, 5);
-      y += 1;
-    }
-    return { x: x, y: y + 0.25 };
   }
 }

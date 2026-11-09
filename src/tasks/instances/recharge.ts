@@ -92,7 +92,7 @@ export class TaskRecharge extends Task<rechargeTargetType> {
       );
 
     const resourceOutflux = sum(otherTargeters, (other) => other.store.getFreeCapacity());
-    amount = minMax(amount - resourceOutflux, 0, creep.carryCapacity);
+    amount = minMax(amount - resourceOutflux, 0, creep.store.getCapacity());
     const effectiveAmount = amount / (roomPositionGetMultiRoomRangeTo(creep.pos, obj.pos) + 1);
     if (effectiveAmount <= 0) {
       return false;
