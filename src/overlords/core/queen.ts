@@ -51,6 +51,33 @@ export class QueenOverlord extends Overlord {
   }
 
   private rechargeActions(queen: Zerg): void {
+    if (this.colony?.roomPlanner?.memory.logisticsPolicy?.queenBufferFirst) {
+      const wanted = queen.carryCapacity - queen.carry.energy;
+      if (wanted <= 0) return;
+      const batteries = this.hatchery.batteries.filter((b) => getStoredEnergy(b) > 0);
+      // A full buffer supports one full load; a live Link holds only 800.
+      const fullBattery = queen.pos.findClosestByRange(
+        batteries.filter((b) => getStoredEnergy(b) >= wanted),
+      );
+      if (fullBattery) {
+        queen.task = Tasks.withdraw(fullBattery);
+        return;
+      }
+      const link = this.hatchery.link;
+      if (link && getStoredEnergy(link) >= wanted) {
+        queen.task = Tasks.withdraw(link);
+        return;
+      }
+      // Never wait for a full load when energy is scarce. Use the largest
+      // available partial load, with distance breaking equal-amount ties.
+      const sources = link && !isStructureEmpty(link) ? [...batteries, link] : batteries;
+      const available = Math.max(0, ...sources.map((source) => getStoredEnergy(source)));
+      const source = queen.pos.findClosestByRange(
+        sources.filter((candidate) => getStoredEnergy(candidate) == available),
+      );
+      queen.task = source ? Tasks.withdraw(source) : Tasks.recharge();
+      return;
+    }
     if (this.hatchery.link && !isStructureEmpty(this.hatchery.link)) {
       queen.task = Tasks.withdraw(this.hatchery.link);
     } else if (this.hatchery.batteries.length > 0) {

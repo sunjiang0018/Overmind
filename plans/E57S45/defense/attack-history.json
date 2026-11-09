@@ -1,0 +1,2224 @@
+{
+  "room": "E57S45",
+  "shard": "shard3",
+  "source": "official room-history snapshots",
+  "range": [84151700, 84155099],
+  "peak": {
+    "tick": 84153140,
+    "damage": 1570,
+    "heal": 96,
+    "claims": 0,
+    "names": [
+      "shard3:84151582:1",
+      "shard3:84151852:1",
+      "shard3:84152353:1",
+      "shard3:84152854:1",
+      "shard3:84152975:1"
+    ]
+  },
+  "profiles": {
+    "shard3:84151582:1": {
+      "user": "650831c863cdd52dd0500a6b",
+      "parts": {
+        "tough": 1,
+        "ranged_attack": 14,
+        "move": 4,
+        "heal": 1
+      },
+      "body": [
+        {
+          "type": "tough",
+          "hits": 100,
+          "boost": "XGHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "move",
+          "hits": 100,
+          "boost": "XZHO2"
+        },
+        {
+          "type": "move",
+          "hits": 100,
+          "boost": "XZHO2"
+        },
+        {
+          "type": "move",
+          "hits": 100,
+          "boost": "XZHO2"
+        },
+        {
+          "type": "heal",
+          "hits": 100,
+          "boost": "XLHO2"
+        },
+        {
+          "type": "move",
+          "hits": 100,
+          "boost": "XZHO2"
+        }
+      ]
+    },
+    "shard3:84151852:1": {
+      "user": "650831c863cdd52dd0500a6b",
+      "parts": {
+        "move": 10,
+        "attack": 5
+      },
+      "body": [
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        }
+      ]
+    },
+    "shard3:84151852:2": {
+      "user": "650831c863cdd52dd0500a6b",
+      "parts": {
+        "claim": 18,
+        "move": 19,
+        "heal": 1
+      },
+      "body": [
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "heal",
+          "hits": 100
+        }
+      ]
+    },
+    "shard3:84152353:1": {
+      "user": "650831c863cdd52dd0500a6b",
+      "parts": {
+        "move": 10,
+        "attack": 5
+      },
+      "body": [
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        }
+      ]
+    },
+    "shard3:84152500:1": {
+      "user": "650831c863cdd52dd0500a6b",
+      "parts": {
+        "claim": 18,
+        "move": 19,
+        "heal": 1
+      },
+      "body": [
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "heal",
+          "hits": 100
+        }
+      ]
+    },
+    "shard3:84152854:1": {
+      "user": "650831c863cdd52dd0500a6b",
+      "parts": {
+        "move": 10,
+        "attack": 5
+      },
+      "body": [
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        }
+      ]
+    },
+    "shard3:84152975:1": {
+      "user": "650831c863cdd52dd0500a6b",
+      "parts": {
+        "tough": 1,
+        "ranged_attack": 14,
+        "move": 4,
+        "heal": 1
+      },
+      "body": [
+        {
+          "type": "tough",
+          "hits": 100,
+          "boost": "XGHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "ranged_attack",
+          "hits": 100,
+          "boost": "XKHO2"
+        },
+        {
+          "type": "move",
+          "hits": 100,
+          "boost": "XZHO2"
+        },
+        {
+          "type": "move",
+          "hits": 100,
+          "boost": "XZHO2"
+        },
+        {
+          "type": "move",
+          "hits": 100,
+          "boost": "XZHO2"
+        },
+        {
+          "type": "heal",
+          "hits": 100,
+          "boost": "XLHO2"
+        },
+        {
+          "type": "move",
+          "hits": 100,
+          "boost": "XZHO2"
+        }
+      ]
+    },
+    "shard3:84153355:1": {
+      "user": "650831c863cdd52dd0500a6b",
+      "parts": {
+        "move": 10,
+        "attack": 5
+      },
+      "body": [
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        }
+      ]
+    },
+    "shard3:84153502:1": {
+      "user": "650831c863cdd52dd0500a6b",
+      "parts": {
+        "claim": 18,
+        "move": 19,
+        "heal": 1
+      },
+      "body": [
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "claim",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "heal",
+          "hits": 100
+        }
+      ]
+    },
+    "shard3:84153856:1": {
+      "user": "650831c863cdd52dd0500a6b",
+      "parts": {
+        "move": 10,
+        "attack": 5
+      },
+      "body": [
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "attack",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        },
+        {
+          "type": "move",
+          "hits": 100
+        }
+      ]
+    }
+  },
+  "controllerEvents": [
+    {
+      "tick": 84151700,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 2,
+        "downgradeTime": 84156250,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 1,
+        "safeModeCooldown": null,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84151800,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 2,
+        "downgradeTime": 84156250,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 1,
+        "safeModeCooldown": null,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84151900,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 2,
+        "downgradeTime": 84156250,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 1,
+        "safeModeCooldown": null,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84152000,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 2,
+        "downgradeTime": 84156250,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 1,
+        "safeModeCooldown": null,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84152079,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84160851,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84153079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84152100,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84160851,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84153079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84152200,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84160851,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84153079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84152300,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84160851,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84153079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84152400,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84160851,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84153079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84152500,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84160851,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84153079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84152600,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84160851,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84153079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84152795,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84160851,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84153079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84152800,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84160851,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84153079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84152900,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84160851,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84153079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84153000,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84160851,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84153079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84153100,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84155451,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84154079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84153200,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84155451,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84154079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84153300,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84155451,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84154079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84153400,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84155451,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84154079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84153500,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84155451,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84154079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84153694,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84155451,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84154079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84153700,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84155451,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84154079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84153800,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84155451,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84154079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84153900,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84155451,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84154079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84154000,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84155451,
+        "isPowerEnabled": false,
+        "progress": 180,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84202079,
+        "upgradeBlocked": 84154079,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84154079,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 0,
+        "downgradeTime": null,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": null,
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84204079,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84154100,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 0,
+        "downgradeTime": null,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": null,
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84204079,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84154200,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 0,
+        "downgradeTime": null,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": null,
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84204079,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84154300,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 0,
+        "downgradeTime": null,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": null,
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84204079,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84154400,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 0,
+        "downgradeTime": null,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": null,
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84204079,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84154459,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84174460,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84204079,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84154500,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84174460,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84204079,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84154600,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84174460,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84204079,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84154700,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84174460,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84204079,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84154800,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84174460,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84204079,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84154900,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84174460,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84204079,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    },
+    {
+      "tick": 84155000,
+      "controller": {
+        "_id": "5bbcb0839099fc012e63c4b1",
+        "room": "E57S45",
+        "type": "controller",
+        "x": 41,
+        "y": 41,
+        "level": 1,
+        "downgradeTime": 84174460,
+        "isPowerEnabled": false,
+        "progress": 0,
+        "safeMode": null,
+        "user": "678126048b304f0012fa874d",
+        "safeModeAvailable": 0,
+        "safeModeCooldown": 84204079,
+        "upgradeBlocked": null,
+        "reservation": null,
+        "effects": null,
+        "hits": 0,
+        "hitsMax": 0,
+        "progressTotal": 0,
+        "sign": {
+          "user": "678126048b304f0012fa874d",
+          "text": "星海为途，长路有光",
+          "time": 84146875,
+          "datetime": 1794137790147
+        }
+      }
+    }
+  ],
+  "sourceUrls": [
+    "https://screeps.com/room-history/shard3/E57S45/84151700.json",
+    "https://screeps.com/room-history/shard3/E57S45/84151800.json",
+    "https://screeps.com/room-history/shard3/E57S45/84151900.json",
+    "https://screeps.com/room-history/shard3/E57S45/84152000.json",
+    "https://screeps.com/room-history/shard3/E57S45/84152100.json",
+    "https://screeps.com/room-history/shard3/E57S45/84152200.json",
+    "https://screeps.com/room-history/shard3/E57S45/84152300.json",
+    "https://screeps.com/room-history/shard3/E57S45/84152400.json",
+    "https://screeps.com/room-history/shard3/E57S45/84152500.json",
+    "https://screeps.com/room-history/shard3/E57S45/84152600.json",
+    "https://screeps.com/room-history/shard3/E57S45/84152700.json",
+    "https://screeps.com/room-history/shard3/E57S45/84152800.json",
+    "https://screeps.com/room-history/shard3/E57S45/84152900.json",
+    "https://screeps.com/room-history/shard3/E57S45/84153000.json",
+    "https://screeps.com/room-history/shard3/E57S45/84153100.json",
+    "https://screeps.com/room-history/shard3/E57S45/84153200.json",
+    "https://screeps.com/room-history/shard3/E57S45/84153300.json",
+    "https://screeps.com/room-history/shard3/E57S45/84153400.json",
+    "https://screeps.com/room-history/shard3/E57S45/84153500.json",
+    "https://screeps.com/room-history/shard3/E57S45/84153600.json",
+    "https://screeps.com/room-history/shard3/E57S45/84153700.json",
+    "https://screeps.com/room-history/shard3/E57S45/84153800.json",
+    "https://screeps.com/room-history/shard3/E57S45/84153900.json",
+    "https://screeps.com/room-history/shard3/E57S45/84154000.json",
+    "https://screeps.com/room-history/shard3/E57S45/84154100.json",
+    "https://screeps.com/room-history/shard3/E57S45/84154200.json",
+    "https://screeps.com/room-history/shard3/E57S45/84154300.json",
+    "https://screeps.com/room-history/shard3/E57S45/84154400.json",
+    "https://screeps.com/room-history/shard3/E57S45/84154500.json",
+    "https://screeps.com/room-history/shard3/E57S45/84154600.json",
+    "https://screeps.com/room-history/shard3/E57S45/84154700.json",
+    "https://screeps.com/room-history/shard3/E57S45/84154800.json",
+    "https://screeps.com/room-history/shard3/E57S45/84154900.json",
+    "https://screeps.com/room-history/shard3/E57S45/84155000.json"
+  ],
+  "missingBases": [],
+  "coverageNote": "Only available official snapshots were decoded; missing snapshots are listed. Peak is the maximum found, not a claim that no larger unobserved force existed."
+}

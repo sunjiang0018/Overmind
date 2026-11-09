@@ -1,16 +1,81 @@
 import type { Colony } from "../Colony";
 import { packCoordList } from "../utilities/packrat";
 import { E58S42_PLAN } from "./layouts/E58S42";
+import { E57S45_PLAN } from "./layouts/E57S45";
 import type { RoomPlannerMemory } from "./RoomPlanner";
 
 const VERSION = "E58S42-terrain-v5";
 
 export function hasRoomOverride(roomName: string): boolean {
-  return Game.shard.name == "shard3" && roomName == "E58S42";
+  return Game.shard.name == "shard3" && (roomName == "E58S42" || roomName == "E57S45");
+}
+
+/** Installs only after ownership exists; never creates a flag or claims a room. */
+function installE57S45Override(colony: Colony, memory: RoomPlannerMemory): void {
+  if (
+    !colony.controller.my ||
+    (memory.customLayout == E57S45_PLAN.version && memory.installedLevel == colony.controller.level)
+  )
+    return;
+  const terrain = Game.map.getRoomTerrain(colony.name);
+  const buildings: { [type: string]: Coord[] } = E57S45_PLAN.buildings;
+  for (const [type, positions] of Object.entries(buildings)) {
+    if (type == STRUCTURE_EXTRACTOR) continue;
+    for (const pos of positions) {
+      if (terrain.get(pos.x, pos.y) == TERRAIN_MASK_WALL) {
+        throw new Error(`Invalid ${E57S45_PLAN.version}: ${type} at ${pos.x},${pos.y}`);
+      }
+    }
+  }
+  for (const structure of colony.room.find(FIND_MY_STRUCTURES)) {
+    const type = structure.structureType;
+    if (type == STRUCTURE_RAMPART || type == STRUCTURE_CONTROLLER) continue;
+    if (!(buildings[type] || []).some((p) => p.x == structure.pos.x && p.y == structure.pos.y)) {
+      throw new Error(`${E57S45_PLAN.version} needs review: existing ${type} at ${structure.pos}`);
+    }
+  }
+  memory.mapsByLevel = {};
+  for (const [level, structures] of Object.entries(E57S45_PLAN.stages)) {
+    memory.mapsByLevel[Number(level)] = {};
+    for (const [type, positions] of Object.entries(structures)) {
+      if (
+        positions.length > CONTROLLER_STRUCTURES[type as BuildableStructureConstant][Number(level)]
+      ) {
+        throw new Error(`Invalid ${E57S45_PLAN.version}: RCL${level} ${type} limit`);
+      }
+      memory.mapsByLevel[Number(level)][type] = positions.map((p) => ({
+        ...p,
+        roomName: colony.name,
+      }));
+    }
+  }
+  delete memory.bunkerData;
+  memory.active = false;
+  memory.savedFlags = [];
+  memory.relocating = false;
+  memory.misplacedStructures = false;
+  memory.lastGenerated = Game.time;
+  memory.recheckStructuresAt = Game.time + 1;
+  memory.customLayout = E57S45_PLAN.version;
+  memory.installedLevel = colony.controller.level;
+  memory.logisticsPolicy = { ...E57S45_PLAN.logisticsPolicy };
+  const stage = E57S45_PLAN.stages[colony.controller.level as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8];
+  Object.assign(colony.memory, {
+    barrierPlanner: { barrierCoordsPacked: packCoordList(stage.rampart) },
+    roadPlanner: {
+      roadCoordsPacked: { [colony.name]: packCoordList(stage.road) },
+      roadCoverage: 0,
+      roadCoverages: {},
+    },
+  });
 }
 
 /** Install once, before Colony selects its hatchery/manager implementation. */
 export function installRoomOverride(colony: Colony, memory: RoomPlannerMemory): void {
+  if (Game.shard.name == "shard3" && colony.name == "E57S45") {
+    installE57S45Override(colony, memory);
+    return;
+  }
   if (!hasRoomOverride(colony.name) || !colony.controller.my || memory.customLayout == VERSION)
     return;
   const terrain = Game.map.getRoomTerrain(colony.name);

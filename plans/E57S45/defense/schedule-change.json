@@ -1,0 +1,2468 @@
+{
+  "date": "2026-11-09",
+  "shard": "shard3",
+  "branch": "main",
+  "sha256": "b6854c9b3b0aed5b343b5b78b8931a8d3b5c3dffb2f10cd9949d0e0adaf077c6",
+  "validation": {
+    "tests": 153,
+    "testFiles": 20,
+    "format": true,
+    "lint": true,
+    "typecheck": true,
+    "serverModuleMatchesLocal": true
+  },
+  "safeModeAttempt": {
+    "tick": 84157580,
+    "room": "E57S45",
+    "ret": -11,
+    "available": 1,
+    "cooldown": 46499,
+    "hostiles": [
+      {
+        "name": "shard3:84157402:1",
+        "user": "lp136"
+      }
+    ]
+  },
+  "ownershipLossObserved": {
+    "tick": 84157673,
+    "errors": [],
+    "colonies": ["E58S42"],
+    "controller": {
+      "my": false,
+      "level": 0,
+      "cooldown": 49933,
+      "available": 0
+    },
+    "flags": [
+      {
+        "name": "invasionDefense:5eec38",
+        "pos": {
+          "x": 41,
+          "y": 41,
+          "roomName": "E57S45"
+        },
+        "color": 3,
+        "secondaryColor": 2
+      },
+      {
+        "name": "colonySupport:E57S45",
+        "pos": {
+          "x": 41,
+          "y": 41,
+          "roomName": "E57S45"
+        },
+        "color": 2,
+        "secondaryColor": 3
+      }
+    ],
+    "scouts": [
+      {
+        "name": "changeling_1",
+        "O": "colonySupport:E57S45>support",
+        "pos": {
+          "x": 4,
+          "y": 11,
+          "roomName": "E57S46"
+        }
+      },
+      {
+        "name": "changeling_0",
+        "O": "outpost:15b597>scout",
+        "pos": {
+          "x": 6,
+          "y": 21,
+          "roomName": "E58S45"
+        }
+      }
+    ],
+    "hostiles": [
+      {
+        "name": "shard3:84157402:1",
+        "user": "lp136",
+        "pos": {
+          "x": 22,
+          "y": 24,
+          "roomName": "E57S45"
+        }
+      }
+    ]
+  },
+  "southOutpostStopped": {
+    "tick": 84157593,
+    "room": "E57S46",
+    "removed": [
+      {
+        "name": "outpost:341e68",
+        "ret": 0
+      },
+      {
+        "name": "harvest:7d12f1",
+        "ret": 0
+      },
+      {
+        "name": "outpostDefense:f7bc24",
+        "ret": 0
+      }
+    ]
+  },
+  "southExpansionDisabled": true,
+  "withdrawal": {
+    "tick": 84157690,
+    "resumeAfter": 84207606,
+    "units": [
+      "drone_8",
+      "drone_9",
+      "drone_10",
+      "drone_11",
+      "worker_0",
+      "worker_2",
+      "worker_3",
+      "worker_4",
+      "changeling_0",
+      "drone_12",
+      "drone_2"
+    ],
+    "removed": ["invasionDefense:5eec38"],
+    "scheduled": "colonize:E57S45",
+    "stage": "returning"
+  },
+  "withdrawalVerification": {
+    "tick": 84157763,
+    "errors": [],
+    "resumeAfter": 84207606,
+    "units": [
+      {
+        "name": "drone_8",
+        "pos": {
+          "x": 11,
+          "y": 12,
+          "roomName": "E58S45"
+        },
+        "O": "E58S42>worker",
+        "ttl": 332
+      },
+      {
+        "name": "drone_9",
+        "pos": {
+          "x": 41,
+          "y": 17,
+          "roomName": "E57S45"
+        },
+        "O": "E58S42>worker",
+        "ttl": 462
+      },
+      {
+        "name": "drone_10",
+        "pos": {
+          "x": 39,
+          "y": 17,
+          "roomName": "E57S45"
+        },
+        "O": "E58S42>worker",
+        "ttl": 560
+      },
+      {
+        "name": "drone_11",
+        "pos": {
+          "x": 10,
+          "y": 13,
+          "roomName": "E58S45"
+        },
+        "O": "E58S42>worker",
+        "ttl": 736
+      },
+      {
+        "name": "worker_0",
+        "pos": {
+          "x": 13,
+          "y": 26,
+          "roomName": "E57S45"
+        },
+        "O": "E58S42>worker",
+        "ttl": 803
+      },
+      {
+        "name": "worker_2",
+        "pos": {
+          "x": 13,
+          "y": 23,
+          "roomName": "E57S45"
+        },
+        "O": "E58S42>worker",
+        "ttl": 852
+      },
+      {
+        "name": "worker_3",
+        "pos": {
+          "x": 27,
+          "y": 35,
+          "roomName": "E57S45"
+        },
+        "O": "E58S42>worker",
+        "ttl": 869
+      },
+      {
+        "name": "worker_4",
+        "pos": {
+          "x": 13,
+          "y": 25,
+          "roomName": "E57S45"
+        },
+        "O": "E58S42>worker",
+        "ttl": 1011
+      },
+      {
+        "name": "changeling_0",
+        "pos": {
+          "x": 24,
+          "y": 2,
+          "roomName": "E58S44"
+        },
+        "O": "E58S42>scout",
+        "ttl": 806
+      },
+      {
+        "name": "drone_12",
+        "pos": {
+          "x": 24,
+          "y": 21,
+          "roomName": "E58S45"
+        },
+        "O": "E58S42>worker",
+        "ttl": 914
+      },
+      {
+        "name": "drone_2",
+        "pos": {
+          "x": 24,
+          "y": 23,
+          "roomName": "E58S45"
+        },
+        "O": "E58S42>worker",
+        "ttl": 977
+      }
+    ],
+    "flags": [
+      {
+        "name": "colonySupport:E57S45",
+        "pos": {
+          "x": 41,
+          "y": 41,
+          "roomName": "E57S45"
+        }
+      },
+      {
+        "name": "colonize:E57S45",
+        "pos": {
+          "x": 41,
+          "y": 41,
+          "roomName": "E57S45"
+        }
+      }
+    ],
+    "claim": true,
+    "pioneer": true
+  },
+  "movementEvidence": [
+    {
+      "tick": 84157722,
+      "units": [
+        {
+          "name": "drone_8",
+          "pos": {
+            "x": 39,
+            "y": 17,
+            "roomName": "E57S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_8"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "path": "222222222333333332221188211111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [7, 16, 0, 2, 25, 25, "E58S42", 8, 15]
+          },
+          "roomDanger": 0.3771771344184304
+        },
+        {
+          "name": "drone_9",
+          "pos": {
+            "x": 21,
+            "y": 11,
+            "roomName": "E57S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_9"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "path": "4333332333334333332222222222333333332221181111111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [37, 16, 0, 2, 25, 25, "E58S42", 38, 17]
+          },
+          "roomDanger": 0.3771771344184304
+        },
+        {
+          "name": "drone_10",
+          "pos": {
+            "x": 19,
+            "y": 14,
+            "roomName": "E57S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_10"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "path": "344333332333334333332222222222333333332221111811111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [35, 15, 0, 2, 25, 25, "E58S42", 36, 15]
+          },
+          "roomDanger": 0.3771771344184304
+        },
+        {
+          "name": "drone_11",
+          "pos": {
+            "x": 38,
+            "y": 17,
+            "roomName": "E57S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_11"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "path": "2222222222333333332221188211111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [6, 17, 0, 2, 25, 25, "E58S42", 7, 16]
+          },
+          "roomDanger": 0.3771771344184304
+        },
+        {
+          "name": "worker_0",
+          "pos": {
+            "x": 18,
+            "y": 30,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "worker_0"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [18, 30, 0, 29, 25, 25, "E58S42", 19, 29],
+            "fleeWait": 2,
+            "destination": {
+              "x": 18,
+              "y": 40,
+              "roomName": "E57S45"
+            },
+            "path": "2232221222122222333344333332333334333332222222222333333332221188211111112111111888111111111111118811111211188888821111112221111112222222111111122222222221111111112"
+          },
+          "roomDanger": 0.3771771344184304
+        },
+        {
+          "name": "worker_2",
+          "pos": {
+            "x": 16,
+            "y": 27,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "worker_2"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [16, 27, 0, 28, 25, 25, "E58S42", 17, 28],
+            "fleeWait": 2,
+            "destination": {
+              "x": 6,
+              "y": 27,
+              "roomName": "E57S45"
+            },
+            "path": "433332221222122222333344333332333334333332222222222333333332221188211111112111111888111111111111118811111211188888821111112221111112222222111111122222222221111111112"
+          },
+          "roomDanger": 0.3771771344184304
+        },
+        {
+          "name": "worker_3",
+          "pos": {
+            "x": 22,
+            "y": 30,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 300,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "worker_3"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [22, 30, 0, 28, 25, 25, "E58S42", 23, 29],
+            "fleeWait": 2,
+            "destination": {
+              "x": 19,
+              "y": 40,
+              "roomName": "E57S45"
+            },
+            "path": "222221111122222333344333332333334333332222222222333333332221188211111112111111888811111111181111111111211188888821111112221111112222222111111122222222221111111112"
+          },
+          "roomDanger": 0.3771771344184304
+        },
+        {
+          "name": "worker_4",
+          "pos": {
+            "x": 17,
+            "y": 28,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 300,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "worker_4"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [17, 28, 0, 28, 6, 27, "E57S45", 16, 27],
+            "fleeWait": 2,
+            "destination": {
+              "x": 6,
+              "y": 27,
+              "roomName": "E57S45"
+            },
+            "path": "8878877766"
+          },
+          "roomDanger": 0.3771771344184304
+        },
+        {
+          "name": "changeling_0",
+          "pos": {
+            "x": 24,
+            "y": 43,
+            "roomName": "E58S44"
+          },
+          "fatigue": 0,
+          "hits": 100,
+          "task": null,
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [25, 9, 0, 0, 29, 40, "E58S42", 25, 8],
+            "path": "11111188887888111111111111111112222222222223322222218811111118888782211186"
+          },
+          "roomDanger": 0.008004621293308771
+        },
+        {
+          "name": "drone_12",
+          "pos": {
+            "x": 23,
+            "y": 30,
+            "roomName": "E58S45"
+          },
+          "fatigue": 4,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_12"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [24, 24, 0, 3, 25, 25, "E58S42", 24, 23],
+            "path": "1111222321111881111111188211111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111118222"
+          },
+          "roomDanger": 0.1861766329558279
+        },
+        {
+          "name": "drone_2",
+          "pos": {
+            "x": 24,
+            "y": 30,
+            "roomName": "E58S45"
+          },
+          "fatigue": 4,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_2"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [23, 26, 0, 4, 25, 25, "E58S42", 24, 25],
+            "path": "21111122232111188111111111181111111232222222222221122118888881121888888888877787888111181111118888888888882218818222333321232232188111181"
+          },
+          "roomDanger": 0.1861766329558279
+        },
+        {
+          "name": "changeling_1",
+          "pos": {
+            "x": 28,
+            "y": 3,
+            "roomName": "E57S46"
+          },
+          "fatigue": 0,
+          "hits": 100,
+          "task": null,
+          "roomDanger": 0.3683010745151764
+        }
+      ]
+    },
+    {
+      "tick": 84157724,
+      "units": [
+        {
+          "name": "drone_8",
+          "pos": {
+            "x": 40,
+            "y": 17,
+            "roomName": "E57S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_8"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "path": "222222222333333332221188211111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [7, 16, 0, 2, 25, 25, "E58S42", 8, 15]
+          },
+          "roomDanger": 0.3804944274055991
+        },
+        {
+          "name": "drone_9",
+          "pos": {
+            "x": 22,
+            "y": 12,
+            "roomName": "E57S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_9"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "path": "4333332333334333332222222222333333332221181111111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [37, 16, 0, 2, 25, 25, "E58S42", 38, 17]
+          },
+          "roomDanger": 0.3804944274055991
+        },
+        {
+          "name": "drone_10",
+          "pos": {
+            "x": 20,
+            "y": 14,
+            "roomName": "E57S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_10"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "path": "344333332333334333332222222222333333332221111811111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [35, 15, 0, 2, 25, 25, "E58S42", 36, 15]
+          },
+          "roomDanger": 0.3804944274055991
+        },
+        {
+          "name": "drone_11",
+          "pos": {
+            "x": 39,
+            "y": 17,
+            "roomName": "E57S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_11"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "path": "2222222222333333332221188211111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [6, 17, 0, 2, 25, 25, "E58S42", 7, 16]
+          },
+          "roomDanger": 0.3804944274055991
+        },
+        {
+          "name": "worker_0",
+          "pos": {
+            "x": 18,
+            "y": 30,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "worker_0"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [18, 30, 0, 29, 25, 25, "E58S42", 19, 29],
+            "fleeWait": 2,
+            "destination": {
+              "x": 18,
+              "y": 40,
+              "roomName": "E57S45"
+            },
+            "path": "2232221222122222333344333332333334333332222222222333333332221188211111112111111888111111111111118811111211188888821111112221111112222222111111122222222221111111112"
+          },
+          "roomDanger": 0.3804944274055991
+        },
+        {
+          "name": "worker_2",
+          "pos": {
+            "x": 16,
+            "y": 27,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "worker_2"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [16, 27, 0, 28, 25, 25, "E58S42", 17, 28],
+            "fleeWait": 2,
+            "destination": {
+              "x": 6,
+              "y": 27,
+              "roomName": "E57S45"
+            },
+            "path": "433332221222122222333344333332333334333332222222222333333332221188211111112111111888111111111111118811111211188888821111112221111112222222111111122222222221111111112"
+          },
+          "roomDanger": 0.3804944274055991
+        },
+        {
+          "name": "worker_3",
+          "pos": {
+            "x": 22,
+            "y": 30,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 300,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "worker_3"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [22, 30, 0, 28, 25, 25, "E58S42", 23, 29],
+            "fleeWait": 2,
+            "destination": {
+              "x": 19,
+              "y": 40,
+              "roomName": "E57S45"
+            },
+            "path": "222221111122222333344333332333334333332222222222333333332221188211111112111111888811111111181111111111211188888821111112221111112222222111111122222222221111111112"
+          },
+          "roomDanger": 0.3804944274055991
+        },
+        {
+          "name": "worker_4",
+          "pos": {
+            "x": 17,
+            "y": 28,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 300,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "worker_4"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [17, 28, 0, 28, 6, 27, "E57S45", 16, 27],
+            "fleeWait": 2,
+            "destination": {
+              "x": 6,
+              "y": 27,
+              "roomName": "E57S45"
+            },
+            "path": "8878877766"
+          },
+          "roomDanger": 0.3804944274055991
+        },
+        {
+          "name": "changeling_0",
+          "pos": {
+            "x": 24,
+            "y": 41,
+            "roomName": "E58S44"
+          },
+          "fatigue": 0,
+          "hits": 100,
+          "task": null,
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [25, 9, 0, 0, 29, 40, "E58S42", 25, 8],
+            "path": "11111188887888111111111111111112222222222223322222218811111118888782211186"
+          },
+          "roomDanger": 0.00798328986696447
+        },
+        {
+          "name": "drone_12",
+          "pos": {
+            "x": 23,
+            "y": 30,
+            "roomName": "E58S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_12"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [24, 24, 0, 3, 25, 25, "E58S42", 24, 23],
+            "path": "1111222321111881111111188211111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111118222"
+          },
+          "roomDanger": 0.18568049291529315
+        },
+        {
+          "name": "drone_2",
+          "pos": {
+            "x": 24,
+            "y": 30,
+            "roomName": "E58S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_2"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [23, 26, 0, 4, 25, 25, "E58S42", 24, 25],
+            "path": "21111122232111188111111111181111111232222222222221122118888881121888888888877787888111181111118888888888882218818222333321232232188111181"
+          },
+          "roomDanger": 0.18568049291529315
+        },
+        {
+          "name": "changeling_1",
+          "pos": {
+            "x": 28,
+            "y": 3,
+            "roomName": "E57S46"
+          },
+          "fatigue": 0,
+          "hits": 100,
+          "task": null,
+          "roomDanger": 0.367319593073935
+        }
+      ]
+    },
+    {
+      "tick": 84157755,
+      "units": [
+        {
+          "name": "drone_8",
+          "pos": {
+            "x": 7,
+            "y": 16,
+            "roomName": "E58S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_8"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "path": "222222222333333332221188211111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [7, 16, 0, 2, 25, 25, "E58S42", 8, 15]
+          },
+          "roomDanger": 0.17815723502380607
+        },
+        {
+          "name": "drone_9",
+          "pos": {
+            "x": 37,
+            "y": 16,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_9"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "path": "4333332333334333332222222222333333332221181111111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [37, 16, 0, 2, 25, 25, "E58S42", 38, 17]
+          },
+          "roomDanger": 0.4297102237085282
+        },
+        {
+          "name": "drone_10",
+          "pos": {
+            "x": 35,
+            "y": 15,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_10"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "path": "344333332333334333332222222222333333332221111811111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [35, 15, 0, 2, 25, 25, "E58S42", 36, 15]
+          },
+          "roomDanger": 0.4297102237085282
+        },
+        {
+          "name": "drone_11",
+          "pos": {
+            "x": 6,
+            "y": 17,
+            "roomName": "E58S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_11"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "path": "2222222222333333332221188211111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [6, 17, 0, 2, 25, 25, "E58S42", 7, 16]
+          },
+          "roomDanger": 0.17815723502380607
+        },
+        {
+          "name": "worker_0",
+          "pos": {
+            "x": 19,
+            "y": 29,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "worker_0"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [18, 30, 0, 29, 25, 25, "E58S42", 19, 29],
+            "fleeWait": 2,
+            "destination": {
+              "x": 18,
+              "y": 40,
+              "roomName": "E57S45"
+            },
+            "path": "2232221222122222333344333332333334333332222222222333333332221188211111112111111888111111111111118811111211188888821111112221111112222222111111122222222221111111112"
+          },
+          "roomDanger": 0.4297102237085282
+        },
+        {
+          "name": "worker_2",
+          "pos": {
+            "x": 17,
+            "y": 28,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "worker_2"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [16, 27, 0, 28, 25, 25, "E58S42", 17, 28],
+            "fleeWait": 2,
+            "destination": {
+              "x": 6,
+              "y": 27,
+              "roomName": "E57S45"
+            },
+            "path": "433332221222122222333344333332333334333332222222222333333332221188211111112111111888111111111111118811111211188888821111112221111112222222111111122222222221111111112"
+          },
+          "roomDanger": 0.4297102237085282
+        },
+        {
+          "name": "worker_3",
+          "pos": {
+            "x": 23,
+            "y": 29,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 300,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "worker_3"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [22, 30, 0, 28, 25, 25, "E58S42", 23, 29],
+            "fleeWait": 2,
+            "destination": {
+              "x": 19,
+              "y": 40,
+              "roomName": "E57S45"
+            },
+            "path": "222221111122222333344333332333334333332222222222333333332221188211111112111111888811111111181111111111211188888821111112221111112222222111111122222222221111111112"
+          },
+          "roomDanger": 0.4297102237085282
+        },
+        {
+          "name": "worker_4",
+          "pos": {
+            "x": 16,
+            "y": 27,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 300,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "worker_4"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [17, 28, 0, 28, 6, 27, "E57S45", 16, 27],
+            "fleeWait": 2,
+            "destination": {
+              "x": 6,
+              "y": 27,
+              "roomName": "E57S45"
+            },
+            "path": "8878877766"
+          },
+          "roomDanger": 0.4297102237085282
+        },
+        {
+          "name": "changeling_0",
+          "pos": {
+            "x": 25,
+            "y": 10,
+            "roomName": "E58S44"
+          },
+          "fatigue": 0,
+          "hits": 100,
+          "task": null,
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [25, 9, 0, 0, 29, 40, "E58S42", 25, 8],
+            "path": "11111188887888111111111111111112222222222223322222218811111118888782211186"
+          },
+          "roomDanger": 0.0076598291331593914
+        },
+        {
+          "name": "drone_12",
+          "pos": {
+            "x": 24,
+            "y": 23,
+            "roomName": "E58S45"
+          },
+          "fatigue": 4,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_12"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [24, 24, 0, 3, 25, 25, "E58S42", 24, 23],
+            "path": "1111222321111881111111188211111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111118222"
+          },
+          "roomDanger": 0.17815723502380607
+        },
+        {
+          "name": "drone_2",
+          "pos": {
+            "x": 23,
+            "y": 26,
+            "roomName": "E58S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": {
+            "name": "goToRoom",
+            "_creep": {
+              "name": "drone_2"
+            },
+            "_target": {
+              "ref": "",
+              "_pos": {
+                "x": 25,
+                "y": 25,
+                "roomName": "E58S42"
+              }
+            },
+            "_parent": null,
+            "tick": 84157701,
+            "options": {},
+            "data": {}
+          },
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [23, 26, 0, 4, 25, 25, "E58S42", 24, 25],
+            "path": "21111122232111188111111111181111111232222222222221122118888881121888888888877787888111181111118888888888882218818222333321232232188111181"
+          },
+          "roomDanger": 0.17815723502380607
+        },
+        {
+          "name": "changeling_1",
+          "pos": {
+            "x": 28,
+            "y": 3,
+            "roomName": "E57S46"
+          },
+          "fatigue": 0,
+          "hits": 100,
+          "task": null,
+          "roomDanger": 0.35243682330149584
+        }
+      ]
+    },
+    {
+      "tick": 84157758,
+      "units": [
+        {
+          "name": "drone_8",
+          "pos": {
+            "x": 8,
+            "y": 15,
+            "roomName": "E58S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": null,
+          "go": {
+            "path": "22222333333332221111811111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [11, 12, 0, 1, 25, 25, "E58S42", 12, 11]
+          },
+          "roomDanger": 0.17744555583333235
+        },
+        {
+          "name": "drone_9",
+          "pos": {
+            "x": 39,
+            "y": 17,
+            "roomName": "E57S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": null,
+          "roomDanger": 0.4342603865513497
+        },
+        {
+          "name": "drone_10",
+          "pos": {
+            "x": 37,
+            "y": 16,
+            "roomName": "E57S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": null,
+          "roomDanger": 0.4342603865513497
+        },
+        {
+          "name": "drone_11",
+          "pos": {
+            "x": 7,
+            "y": 16,
+            "roomName": "E58S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": null,
+          "go": {
+            "path": "222222333333332221111811111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [10, 13, 0, 1, 25, 25, "E58S42", 11, 12]
+          },
+          "roomDanger": 0.17744555583333235
+        },
+        {
+          "name": "worker_0",
+          "pos": {
+            "x": 18,
+            "y": 30,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": null,
+          "go": {
+            "path": "1122212211233333334333333333443333323333343333322222222223333333322222118881111121222212221111118188888111188188811888888211111122211111122222221111111222222222188111111188788",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [13, 25, 0, 3, 25, 25, "E58S42", 13, 24]
+          },
+          "roomDanger": 0.4342603865513497
+        },
+        {
+          "name": "worker_2",
+          "pos": {
+            "x": 16,
+            "y": 27,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": null,
+          "go": {
+            "path": "2212211233333334333333333443333323333343333322222222223333333322222118881111121222218888881111112221111188188811888888211111122211111122222221111111222222222188111111188788",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [14, 22, 0, 1, 25, 25, "E58S42", 15, 21]
+          },
+          "roomDanger": 0.4342603865513497
+        },
+        {
+          "name": "worker_3",
+          "pos": {
+            "x": 22,
+            "y": 30,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 300,
+          "task": null,
+          "go": {
+            "path": "4444444333333333333233222222222211111221111212122222111223322222118881111121222218888881111112221111188188811888888211111122211111122222221111111222222222188111111188788",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [28, 36, 0, 1, 25, 25, "E58S42", 29, 37]
+          },
+          "roomDanger": 0.4342603865513497
+        },
+        {
+          "name": "worker_4",
+          "pos": {
+            "x": 17,
+            "y": 28,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 300,
+          "task": null,
+          "go": {
+            "fleeWait": 2,
+            "destination": {
+              "x": 16,
+              "y": 27,
+              "roomName": "E57S45"
+            },
+            "state": [13, 24, 0, 1, 25, 25, "E58S42", 13, 23],
+            "path": "122212211233333334333333333443333323333343333322222222223333333322222118881111121222218888881111112221111188188811888888211111122211111122222221111111222222222188111111188788",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            }
+          },
+          "roomDanger": 0.4342603865513497
+        },
+        {
+          "name": "changeling_0",
+          "pos": {
+            "x": 25,
+            "y": 7,
+            "roomName": "E58S44"
+          },
+          "fatigue": 0,
+          "hits": 100,
+          "task": null,
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [23, 1, 0, 0, 29, 40, "E58S42", 22, 0],
+            "path": "887888111111111111111112222222222223322222218811111118888782211186"
+          },
+          "roomDanger": 0.007629230650892165
+        },
+        {
+          "name": "drone_12",
+          "pos": {
+            "x": 24,
+            "y": 22,
+            "roomName": "E58S45"
+          },
+          "fatigue": 4,
+          "hits": 400,
+          "task": null,
+          "roomDanger": 0.17744555583333235
+        },
+        {
+          "name": "drone_2",
+          "pos": {
+            "x": 24,
+            "y": 25,
+            "roomName": "E58S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": null,
+          "roomDanger": 0.17744555583333235
+        },
+        {
+          "name": "changeling_1",
+          "pos": {
+            "x": 28,
+            "y": 3,
+            "roomName": "E57S46"
+          },
+          "fatigue": 0,
+          "hits": 100,
+          "task": null,
+          "roomDanger": 0.35102895483594154
+        }
+      ]
+    },
+    {
+      "tick": 84157763,
+      "units": [
+        {
+          "name": "drone_8",
+          "pos": {
+            "x": 11,
+            "y": 12,
+            "roomName": "E58S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": null,
+          "go": {
+            "path": "22222333333332221111811111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [11, 12, 0, 1, 25, 25, "E58S42", 12, 11]
+          },
+          "roomDanger": 0.17626573584545585
+        },
+        {
+          "name": "drone_9",
+          "pos": {
+            "x": 41,
+            "y": 17,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": null,
+          "go": {
+            "path": "332333334333332222222222333333332221111811111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [41, 17, 0, 1, 25, 25, "E58S42", 42, 17]
+          },
+          "roomDanger": 0.4417634581628481
+        },
+        {
+          "name": "drone_10",
+          "pos": {
+            "x": 39,
+            "y": 17,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": null,
+          "go": {
+            "path": "33332333334333332222222222333333332221181111111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [39, 17, 0, 1, 25, 25, "E58S42", 40, 17]
+          },
+          "roomDanger": 0.4417634581628481
+        },
+        {
+          "name": "drone_11",
+          "pos": {
+            "x": 10,
+            "y": 13,
+            "roomName": "E58S45"
+          },
+          "fatigue": 2,
+          "hits": 400,
+          "task": null,
+          "go": {
+            "path": "222222333333332221111811111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111181222",
+            "roomVisibility": {
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [10, 13, 0, 1, 25, 25, "E58S42", 11, 12]
+          },
+          "roomDanger": 0.17626573584545585
+        },
+        {
+          "name": "worker_0",
+          "pos": {
+            "x": 13,
+            "y": 26,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": null,
+          "go": {
+            "path": "1122212211233333334333333333443333323333343333322222222223333333322222118881111121222212221111118188888111188188811888888211111122211111122222221111111222222222188111111188788",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [13, 25, 0, 3, 25, 25, "E58S42", 13, 24]
+          },
+          "roomDanger": 0.4417634581628481
+        },
+        {
+          "name": "worker_2",
+          "pos": {
+            "x": 13,
+            "y": 23,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": null,
+          "go": {
+            "path": "2212211233333334333333333443333323333343333322222222223333333322222118881111121222218888881111112221111188188811888888211111122211111122222221111111222222222188111111188788",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [14, 22, 0, 1, 25, 25, "E58S42", 15, 21]
+          },
+          "roomDanger": 0.4417634581628481
+        },
+        {
+          "name": "worker_3",
+          "pos": {
+            "x": 27,
+            "y": 35,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 300,
+          "task": null,
+          "go": {
+            "path": "4444444333333333333233222222222211111221111212122222111223322222118881111121222218888881111112221111188188811888888211111122211111122222221111111222222222188111111188788",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [28, 36, 0, 1, 25, 25, "E58S42", 29, 37]
+          },
+          "roomDanger": 0.4417634581628481
+        },
+        {
+          "name": "worker_4",
+          "pos": {
+            "x": 13,
+            "y": 25,
+            "roomName": "E57S45"
+          },
+          "fatigue": 0,
+          "hits": 300,
+          "task": null,
+          "go": {
+            "fleeWait": 2,
+            "destination": {
+              "x": 16,
+              "y": 27,
+              "roomName": "E57S45"
+            },
+            "state": [13, 24, 0, 1, 25, 25, "E58S42", 13, 23],
+            "path": "122212211233333334333333333443333323333343333322222222223333333322222118881111121222218888881111112221111188188811888888211111122211111122222221111111222222222188111111188788",
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            }
+          },
+          "roomDanger": 0.4417634581628481
+        },
+        {
+          "name": "changeling_0",
+          "pos": {
+            "x": 24,
+            "y": 2,
+            "roomName": "E58S44"
+          },
+          "fatigue": 0,
+          "hits": 100,
+          "task": null,
+          "go": {
+            "roomVisibility": {
+              "E57S45": true,
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [23, 1, 0, 0, 29, 40, "E58S42", 22, 0],
+            "path": "887888111111111111111112222222222223322222218811111118888782211186"
+          },
+          "roomDanger": 0.007578504563266183
+        },
+        {
+          "name": "drone_12",
+          "pos": {
+            "x": 24,
+            "y": 21,
+            "roomName": "E58S45"
+          },
+          "fatigue": 0,
+          "hits": 400,
+          "task": null,
+          "go": {
+            "path": "1222321111881111111181111111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111118222",
+            "roomVisibility": {
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [24, 21, 0, 1, 25, 25, "E58S42", 24, 20]
+          },
+          "roomDanger": 0.17626573584545585
+        },
+        {
+          "name": "drone_2",
+          "pos": {
+            "x": 24,
+            "y": 23,
+            "roomName": "E58S45"
+          },
+          "fatigue": 4,
+          "hits": 400,
+          "task": null,
+          "go": {
+            "path": "1111222321111881111111111811111112322222222222211221188888811218888888888777878881111811111188888888888822188111223333222222288111118222",
+            "roomVisibility": {
+              "E58S45": true,
+              "E58S44": true,
+              "E58S43": true,
+              "E58S42": true
+            },
+            "state": [24, 24, 0, 1, 25, 25, "E58S42", 24, 23]
+          },
+          "roomDanger": 0.17626573584545585
+        },
+        {
+          "name": "changeling_1",
+          "pos": {
+            "x": 28,
+            "y": 3,
+            "roomName": "E57S46"
+          },
+          "fatigue": 0,
+          "hits": 100,
+          "task": null,
+          "roomDanger": 0.34869499400331383
+        }
+      ]
+    }
+  ],
+  "colonyPolicy": {
+    "enabled": true,
+    "referenceDamage": 1570,
+    "referenceHealing": 132,
+    "rampartHits": 2500000,
+    "workstations": [],
+    "protectController": false,
+    "southDefenseSchedule": {
+      "armedAt": 84157580,
+      "remainingThreshold": 2500,
+      "attackSeenAt": 84157580
+    },
+    "priorityRamparts": [
+      {
+        "x": 28,
+        "y": 45
+      },
+      {
+        "x": 27,
+        "y": 45
+      },
+      {
+        "x": 29,
+        "y": 45
+      },
+      {
+        "x": 15,
+        "y": 44
+      },
+      {
+        "x": 14,
+        "y": 44
+      },
+      {
+        "x": 16,
+        "y": 44
+      },
+      {
+        "x": 24,
+        "y": 45
+      },
+      {
+        "x": 24,
+        "y": 46
+      },
+      {
+        "x": 24,
+        "y": 47
+      },
+      {
+        "x": 25,
+        "y": 45
+      },
+      {
+        "x": 26,
+        "y": 45
+      },
+      {
+        "x": 27,
+        "y": 44
+      },
+      {
+        "x": 28,
+        "y": 44
+      },
+      {
+        "x": 29,
+        "y": 44
+      },
+      {
+        "x": 14,
+        "y": 43
+      },
+      {
+        "x": 15,
+        "y": 43
+      },
+      {
+        "x": 16,
+        "y": 43
+      }
+    ],
+    "perimeterRamparts": [
+      {
+        "x": 7,
+        "y": 39
+      },
+      {
+        "x": 8,
+        "y": 39
+      },
+      {
+        "x": 9,
+        "y": 39
+      },
+      {
+        "x": 10,
+        "y": 39
+      },
+      {
+        "x": 10,
+        "y": 40
+      },
+      {
+        "x": 10,
+        "y": 41
+      },
+      {
+        "x": 10,
+        "y": 42
+      },
+      {
+        "x": 13,
+        "y": 17
+      },
+      {
+        "x": 14,
+        "y": 17
+      },
+      {
+        "x": 14,
+        "y": 44
+      },
+      {
+        "x": 15,
+        "y": 17
+      },
+      {
+        "x": 15,
+        "y": 44
+      },
+      {
+        "x": 16,
+        "y": 17
+      },
+      {
+        "x": 16,
+        "y": 44
+      },
+      {
+        "x": 17,
+        "y": 17
+      },
+      {
+        "x": 18,
+        "y": 17
+      },
+      {
+        "x": 23,
+        "y": 17
+      },
+      {
+        "x": 24,
+        "y": 17
+      },
+      {
+        "x": 24,
+        "y": 18
+      },
+      {
+        "x": 24,
+        "y": 45
+      },
+      {
+        "x": 24,
+        "y": 46
+      },
+      {
+        "x": 24,
+        "y": 47
+      },
+      {
+        "x": 25,
+        "y": 18
+      },
+      {
+        "x": 25,
+        "y": 45
+      },
+      {
+        "x": 26,
+        "y": 18
+      },
+      {
+        "x": 26,
+        "y": 19
+      },
+      {
+        "x": 26,
+        "y": 20
+      },
+      {
+        "x": 26,
+        "y": 45
+      },
+      {
+        "x": 27,
+        "y": 20
+      },
+      {
+        "x": 27,
+        "y": 45
+      },
+      {
+        "x": 28,
+        "y": 45
+      },
+      {
+        "x": 29,
+        "y": 45
+      },
+      {
+        "x": 40,
+        "y": 45
+      },
+      {
+        "x": 40,
+        "y": 46
+      },
+      {
+        "x": 41,
+        "y": 44
+      },
+      {
+        "x": 41,
+        "y": 45
+      },
+      {
+        "x": 42,
+        "y": 43
+      },
+      {
+        "x": 42,
+        "y": 44
+      }
+    ]
+  },
+  "supportFlag": {
+    "T": 84156796,
+    "C": "E58S42",
+    "support": {},
+    "status": {
+      "tick": 84157764,
+      "allowed": true,
+      "reserve": 150000,
+      "parentEnergy": 307976,
+      "builders": 0,
+      "haulers": 0,
+      "guards": 0,
+      "scouts": 1,
+      "southDefense": "waiting-recolonization"
+    },
+    "reserve": 150000,
+    "targetRCL": 6,
+    "maxBuilders": 4,
+    "maxHaulers": 3,
+    "maxGuards": 5,
+    "persistent": true,
+    "warningRoom": "E57S46",
+    "warningPos": {
+      "x": 28,
+      "y": 3
+    },
+    "defenseAnchors": [
+      {
+        "x": 28,
+        "y": 44
+      },
+      {
+        "x": 15,
+        "y": 43
+      }
+    ],
+    "minGuards": 4,
+    "warning": {
+      "room": "E57S46",
+      "tick": 84157764,
+      "visible": true,
+      "hostiles": []
+    },
+    "lastWarningKey": "",
+    "lastWarningTick": 84157519
+  },
+  "resumeFlag": {
+    "C": "E58S42",
+    "claim": {
+      "suspend": {
+        "endTick": 84207606
+      }
+    },
+    "pioneer": {
+      "suspend": {
+        "endTick": 84207606
+      }
+    },
+    "allowPortals": true,
+    "T": 84157702
+  },
+  "notes": [
+    "Safe mode failed with ERR_TIRED; no successful activation observed. Target is currently neutral RCL0.",
+    "Recolonization and pioneer recruitment suspended until tick 84207606; returning units have not all arrived home.",
+    "Withdrawn workers exclude hostile range <=5 from return paths; ordinary parent workers retain native flee behavior.",
+    "South fortification mobilizes only after another attack and an observed actual safe mode reaches <=2500 ticks.",
+    "E57S46 remains observation-only; controller-adjacent shields stay disabled."
+  ]
+}

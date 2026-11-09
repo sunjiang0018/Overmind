@@ -100,9 +100,10 @@ function transporterHarness(
   const Tasks = Object.fromEntries(
     ["transfer", "transferAll", "withdraw", "withdrawAll", "pickup"].map((name) => [
       name,
-      (target: TestScope) => ({
+      (target: TestScope, resourceType?: string) => ({
         name,
         target,
+        resourceType,
         fork(child: TestScope) {
           child.parent = this;
           return child;
@@ -114,6 +115,7 @@ function transporterHarness(
     ...native,
     ...constants,
     Tasks,
+    Roles: { worker: "worker", pioneer: "pioneer", upgrader: "upgrader" },
     getRoomObjectRef: (target: TestScope) => target.id,
     roomPositionFindClosestByMultiRoomRange: (_pos: unknown, targets: TestScope[]) => targets[0],
     isResource: () => false,
@@ -124,13 +126,21 @@ function transporterHarness(
     deref: (id: string) => (id === storage.id ? storage : target),
   };
   const Transport = load(
-    `export class Transport {${["handleTransporter", "handleSmolTransporter"]
+    `export class Transport {${[
+      "supplyWithoutStorage",
+      "handleTransporter",
+      "handleSmolTransporter",
+    ]
       .map((name) => method("src/overlords/core/transporter.ts", "TransportOverlord", name))
       .join("\n")}}`,
     scope,
   ).Transport;
-  const colony = {
+  const colony: TestScope = {
+    name: "E57S45",
     storage,
+    spawns: [],
+    extensions: [],
+    creeps: [],
     logisticsNetwork: {
       transporterPreferences: () => [request],
       bufferChoices: () => choices,
@@ -150,8 +160,121 @@ function transporterHarness(
       calls.park++;
     },
   };
-  return { overlord, transporter, calls, storage, target };
+  return { overlord, transporter, calls, storage, target, colony };
 }
+
+function energyTarget(id: string, energy: number, capacity: number) {
+  return {
+    id,
+    pos: { roomName: "E57S45" },
+    store: { energy, getFreeCapacity: () => capacity - energy },
+  };
+}
+
+function workerTarget(role = "worker", energy = 0, work = 2): TestScope {
+  return {
+    ...energyTarget(role, energy, 100),
+    memory: { role },
+    spawning: false,
+    getActiveBodyparts: () => work,
+  };
+}
+
+test("a full transport in a new colony delivers to Spawn despite source-only requests", () => {
+  const h = transporterHarness(200, -1800, [{ dQ: 0, dt: 2, targetRef: "requestTarget" }]);
+  delete h.colony.storage;
+  const spawn = energyTarget("spawn", 231, 300);
+  h.colony.spawns = [spawn];
+  h.colony.creeps = [workerTarget()];
+  h.overlord.handleSmolTransporter(h.transporter);
+  assert.equal(h.transporter.task.name, "transfer");
+  assert.equal(h.transporter.task.target, spawn);
+  assert.equal(h.transporter.task.resourceType, "energy");
+  assert.equal(h.calls.park, 0);
+});
+
+test("without Storage, transporters supply extensions after Spawn is full", () => {
+  const h = transporterHarness(200);
+  delete h.colony.storage;
+  h.colony.spawns = [energyTarget("spawn", 300, 300)];
+  const extension = energyTarget("extension", 0, 50);
+  h.colony.extensions = [extension];
+  h.overlord.handleTransporter(h.transporter, undefined);
+  assert.equal(h.transporter.task.target, extension);
+});
+
+test("without Storage, transporters feed hungry workers even while workers are recharging", () => {
+  for (const role of ["worker", "pioneer", "upgrader"]) {
+    const h = transporterHarness(200);
+    delete h.colony.storage;
+    h.colony.spawns = [energyTarget("spawn", 300, 300)];
+    const worker = workerTarget(role);
+    worker.memory.task = { name: "withdraw" };
+    h.colony.creeps = [worker];
+    h.overlord.handleSmolTransporter(h.transporter);
+    assert.equal(h.transporter.task.target, worker);
+    assert.equal(h.transporter.task.resourceType, "energy");
+  }
+});
+
+test("emergency worker supply skips miners, spawning, remote, full and inactive workers", () => {
+  const h = transporterHarness(200);
+  delete h.colony.storage;
+  const spawning = workerTarget();
+  spawning.spawning = true;
+  const remote = workerTarget();
+  remote.pos.roomName = "E58S42";
+  const eligible = workerTarget("worker", 49);
+  h.colony.creeps = [
+    workerTarget("drone"),
+    spawning,
+    remote,
+    workerTarget("worker", 100),
+    workerTarget("worker", 0, 0),
+    workerTarget("worker", 50),
+    eligible,
+  ];
+  h.overlord.handleSmolTransporter(h.transporter);
+  assert.equal(h.transporter.task.target, eligible);
+});
+
+test("mixed cargo can still deliver its energy in a colony without Storage", () => {
+  const h = transporterHarness(100);
+  delete h.colony.storage;
+  h.transporter.carry.H = 100;
+  h.transporter.hasMineralsInCarry = true;
+  const worker = workerTarget();
+  h.colony.creeps = [worker];
+  h.overlord.handleSmolTransporter(h.transporter);
+  assert.equal(h.transporter.task.name, "transfer");
+  assert.equal(h.transporter.task.target, worker);
+});
+
+test("empty transports keep collecting energy instead of receiving a delivery task", () => {
+  const h = transporterHarness(0, -200, [{ dQ: 200, dt: 10, targetRef: "requestTarget" }]);
+  delete h.colony.storage;
+  h.colony.spawns = [energyTarget("spawn", 0, 300)];
+  h.overlord.handleSmolTransporter(h.transporter);
+  assert.equal(h.transporter.task.name, "withdraw");
+  assert.equal(h.transporter.task.target, h.target);
+});
+
+test("Storage colonies retain their existing unload behavior", () => {
+  const h = transporterHarness(200);
+  h.colony.spawns = [energyTarget("spawn", 0, 300)];
+  h.colony.creeps = [workerTarget()];
+  h.overlord.handleSmolTransporter(h.transporter);
+  assert.equal(h.transporter.task.target, h.storage);
+});
+
+test("no Storage and no energy consumer leaves loaded cargo intact", () => {
+  const h = transporterHarness(200);
+  delete h.colony.storage;
+  h.colony.spawns = [energyTarget("spawn", 300, 300)];
+  h.overlord.handleSmolTransporter(h.transporter);
+  assert.equal(h.transporter.task, null);
+  assert.equal(h.transporter.carry.energy, 200);
+});
 
 test("loaded transports return to Storage when the only request is already covered", () => {
   // Live regression: 1200 and 298 energy, one -256 output request, predicted amount 0 and no buffer choices.

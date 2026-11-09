@@ -340,6 +340,17 @@ export class MiningOverlord extends Overlord {
     }
     // Destroy container if link is nearby
     if (this.container && this.link) {
+      // An explicit custom blueprint may keep the mining tile as a buffer.
+      // Respect that same blueprint instead of fighting its construction loop.
+      const planner = this.colony.roomPlanner;
+      if (
+        planner?.memory.logisticsPolicy?.preserveMiningBuffers &&
+        planner
+          .plannedStructurePositions(STRUCTURE_CONTAINER)
+          ?.some((pos) => pos.isEqualTo(this.container!.pos))
+      ) {
+        return;
+      }
       // safety checks
       if (
         this.colony.hatchery &&
@@ -476,7 +487,16 @@ export class MiningOverlord extends Overlord {
         if (this.goToMiningSite(miner)) return;
       }
       if (miner.carry.energy > 0.9 * miner.carryCapacity) {
-        miner.transfer(this.link, RESOURCE_ENERGY);
+        const result = miner.transfer(this.link, RESOURCE_ENERGY);
+        if (
+          result == ERR_FULL &&
+          this.container &&
+          this.colony.roomPlanner?.memory.logisticsPolicy?.preserveMiningBuffers
+        ) {
+          // A temporarily full Link must not make the retained buffer useless.
+          // Failed transfers do not issue an intent, so the fallback is safe.
+          miner.transfer(this.container, RESOURCE_ENERGY);
+        }
       }
       // If for whatever reason there's no reciever link, you can get stuck in a bootstrapping loop, so
       // occasionally check for this and drop energy on the ground if needed

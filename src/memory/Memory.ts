@@ -40,10 +40,9 @@ export function getAutonomyLevel(): number {
 let lastMemory: any;
 let lastTime: number = 0;
 
-const MAX_BUCKET = 10000;
+const BUCKET_RECOVERY_THRESHOLD = 100;
 const HEAP_CLEAN_FREQUENCY = 200;
 const BUCKET_CLEAR_CACHE = 7000;
-const BUCKET_CPU_HALT = 4000;
 
 /**
  * This module contains a number of low-level memory clearing and caching functions
@@ -63,42 +62,16 @@ export class Mem {
         `Profiling is currently enabled; only ${PROFILER_COLONY_LIMIT} colonies will be run!`,
       );
     }
-    if (Game.cpu.bucket < 100) {
-      if (Object.keys(Game.spawns ?? {}).length > 1 && !Memory.resetBucket && !Memory.haltTick) {
-        // don't run CPU reset routine at very beginning or if it's already triggered
-        log.warning(
-          `CPU bucket is critically low (${Game.cpu.bucket})! Starting CPU reset routine.`,
-        );
-        Memory.resetBucket = true;
-        Memory.haltTick = Game.time + 1; // reset global next tick
-      } else {
-        log.info(
-          `CPU bucket is too low (${Game.cpu.bucket}). Postponing operation until bucket reaches 100.`,
-        );
-      }
+    // Discard resets scheduled by older code. Keep the VM warm while CPU replenishes.
+    delete Memory.haltTick;
+    if (Game.cpu.bucket < BUCKET_RECOVERY_THRESHOLD) {
+      Memory.resetBucket = true;
+      log.info(
+        `Operation suspended until bucket recovery. Bucket: ${Game.cpu.bucket}/${BUCKET_RECOVERY_THRESHOLD}`,
+      );
       shouldRun = false;
-    }
-    if (Memory.resetBucket) {
-      if (Game.cpu.bucket < MAX_BUCKET - Game.cpu.limit) {
-        log.info(
-          `Operation suspended until bucket recovery. Bucket: ${Game.cpu.bucket}/${MAX_BUCKET}`,
-        );
-        shouldRun = false;
-      } else {
-        delete Memory.resetBucket;
-      }
-    }
-    if (Memory.haltTick) {
-      if (Memory.haltTick == Game.time) {
-        if (Game.cpu.halt) {
-          // this is undefined on non-IVM
-          Memory.build--; // don't count this reset as a build
-          Game.cpu.halt();
-        }
-        shouldRun = false;
-      } else if (Memory.haltTick < Game.time) {
-        delete Memory.haltTick;
-      }
+    } else {
+      delete Memory.resetBucket;
     }
     return shouldRun;
   }
@@ -268,10 +241,7 @@ export class Mem {
    */
   private static cleanHeap(): void {
     if (Game.time % HEAP_CLEAN_FREQUENCY == HEAP_CLEAN_FREQUENCY - 3) {
-      if (Game.cpu.bucket < BUCKET_CPU_HALT && Game.cpu.halt !== undefined) {
-        Memory.build--; // don't count this reset as a build
-        Game.cpu.halt();
-      } else if (Game.cpu.bucket < BUCKET_CLEAR_CACHE) {
+      if (Game.cpu.bucket < BUCKET_CLEAR_CACHE) {
         delete global._cache;
         this.initGlobalMemory();
       }

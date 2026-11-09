@@ -1,0 +1,556 @@
+{
+  "date": "2026-11-08",
+  "shard": "shard3",
+  "version": "E57S45-terrain-v4",
+  "branch": "main",
+  "sha256": "e90bd6d0b4757733064a791ea26ca3d3e45264749c85bc25932fa06985a29609",
+  "parent": "E58S42",
+  "start": {
+    "tick": 84146652,
+    "flag": "colonize:E57S45",
+    "parent": "E58S42",
+    "spawn": {
+      "x": 27,
+      "y": 30,
+      "roomName": "E57S45"
+    },
+    "version": "E57S45-terrain-v4"
+  },
+  "queueAtLaunch": {
+    "tick": 84146662,
+    "queue": [
+      {
+        "priority": "400",
+        "requests": [
+          {
+            "role": "infestor",
+            "overlord": "colonize:E57S45>claim"
+          }
+        ]
+      },
+      {
+        "priority": "401",
+        "requests": [
+          {
+            "role": "pioneer",
+            "overlord": "colonize:E57S45>pioneer"
+          },
+          {
+            "role": "pioneer",
+            "overlord": "colonize:E57S45>pioneer"
+          },
+          {
+            "role": "pioneer",
+            "overlord": "colonize:E57S45>pioneer"
+          },
+          {
+            "role": "pioneer",
+            "overlord": "colonize:E57S45>pioneer"
+          }
+        ]
+      },
+      {
+        "priority": "510",
+        "requests": [
+          {
+            "role": "transport",
+            "overlord": "E58S42>logistics"
+          }
+        ]
+      },
+      {
+        "priority": "905",
+        "requests": [
+          {
+            "role": "infestor",
+            "overlord": "outpost:5c4017>reserve"
+          }
+        ]
+      },
+      {
+        "priority": "916",
+        "requests": [
+          {
+            "role": "drone",
+            "overlord": "harvest:580ccf>mine"
+          }
+        ]
+      }
+    ],
+    "usage": [
+      {
+        "ref": "colonize:E57S45>claim",
+        "usage": {
+          "infestor": [
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "ref": "colonize:E57S45>pioneer",
+        "usage": {
+          "pioneer": [
+            0,
+            4
+          ]
+        }
+      }
+    ]
+  },
+  "latest": {
+    "tick": 84147237,
+    "phase": "postRun",
+    "bucket": 5358,
+    "exceptions": [],
+    "pioneerOrder": [
+      {
+        "name": "pioneer_3",
+        "spawning": false
+      },
+      {
+        "name": "pioneer_2",
+        "spawning": false
+      },
+      {
+        "name": "pioneer_1",
+        "spawning": false
+      },
+      {
+        "name": "pioneer_0",
+        "spawning": false
+      }
+    ],
+    "units": [
+      {
+        "name": "pioneer_0",
+        "pos": {
+          "x": 45,
+          "y": 14,
+          "roomName": "E57S45"
+        },
+        "ttl": 1063,
+        "spawning": false,
+        "hits": 3600,
+        "hitsMax": 3600,
+        "energy": 0,
+        "fatigue": 0
+      },
+      {
+        "name": "pioneer_2",
+        "pos": {
+          "x": 45,
+          "y": 37,
+          "roomName": "E58S43"
+        },
+        "ttl": 1359,
+        "spawning": false,
+        "hits": 3600,
+        "hitsMax": 3600,
+        "energy": 0,
+        "fatigue": 0
+      },
+      {
+        "name": "pioneer_3",
+        "pos": {
+          "x": 35,
+          "y": 16,
+          "roomName": "E58S43"
+        },
+        "ttl": 1471,
+        "spawning": false,
+        "hits": 3600,
+        "hitsMax": 3600,
+        "energy": 0,
+        "fatigue": 0
+      },
+      {
+        "name": "pioneer_1",
+        "pos": {
+          "x": 27,
+          "y": 2,
+          "roomName": "E58S45"
+        },
+        "ttl": 1178,
+        "spawning": false,
+        "hits": 3600,
+        "hitsMax": 3600,
+        "energy": 0,
+        "fatigue": 0
+      }
+    ],
+    "spawnSites": [
+      {
+        "pos": {
+          "x": 27,
+          "y": 30,
+          "roomName": "E57S45"
+        },
+        "progress": 0,
+        "total": 15000
+      }
+    ],
+    "hostiles": 0,
+    "controller": {
+      "mine": true,
+      "level": 1,
+      "sign": {
+        "username": "harland",
+        "text": "星海为途，长路有光",
+        "time": 84146875,
+        "datetime": "2026-11-08T11:36:30.147Z"
+      }
+    },
+    "layout": "E57S45-terrain-v4"
+  },
+  "targetController": {
+    "owner": "678126048b304f0012fa874d",
+    "level": 1
+  },
+  "phase": "claimed-awaiting-spawn-work",
+  "launchObservation": {
+    "tick": 84146701,
+    "bucket": 9472,
+    "flag": {
+      "pos": {
+        "x": 27,
+        "y": 30,
+        "roomName": "E57S45"
+      },
+      "memory": {
+        "C": "E58S42",
+        "allowPortals": true,
+        "T": 84146653,
+        "claim": {},
+        "pioneer": {}
+      }
+    },
+    "units": [
+      {
+        "name": "pioneer_0",
+        "pos": {
+          "x": 29,
+          "y": 40,
+          "roomName": "E58S42"
+        },
+        "spawning": true,
+        "overlord": "colonize:E57S45>pioneer"
+      },
+      {
+        "name": "infestor_3",
+        "pos": {
+          "x": 34,
+          "y": 0,
+          "roomName": "E58S43"
+        },
+        "spawning": false,
+        "ttl": 587,
+        "overlord": "colonize:E57S45>claim"
+      }
+    ],
+    "exceptions": []
+  },
+  "progressChecks": [
+    {
+      "checkedAt": "2026-11-08T12:04:35.124Z",
+      "first": {
+        "tick": 84147180,
+        "units": [
+          {
+            "name": "pioneer_3",
+            "pos": {
+              "x": 29,
+              "y": 40,
+              "roomName": "E58S42"
+            },
+            "spawning": true,
+            "hits": 3600,
+            "energy": 0
+          },
+          {
+            "name": "pioneer_2",
+            "pos": {
+              "x": 37,
+              "y": 9,
+              "roomName": "E58S43"
+            },
+            "ttl": 1416,
+            "spawning": false,
+            "hits": 3600,
+            "energy": 0
+          },
+          {
+            "name": "pioneer_1",
+            "pos": {
+              "x": 22,
+              "y": 23,
+              "roomName": "E58S44"
+            },
+            "ttl": 1235,
+            "spawning": false,
+            "hits": 3600,
+            "energy": 0
+          },
+          {
+            "name": "pioneer_0",
+            "pos": {
+              "x": 24,
+              "y": 7,
+              "roomName": "E58S45"
+            },
+            "ttl": 1120,
+            "spawning": false,
+            "hits": 3600,
+            "energy": 0
+          }
+        ],
+        "colony": {
+          "level": 1,
+          "layout": "E57S45-terrain-v4",
+          "active": false,
+          "sites": [
+            {
+              "type": "spawn",
+              "pos": {
+                "x": 27,
+                "y": 30,
+                "roomName": "E57S45"
+              },
+              "progress": 0,
+              "total": 15000
+            },
+            {
+              "type": "container",
+              "pos": {
+                "x": 23,
+                "y": 20,
+                "roomName": "E57S45"
+              },
+              "progress": 0,
+              "total": 5000
+            },
+            {
+              "type": "container",
+              "pos": {
+                "x": 4,
+                "y": 30,
+                "roomName": "E57S45"
+              },
+              "progress": 0,
+              "total": 5000
+            },
+            {
+              "type": "container",
+              "pos": {
+                "x": 28,
+                "y": 31,
+                "roomName": "E57S45"
+              },
+              "progress": 0,
+              "total": 5000
+            },
+            {
+              "type": "container",
+              "pos": {
+                "x": 39,
+                "y": 42,
+                "roomName": "E57S45"
+              },
+              "progress": 0,
+              "total": 5000
+            }
+          ]
+        }
+      },
+      "second": {
+        "tick": 84147197,
+        "cpu": 4911,
+        "exceptions": [],
+        "claimUsage": {
+          "infestor": [
+            0,
+            0
+          ]
+        },
+        "units": [
+          {
+            "name": "pioneer_3",
+            "pos": {
+              "x": 29,
+              "y": 40,
+              "roomName": "E58S42"
+            },
+            "spawning": true,
+            "hits": 3600,
+            "hitsMax": 3600,
+            "energy": 0,
+            "fatigue": 0
+          },
+          {
+            "name": "pioneer_2",
+            "pos": {
+              "x": 37,
+              "y": 9,
+              "roomName": "E58S43"
+            },
+            "ttl": 1399,
+            "spawning": false,
+            "hits": 3600,
+            "hitsMax": 3600,
+            "energy": 0,
+            "fatigue": 0
+          },
+          {
+            "name": "pioneer_1",
+            "pos": {
+              "x": 22,
+              "y": 23,
+              "roomName": "E58S44"
+            },
+            "ttl": 1218,
+            "spawning": false,
+            "hits": 3600,
+            "hitsMax": 3600,
+            "energy": 0,
+            "fatigue": 0
+          },
+          {
+            "name": "pioneer_0",
+            "pos": {
+              "x": 24,
+              "y": 7,
+              "roomName": "E58S45"
+            },
+            "ttl": 1103,
+            "spawning": false,
+            "hits": 3600,
+            "hitsMax": 3600,
+            "energy": 0,
+            "fatigue": 0
+          }
+        ],
+        "controller": {
+          "mine": true,
+          "level": 1,
+          "sign": {
+            "username": "harland",
+            "text": "星海为途，长路有光",
+            "time": 84146875,
+            "datetime": "2026-11-08T11:36:30.147Z"
+          }
+        },
+        "spawnSites": [
+          {
+            "pos": {
+              "x": 27,
+              "y": 30,
+              "roomName": "E57S45"
+            },
+            "progress": 0,
+            "total": 15000
+          }
+        ]
+      },
+      "recovery": {
+        "tick": 84147237,
+        "phase": "postRun",
+        "bucket": 5358,
+        "exceptions": [],
+        "pioneerOrder": [
+          {
+            "name": "pioneer_3",
+            "spawning": false
+          },
+          {
+            "name": "pioneer_2",
+            "spawning": false
+          },
+          {
+            "name": "pioneer_1",
+            "spawning": false
+          },
+          {
+            "name": "pioneer_0",
+            "spawning": false
+          }
+        ],
+        "units": [
+          {
+            "name": "pioneer_0",
+            "pos": {
+              "x": 45,
+              "y": 14,
+              "roomName": "E57S45"
+            },
+            "ttl": 1063,
+            "spawning": false,
+            "hits": 3600,
+            "hitsMax": 3600,
+            "energy": 0,
+            "fatigue": 0
+          },
+          {
+            "name": "pioneer_2",
+            "pos": {
+              "x": 45,
+              "y": 37,
+              "roomName": "E58S43"
+            },
+            "ttl": 1359,
+            "spawning": false,
+            "hits": 3600,
+            "hitsMax": 3600,
+            "energy": 0,
+            "fatigue": 0
+          },
+          {
+            "name": "pioneer_3",
+            "pos": {
+              "x": 35,
+              "y": 16,
+              "roomName": "E58S43"
+            },
+            "ttl": 1471,
+            "spawning": false,
+            "hits": 3600,
+            "hitsMax": 3600,
+            "energy": 0,
+            "fatigue": 0
+          },
+          {
+            "name": "pioneer_1",
+            "pos": {
+              "x": 27,
+              "y": 2,
+              "roomName": "E58S45"
+            },
+            "ttl": 1178,
+            "spawning": false,
+            "hits": 3600,
+            "hitsMax": 3600,
+            "energy": 0,
+            "fatigue": 0
+          }
+        ],
+        "spawnSites": [
+          {
+            "pos": {
+              "x": 27,
+              "y": 30,
+              "roomName": "E57S45"
+            },
+            "progress": 0,
+            "total": 15000
+          }
+        ],
+        "hostiles": 0
+      },
+      "issue": {
+        "status": "unfixed",
+        "file": "src/overlords/Overlord.ts",
+        "line": 603,
+        "description": "autoRun returns for the whole group on a spawning first unit; existing pioneers were stationary for 17 observed ticks; movement resumed when the final pioneer finished spawning."
+      }
+    }
+  ]
+}

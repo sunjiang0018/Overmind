@@ -66,11 +66,69 @@ export class LinkNetwork {
     // }
   }
 
+  /** Route mine output through the storage-side hub before serving other sinks. */
+  private runStorageFirst(): void {
+    const core = this.colony.commandCenter?.link;
+    const sent = new Set<string>();
+    const received = new Set<string>();
+    const send = (sender: StructureLink, receiver: StructureLink): boolean => {
+      if (
+        sender.id == receiver.id ||
+        sent.has(sender.id) ||
+        received.has(receiver.id) ||
+        sender.cooldown > 0
+      )
+        return false;
+      const amount = Math.min(sender.energy, receiver.energyCapacity - receiver.energy);
+      if (amount <= 0 || sender.transferEnergy(receiver, amount) != OK) return false;
+      sent.add(sender.id);
+      // One accepted packet per receiver avoids reserving the same capacity
+      // twice while Screeps defers the actual store updates to tick end.
+      received.add(receiver.id);
+      remove(this.transmit, (link) => link.id == sender.id);
+      return true;
+    };
+    const sendNearest = (receiver: StructureLink, senders: StructureLink[]): boolean => {
+      const candidates = senders.filter(
+        (sender) =>
+          sender.id != receiver.id &&
+          !sent.has(sender.id) &&
+          sender.cooldown == 0 &&
+          sender.energy > 0,
+      );
+      while (candidates.length > 0) {
+        const sender = receiver.pos.findClosestByRange(candidates)!;
+        if (send(sender, receiver)) return true;
+        remove(candidates, (candidate) => candidate.id == sender.id);
+      }
+      return false;
+    };
+    if (core) {
+      sendNearest(
+        core,
+        this.transmit.filter((link) => link.id != core.id),
+      );
+    }
+    for (const receiver of this.receive) {
+      if (received.has(receiver.id) || receiver.id == core?.id) continue;
+      // The hub can forward its existing surplus, so controller/hatchery
+      // receivers still make progress while fresh mine output reaches storage.
+      if (core && this.transmit.some((link) => link.id == core.id) && send(core, receiver)) {
+        continue;
+      }
+      sendNearest(receiver, this.transmit);
+    }
+  }
+
   /**
    * Examine the link resource requests and try to efficiently (but greedily) match links that need energy in and
    * out, then send the remaining resourceOut link requests to the command center link
    */
   run(): void {
+    if (this.colony.roomPlanner?.memory.logisticsPolicy?.storageLinkFirst) {
+      this.runStorageFirst();
+      return;
+    }
     // For each receiving link, greedily get energy from the closest transmitting link - at most 9 operations
     for (const receiveLink of this.receive) {
       const closestTransmitLink = receiveLink.pos.findClosestByRange(this.transmit);

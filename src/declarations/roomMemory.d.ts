@@ -19,6 +19,8 @@ declare global {
   // human-readable format.
 
   interface RoomMemory {
+    expansionDisabled?: boolean;
+    expansionDisabledUntil?: number;
     spawnGroup?: any;
     [MEM.EXPIRATION]?: number;
     [MEM.TICK]?: number;

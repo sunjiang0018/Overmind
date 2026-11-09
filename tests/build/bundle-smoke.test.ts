@@ -63,6 +63,115 @@ for (const scenario of [
   });
 }
 
+test("bucket recovery suspends below 100 and resumes at 100", () => {
+  const runtime = loadBundle(bundle, { bucket: 99 });
+  const { context } = runtime;
+  context.Memory.resetBucket = true;
+  const tick = context.Memory.tick;
+  runtime.tick();
+  assert.equal(context.Memory.tick, tick);
+  assert.equal(context.Memory.resetBucket, true);
+  assert.ok(runtime.logs.some((line) => line.includes("Bucket: 99/100")));
+
+  context.Game.cpu.bucket = 100;
+  runtime.tick();
+  assert.equal(context.Memory.tick, tick + 1);
+  assert.equal(context.Memory.resetBucket, undefined);
+  assert.equal(context.PHASE, "postRun");
+  assert.equal(context.Overmind.exceptions.length, 0);
+
+  runtime.tick();
+  assert.equal(context.Memory.tick, tick + 2);
+});
+
+test("repeated low bucket pauses preserve the VM and resume at 100 with multiple Spawns", () => {
+  const runtime = loadBundle(bundle, { bucket: 100 });
+  const { context } = runtime;
+  runtime.tick();
+  const brain = context.Overmind;
+  const cache = context._cache;
+  const tick = context.Memory.tick;
+  context.Game.cpu.halt = () => assert.fail("CPU recovery must not reset the VM");
+  context.Game.spawns = { first: {}, second: {} };
+  for (const bucket of [0, 50, 99]) {
+    context.Game.cpu.bucket = bucket;
+    runtime.tick();
+    assert.equal(context.Memory.tick, tick);
+    assert.equal(context.Memory.resetBucket, true);
+    assert.equal(context.Memory.haltTick, undefined);
+  }
+  context.Game.spawns = {};
+  let completed = tick;
+  for (const bucket of [100, 80, 99, 100, 150]) {
+    context.Game.cpu.bucket = bucket;
+    runtime.tick();
+    if (bucket >= 100) completed++;
+    assert.equal(context.Memory.tick, completed);
+    assert.equal(context.Overmind, brain);
+    assert.equal(context._cache, cache);
+  }
+  assert.equal(context.Memory.resetBucket, undefined);
+  assert.equal(context.Memory.stats.persistent.lastGlobalReset, 1001);
+});
+
+test("legacy scheduled halts are discarded before recovery runs", () => {
+  for (const offset of [-1, 0, 1]) {
+    const runtime = loadBundle(bundle, { bucket: 100 });
+    const { context } = runtime;
+    context.Memory.resetBucket = true;
+    context.Memory.haltTick = context.Game.time + offset;
+    context.Game.cpu.halt = () => assert.fail("legacy halt must not execute");
+    runtime.tick();
+    assert.equal(context.Memory.haltTick, undefined);
+    assert.equal(context.Memory.resetBucket, undefined);
+    assert.equal(context.Memory.tick, 1002);
+    assert.equal(context.PHASE, "postRun");
+  }
+});
+
+test("periodic low bucket heap maintenance clears caches without halting", () => {
+  const runtime = loadBundle(bundle, { bucket: 200 });
+  const { context } = runtime;
+  context.Game.time = 1197;
+  context.Game.cpu.halt = () => assert.fail("heap maintenance must not reset the VM");
+  const cache = context._cache;
+  runtime.tick();
+  assert.notEqual(context._cache, cache);
+  assert.equal(context.Memory.build, 1);
+  assert.equal(context.Memory.tick, 1002);
+  assert.equal(context.Memory.stats.persistent.lastGlobalReset, 1001);
+  assert.equal(context.PHASE, "postRun");
+});
+
+test("Pixel generation can drain the bucket and recover without a global reset", () => {
+  const runtime = loadBundle(bundle, { bucket: 10000 });
+  const { context } = runtime;
+  context.Memory.settings.pixelGenerationPaused = false;
+  context.Game.cpu.generatePixel = () => {
+    runtime.calls.pixels++;
+    context.Game.cpu.bucket = 0;
+    return context.OK;
+  };
+  context.Game.cpu.halt = () => assert.fail("Pixel recovery must not reset the VM");
+  runtime.tick();
+  assert.equal(runtime.calls.pixels, 1);
+  const tick = context.Memory.tick;
+  for (const bucket of [0, 18, 36, 54, 72, 90]) {
+    context.Game.cpu.bucket = bucket;
+    runtime.tick();
+    assert.equal(context.Memory.tick, tick);
+  }
+  for (let i = 0; i < 25; i++) {
+    context.Game.cpu.bucket = 108 + 10 * i;
+    runtime.tick();
+    assert.equal(context.Memory.tick, tick + i + 1);
+    assert.equal(context.Overmind.exceptions.length, 0);
+  }
+  assert.equal(context.Memory.stats.persistent.lastGlobalReset, 1001);
+  assert.equal(context.Memory.settings.pixelGenerationPaused, false);
+  assert.equal(runtime.calls.pixels, 1);
+});
+
 test("compressed room memory keys round-trip without ambient enum globals", () => {
   const runtime = loadBundle(bundle);
   const result = JSON.parse(

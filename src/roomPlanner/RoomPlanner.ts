@@ -40,6 +40,7 @@ import { commandCenterLayout } from "./layouts/commandCenter";
 import { hatcheryLayout } from "./layouts/hatchery";
 import { RoadPlanner } from "./RoadPlanner";
 import { hasRoomOverride, installRoomOverride } from "./roomOverrides";
+import { isControllerRampartDeferred, isSouthDefenseActive } from "../strategy/colonyDefense";
 import {
   mapValues,
   uniqueBy,
@@ -83,6 +84,12 @@ export interface RoomPlan {
 
 export interface RoomPlannerMemory {
   customLayout?: string;
+  installedLevel?: number;
+  logisticsPolicy?: {
+    preserveMiningBuffers?: boolean;
+    storageLinkFirst?: boolean;
+    queenBufferFirst?: boolean;
+  };
   active: boolean;
   misplacedStructures?: boolean;
   relocating?: boolean;
@@ -846,6 +853,8 @@ export class RoomPlanner {
       // The road planner budgets infrastructure separately from economic buildings.
       if (hasRoomOverride(this.colony.name) && structureType == STRUCTURE_ROAD) continue;
       for (const pos of this.map[structureType]) {
+        if (structureType == STRUCTURE_RAMPART && isControllerRampartDeferred(this.colony, pos))
+          continue;
         if (RoomPlanner.canBuild(structureType, pos) && remainingSites > 0) {
           // Don't build defensive structures while the room is in safe mode if you are at low RCL
           if (
@@ -855,6 +864,7 @@ export class RoomPlanner {
           ) {
             if (
               this.colony.stage == ColonyStage.Larva &&
+              !isSouthDefenseActive(this.colony) &&
               (this.colony.controller.safeMode || 0) > 2500
             ) {
               continue;

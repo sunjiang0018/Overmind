@@ -1,0 +1,757 @@
+{
+  "date": "2026-11-09",
+  "shard": "shard3",
+  "branch": "main",
+  "sha256": "b6854c9b3b0aed5b343b5b78b8931a8d3b5c3dffb2f10cd9949d0e0adaf077c6",
+  "previousSha256": "a252a5576cb17fa1393e089985c96de4278b2e834af4c2981059adbbc4f7f7ca",
+  "backup": "/Users/sunjiang/.codex/backups/overmind/2026-11-09-before-colony-defense-main.json",
+  "validation": {
+    "tests": 153,
+    "testFiles": 20,
+    "format": true,
+    "lint": true,
+    "typecheck": true,
+    "serverModuleMatchesLocal": true
+  },
+  "target": "E57S45",
+  "parent": "E58S42",
+  "parentPolicy": null,
+  "policy": {
+    "enabled": true,
+    "referenceDamage": 1570,
+    "referenceHealing": 132,
+    "rampartHits": 2500000,
+    "workstations": [],
+    "protectController": false,
+    "southDefenseSchedule": {
+      "armedAt": 84157580,
+      "remainingThreshold": 2500,
+      "attackSeenAt": 84157580
+    },
+    "priorityRamparts": [
+      {
+        "x": 28,
+        "y": 45
+      },
+      {
+        "x": 27,
+        "y": 45
+      },
+      {
+        "x": 29,
+        "y": 45
+      },
+      {
+        "x": 15,
+        "y": 44
+      },
+      {
+        "x": 14,
+        "y": 44
+      },
+      {
+        "x": 16,
+        "y": 44
+      },
+      {
+        "x": 24,
+        "y": 45
+      },
+      {
+        "x": 24,
+        "y": 46
+      },
+      {
+        "x": 24,
+        "y": 47
+      },
+      {
+        "x": 25,
+        "y": 45
+      },
+      {
+        "x": 26,
+        "y": 45
+      },
+      {
+        "x": 27,
+        "y": 44
+      },
+      {
+        "x": 28,
+        "y": 44
+      },
+      {
+        "x": 29,
+        "y": 44
+      },
+      {
+        "x": 14,
+        "y": 43
+      },
+      {
+        "x": 15,
+        "y": 43
+      },
+      {
+        "x": 16,
+        "y": 43
+      }
+    ],
+    "perimeterRamparts": [
+      {
+        "x": 7,
+        "y": 39
+      },
+      {
+        "x": 8,
+        "y": 39
+      },
+      {
+        "x": 9,
+        "y": 39
+      },
+      {
+        "x": 10,
+        "y": 39
+      },
+      {
+        "x": 10,
+        "y": 40
+      },
+      {
+        "x": 10,
+        "y": 41
+      },
+      {
+        "x": 10,
+        "y": 42
+      },
+      {
+        "x": 13,
+        "y": 17
+      },
+      {
+        "x": 14,
+        "y": 17
+      },
+      {
+        "x": 14,
+        "y": 44
+      },
+      {
+        "x": 15,
+        "y": 17
+      },
+      {
+        "x": 15,
+        "y": 44
+      },
+      {
+        "x": 16,
+        "y": 17
+      },
+      {
+        "x": 16,
+        "y": 44
+      },
+      {
+        "x": 17,
+        "y": 17
+      },
+      {
+        "x": 18,
+        "y": 17
+      },
+      {
+        "x": 23,
+        "y": 17
+      },
+      {
+        "x": 24,
+        "y": 17
+      },
+      {
+        "x": 24,
+        "y": 18
+      },
+      {
+        "x": 24,
+        "y": 45
+      },
+      {
+        "x": 24,
+        "y": 46
+      },
+      {
+        "x": 24,
+        "y": 47
+      },
+      {
+        "x": 25,
+        "y": 18
+      },
+      {
+        "x": 25,
+        "y": 45
+      },
+      {
+        "x": 26,
+        "y": 18
+      },
+      {
+        "x": 26,
+        "y": 19
+      },
+      {
+        "x": 26,
+        "y": 20
+      },
+      {
+        "x": 26,
+        "y": 45
+      },
+      {
+        "x": 27,
+        "y": 20
+      },
+      {
+        "x": 27,
+        "y": 45
+      },
+      {
+        "x": 28,
+        "y": 45
+      },
+      {
+        "x": 29,
+        "y": 45
+      },
+      {
+        "x": 40,
+        "y": 45
+      },
+      {
+        "x": 40,
+        "y": 46
+      },
+      {
+        "x": 41,
+        "y": 44
+      },
+      {
+        "x": 41,
+        "y": 45
+      },
+      {
+        "x": 42,
+        "y": 43
+      },
+      {
+        "x": 42,
+        "y": 44
+      }
+    ]
+  },
+  "supportFlag": {
+    "T": 84156796,
+    "C": "E58S42",
+    "support": {},
+    "status": {
+      "tick": 84157764,
+      "allowed": true,
+      "reserve": 150000,
+      "parentEnergy": 307976,
+      "builders": 0,
+      "haulers": 0,
+      "guards": 0,
+      "scouts": 1,
+      "southDefense": "waiting-recolonization"
+    },
+    "reserve": 150000,
+    "targetRCL": 6,
+    "maxBuilders": 4,
+    "maxHaulers": 3,
+    "maxGuards": 5,
+    "persistent": true,
+    "warningRoom": "E57S46",
+    "warningPos": {
+      "x": 28,
+      "y": 3
+    },
+    "defenseAnchors": [
+      {
+        "x": 28,
+        "y": 44
+      },
+      {
+        "x": 15,
+        "y": 43
+      }
+    ],
+    "minGuards": 4,
+    "warning": {
+      "room": "E57S46",
+      "tick": 84157764,
+      "visible": true,
+      "hostiles": []
+    },
+    "lastWarningKey": "",
+    "lastWarningTick": 84157519
+  },
+  "criticalControllerTiles": [],
+  "initialCriticalShields": [
+    {
+      "x": 28,
+      "y": 45
+    },
+    {
+      "x": 27,
+      "y": 45
+    },
+    {
+      "x": 29,
+      "y": 45
+    },
+    {
+      "x": 15,
+      "y": 44
+    },
+    {
+      "x": 14,
+      "y": 44
+    },
+    {
+      "x": 16,
+      "y": 44
+    },
+    {
+      "x": 24,
+      "y": 45
+    },
+    {
+      "x": 24,
+      "y": 46
+    },
+    {
+      "x": 24,
+      "y": 47
+    },
+    {
+      "x": 25,
+      "y": 45
+    },
+    {
+      "x": 26,
+      "y": 45
+    },
+    {
+      "x": 27,
+      "y": 44
+    },
+    {
+      "x": 28,
+      "y": 44
+    },
+    {
+      "x": 29,
+      "y": 44
+    },
+    {
+      "x": 14,
+      "y": 43
+    },
+    {
+      "x": 15,
+      "y": 43
+    },
+    {
+      "x": 16,
+      "y": 43
+    },
+    {
+      "x": 27,
+      "y": 30
+    },
+    {
+      "x": 23,
+      "y": 20
+    },
+    {
+      "x": 4,
+      "y": 30
+    },
+    {
+      "x": 28,
+      "y": 31
+    }
+  ],
+  "siegeModel": {
+    "pooledRoomPeakDamage": 1570,
+    "conservativePooledHealing": 132,
+    "barrierGoal": 2500000,
+    "barrierLimits": {
+      "RCL2": 300000,
+      "RCL3": 1000000
+    },
+    "repairFloor": "two 9-WORK builders supply 1800 repair/tick while energized and in range",
+    "guardFloor": "Four KO-boosted 10-RANGED sentinels planned across two southern entrances: 800 total raw damage; five-unboosted-body cap remains a resource fallback, with position and tower support affecting performance.",
+    "scope": "static capacity model, not a full combat simulation; positions, energy delivery, body damage, spawn availability and construction readiness matter"
+  },
+  "localRelief": {
+    "tick": 84156917,
+    "name": "drone_5",
+    "from": "harvest:7ae9d4>mine",
+    "to": "colonySupport:E57S45>support",
+    "energy": 50
+  },
+  "observation": {
+    "tick": 84157342,
+    "phase": "postRun",
+    "bucket": 4332,
+    "errors": [],
+    "support": true,
+    "parent": {
+      "energy": 306404,
+      "queue": [
+        {
+          "priority": 510,
+          "role": "transport",
+          "ref": "E58S42>logistics"
+        },
+        {
+          "priority": 906,
+          "role": "drone",
+          "ref": "harvest:a39026>mine"
+        },
+        {
+          "priority": 910,
+          "role": "infestor",
+          "ref": "outpost:591fec>reserve"
+        },
+        {
+          "priority": 915,
+          "role": "infestor",
+          "ref": "outpost:E58S44>reserve"
+        },
+        {
+          "priority": 947,
+          "role": "colonyBuilder",
+          "ref": "colonySupport:E57S45>support"
+        },
+        {
+          "priority": 948,
+          "role": "colonyHauler",
+          "ref": "colonySupport:E57S45>support"
+        },
+        {
+          "priority": 949,
+          "role": "colonyGuard",
+          "ref": "colonySupport:E57S45>support"
+        }
+      ],
+      "spawns": [
+        {
+          "name": "Spawn1",
+          "spawning": null
+        }
+      ]
+    },
+    "child": {
+      "level": 2,
+      "progress": 52,
+      "total": 45000,
+      "downgrade": 7508,
+      "queue": []
+    }
+  },
+  "units": {
+    "tick": 84157342,
+    "units": [
+      {
+        "name": "drone_5",
+        "role": "colonyBuilder",
+        "pos": {
+          "x": 22,
+          "y": 41,
+          "roomName": "E57S45"
+        },
+        "ttl": 549,
+        "spawning": false,
+        "energy": 47
+      },
+      {
+        "name": "changeling_south_84157191",
+        "role": "changeling",
+        "pos": {
+          "x": 28,
+          "y": 3,
+          "roomName": "E57S46"
+        },
+        "ttl": 1351,
+        "spawning": false,
+        "energy": 0
+      }
+    ],
+    "sites": [
+      {
+        "type": "container",
+        "pos": {
+          "x": 28,
+          "y": 31,
+          "roomName": "E57S45"
+        },
+        "progress": 150,
+        "total": 5000
+      },
+      {
+        "type": "container",
+        "pos": {
+          "x": 39,
+          "y": 42,
+          "roomName": "E57S45"
+        },
+        "progress": 0,
+        "total": 5000
+      },
+      {
+        "type": "rampart",
+        "pos": {
+          "x": 27,
+          "y": 30,
+          "roomName": "E57S45"
+        },
+        "progress": 0,
+        "total": 1
+      },
+      {
+        "type": "extension",
+        "pos": {
+          "x": 30,
+          "y": 31,
+          "roomName": "E57S45"
+        },
+        "progress": 0,
+        "total": 3000
+      },
+      {
+        "type": "extension",
+        "pos": {
+          "x": 30,
+          "y": 32,
+          "roomName": "E57S45"
+        },
+        "progress": 0,
+        "total": 3000
+      },
+      {
+        "type": "extension",
+        "pos": {
+          "x": 29,
+          "y": 29,
+          "roomName": "E57S45"
+        },
+        "progress": 0,
+        "total": 3000
+      },
+      {
+        "type": "extension",
+        "pos": {
+          "x": 28,
+          "y": 29,
+          "roomName": "E57S45"
+        },
+        "progress": 400,
+        "total": 3000
+      },
+      {
+        "type": "extension",
+        "pos": {
+          "x": 31,
+          "y": 31,
+          "roomName": "E57S45"
+        },
+        "progress": 0,
+        "total": 3000
+      },
+      {
+        "type": "rampart",
+        "pos": {
+          "x": 15,
+          "y": 44,
+          "roomName": "E57S45"
+        },
+        "progress": 0,
+        "total": 1
+      },
+      {
+        "type": "rampart",
+        "pos": {
+          "x": 14,
+          "y": 44,
+          "roomName": "E57S45"
+        },
+        "progress": 0,
+        "total": 1
+      }
+    ],
+    "shields": [
+      {
+        "x": 28,
+        "y": 45,
+        "hits": 1,
+        "public": false
+      },
+      {
+        "x": 27,
+        "y": 45,
+        "hits": 1,
+        "public": false
+      },
+      {
+        "x": 29,
+        "y": 45,
+        "hits": 1,
+        "public": false
+      }
+    ]
+  },
+  "southVerification": {
+    "tick": 84157342,
+    "phase": "postRun",
+    "errors": [],
+    "rcl": 2,
+    "progress": 52,
+    "controllerRamparts": [],
+    "controllerSites": [],
+    "warning": {
+      "room": "E57S46",
+      "tick": 84157342,
+      "visible": true,
+      "hostiles": []
+    },
+    "scouts": [
+      {
+        "name": "changeling_south_84157191",
+        "pos": {
+          "x": 28,
+          "y": 3,
+          "roomName": "E57S46"
+        },
+        "ttl": 1351
+      }
+    ],
+    "southSites": [
+      {
+        "x": 15,
+        "y": 44,
+        "progress": 0
+      },
+      {
+        "x": 14,
+        "y": 44,
+        "progress": 0
+      }
+    ]
+  },
+  "physicalControllerVerification": {
+    "tick": 84157349,
+    "adjacentRampartsAndSites": 0
+  },
+  "scoutSpawn": {
+    "tick": 84157191,
+    "name": "changeling_south_84157191",
+    "ret": 0,
+    "spawn": "Spawn2"
+  },
+  "warning": {
+    "room": "E57S46",
+    "tick": 84157764,
+    "visible": true,
+    "hostiles": []
+  },
+  "controllerRemovalHistory": [
+    {
+      "tick": 84157202,
+      "removedRamparts": [
+        {
+          "x": 40,
+          "y": 41
+        }
+      ],
+      "cancelledSites": [
+        {
+          "x": 40,
+          "y": 42
+        },
+        {
+          "x": 41,
+          "y": 42
+        }
+      ]
+    },
+    {
+      "tick": 84157298,
+      "removed": [
+        {
+          "kind": "rampart",
+          "x": 40,
+          "y": 41,
+          "ret": 0
+        }
+      ]
+    }
+  ],
+  "controllerShielding": "Disabled by user; adjacent structures and sites removed; original perimeter retained.",
+  "physicalSouthernRamparts": [
+    {
+      "x": 28,
+      "y": 45,
+      "hits": 201
+    },
+    {
+      "x": 27,
+      "y": 45,
+      "hits": 1
+    },
+    {
+      "x": 29,
+      "y": 45,
+      "hits": 1
+    }
+  ],
+  "constructionState": "Paused by user after ownership loss. Recolonization resumes after safe-mode cooldown; previous snapshots are historical.",
+  "previousColonySnapshot": {
+    "tick": 84157349,
+    "rcl": {
+      "level": 2,
+      "progress": 52,
+      "progressTotal": 45000
+    },
+    "bucket": 4343,
+    "status": {
+      "tick": 84157349,
+      "allowed": true,
+      "reserve": 150000,
+      "parentEnergy": 306204,
+      "builders": 1,
+      "haulers": 0,
+      "guards": 0,
+      "scouts": 1,
+      "guardDamage": 0,
+      "requiredGuardDamage": 480
+    }
+  },
+  "latest": {
+    "tick": 84157763,
+    "status": "withdrawn-awaiting-cooldown",
+    "rcl": 0,
+    "owned": false,
+    "resumeAfter": 84207606,
+    "claimSuspended": true,
+    "pioneerSuspended": true,
+    "unitsReturning": 11,
+    "allUnitsHome": false
+  },
+  "latestEvidence": "schedule-change.json"
+}

@@ -1,0 +1,1215 @@
+{
+  "revision": 4,
+  "policy": "Shared network: preserve source2 straight approaches, all named shortest distances, staged service distances and worst refill bounds; reroute other paths to share roads.",
+  "buildingCoordinatesChanged": false,
+  "routeCount": 14,
+  "routes": {
+    "westToStorage": {
+      "start": {
+        "x": 4,
+        "y": 30
+      },
+      "goal": {
+        "x": 25,
+        "y": 32
+      },
+      "range": 1,
+      "before": {
+        "steps": 20,
+        "turns": 7,
+        "shapeCost": 1827,
+        "axisDeparture": 73.0,
+        "maximumAxisDeparture": 6.762
+      },
+      "after": {
+        "steps": 20,
+        "turns": 1,
+        "shapeCost": 390,
+        "axisDeparture": 16.571,
+        "maximumAxisDeparture": 1.619
+      },
+      "changed": true
+    },
+    "westToSpawn": {
+      "start": {
+        "x": 4,
+        "y": 30
+      },
+      "goal": {
+        "x": 27,
+        "y": 30
+      },
+      "range": 1,
+      "before": {
+        "steps": 22,
+        "turns": 8,
+        "shapeCost": 1886,
+        "axisDeparture": 66.0,
+        "maximumAxisDeparture": 6.0
+      },
+      "after": {
+        "steps": 22,
+        "turns": 2,
+        "shapeCost": 460,
+        "axisDeparture": 16.0,
+        "maximumAxisDeparture": 4.0
+      },
+      "changed": true
+    },
+    "westToController": {
+      "start": {
+        "x": 4,
+        "y": 30
+      },
+      "goal": {
+        "x": 39,
+        "y": 42
+      },
+      "range": 1,
+      "before": {
+        "steps": 34,
+        "turns": 11,
+        "shapeCost": 5730,
+        "axisDeparture": 141.714,
+        "maximumAxisDeparture": 8.743
+      },
+      "after": {
+        "steps": 34,
+        "turns": 4,
+        "shapeCost": 3479,
+        "axisDeparture": 91.4,
+        "maximumAxisDeparture": 5.829
+      },
+      "changed": true
+    },
+    "northSource": {
+      "start": {
+        "x": 27,
+        "y": 32
+      },
+      "goal": {
+        "x": 23,
+        "y": 20
+      },
+      "range": 1,
+      "before": {
+        "steps": 12,
+        "turns": 4,
+        "shapeCost": 320,
+        "axisDeparture": 18.667,
+        "maximumAxisDeparture": 3.0
+      },
+      "after": {
+        "steps": 12,
+        "turns": 4,
+        "shapeCost": 256,
+        "axisDeparture": 13.333,
+        "maximumAxisDeparture": 2.333
+      },
+      "changed": true
+    },
+    "westSource": {
+      "start": {
+        "x": 27,
+        "y": 32
+      },
+      "goal": {
+        "x": 4,
+        "y": 30
+      },
+      "range": 1,
+      "before": {
+        "steps": 22,
+        "turns": 7,
+        "shapeCost": 1903,
+        "axisDeparture": 68.739,
+        "maximumAxisDeparture": 6.696
+      },
+      "after": {
+        "steps": 22,
+        "turns": 2,
+        "shapeCost": 523,
+        "axisDeparture": 18.739,
+        "maximumAxisDeparture": 2.174
+      },
+      "changed": true
+    },
+    "controller": {
+      "start": {
+        "x": 27,
+        "y": 32
+      },
+      "goal": {
+        "x": 39,
+        "y": 42
+      },
+      "range": 1,
+      "before": {
+        "steps": 13,
+        "turns": 3,
+        "shapeCost": 434,
+        "axisDeparture": 30.167,
+        "maximumAxisDeparture": 3.333
+      },
+      "after": {
+        "steps": 13,
+        "turns": 2,
+        "shapeCost": 418,
+        "axisDeparture": 30.833,
+        "maximumAxisDeparture": 3.333
+      },
+      "changed": true
+    },
+    "mineral": {
+      "start": {
+        "x": 27,
+        "y": 32
+      },
+      "goal": {
+        "x": 37,
+        "y": 28
+      },
+      "range": 1,
+      "before": {
+        "steps": 9,
+        "turns": 5,
+        "shapeCost": 230,
+        "axisDeparture": 13.0,
+        "maximumAxisDeparture": 2.6
+      },
+      "after": {
+        "steps": 9,
+        "turns": 4,
+        "shapeCost": 230,
+        "axisDeparture": 15.0,
+        "maximumAxisDeparture": 2.6
+      },
+      "changed": true
+    },
+    "eastSupply": {
+      "start": {
+        "x": 27,
+        "y": 32
+      },
+      "goal": {
+        "x": 49,
+        "y": 44
+      },
+      "range": 0,
+      "before": {
+        "steps": 24,
+        "turns": 9,
+        "shapeCost": 1924,
+        "axisDeparture": 69.455,
+        "maximumAxisDeparture": 5.636
+      },
+      "after": {
+        "steps": 24,
+        "turns": 7,
+        "shapeCost": 1836,
+        "axisDeparture": 69.455,
+        "maximumAxisDeparture": 5.636
+      },
+      "changed": true
+    },
+    "southExit": {
+      "start": {
+        "x": 27,
+        "y": 32
+      },
+      "goal": {
+        "x": 28,
+        "y": 49
+      },
+      "range": 0,
+      "before": {
+        "steps": 17,
+        "turns": 3,
+        "shapeCost": 708,
+        "axisDeparture": 35.647,
+        "maximumAxisDeparture": 5.529
+      },
+      "after": {
+        "steps": 17,
+        "turns": 6,
+        "shapeCost": 363,
+        "axisDeparture": 9.353,
+        "maximumAxisDeparture": 1.765
+      },
+      "changed": true
+    },
+    "westExit": {
+      "start": {
+        "x": 27,
+        "y": 32
+      },
+      "goal": {
+        "x": 0,
+        "y": 41
+      },
+      "range": 0,
+      "before": {
+        "steps": 27,
+        "turns": 11,
+        "shapeCost": 1575,
+        "axisDeparture": 36.333,
+        "maximumAxisDeparture": 4.0
+      },
+      "after": {
+        "steps": 27,
+        "turns": 9,
+        "shapeCost": 1044,
+        "axisDeparture": 20.667,
+        "maximumAxisDeparture": 2.667
+      },
+      "changed": true
+    },
+    "northToSpawn": {
+      "start": {
+        "x": 23,
+        "y": 20
+      },
+      "goal": {
+        "x": 27,
+        "y": 30
+      },
+      "range": 1,
+      "before": {
+        "steps": 9,
+        "turns": 4,
+        "shapeCost": 260,
+        "axisDeparture": 18.0,
+        "maximumAxisDeparture": 3.2
+      },
+      "after": {
+        "steps": 9,
+        "turns": 3,
+        "shapeCost": 152,
+        "axisDeparture": 9.2,
+        "maximumAxisDeparture": 2.6
+      },
+      "changed": true
+    },
+    "northToStorage": {
+      "start": {
+        "x": 23,
+        "y": 20
+      },
+      "goal": {
+        "x": 25,
+        "y": 32
+      },
+      "range": 1,
+      "before": {
+        "steps": 11,
+        "turns": 5,
+        "shapeCost": 360,
+        "axisDeparture": 20.0,
+        "maximumAxisDeparture": 3.333
+      },
+      "after": {
+        "steps": 11,
+        "turns": 6,
+        "shapeCost": 328,
+        "axisDeparture": 15.333,
+        "maximumAxisDeparture": 3.333
+      },
+      "changed": true
+    },
+    "northToController": {
+      "start": {
+        "x": 23,
+        "y": 20
+      },
+      "goal": {
+        "x": 39,
+        "y": 42
+      },
+      "range": 1,
+      "before": {
+        "steps": 25,
+        "turns": 8,
+        "shapeCost": 2382,
+        "axisDeparture": 92.273,
+        "maximumAxisDeparture": 6.182
+      },
+      "after": {
+        "steps": 25,
+        "turns": 7,
+        "shapeCost": 2200,
+        "axisDeparture": 86.0,
+        "maximumAxisDeparture": 6.182
+      },
+      "changed": true
+    },
+    "storageToController": {
+      "start": {
+        "x": 25,
+        "y": 32
+      },
+      "goal": {
+        "x": 39,
+        "y": 42
+      },
+      "range": 1,
+      "before": {
+        "steps": 13,
+        "turns": 2,
+        "shapeCost": 330,
+        "axisDeparture": 19.571,
+        "maximumAxisDeparture": 2.857
+      },
+      "after": {
+        "steps": 13,
+        "turns": 1,
+        "shapeCost": 308,
+        "axisDeparture": 20.0,
+        "maximumAxisDeparture": 2.857
+      },
+      "changed": true
+    }
+  },
+  "roadTilesBefore": 129,
+  "roadTilesAfter": 135,
+  "removedRoadTiles": [
+    {
+      "x": 4,
+      "y": 41
+    },
+    {
+      "x": 5,
+      "y": 42
+    },
+    {
+      "x": 6,
+      "y": 29
+    },
+    {
+      "x": 6,
+      "y": 43
+    },
+    {
+      "x": 7,
+      "y": 28
+    },
+    {
+      "x": 7,
+      "y": 42
+    },
+    {
+      "x": 8,
+      "y": 27
+    },
+    {
+      "x": 8,
+      "y": 42
+    },
+    {
+      "x": 9,
+      "y": 26
+    },
+    {
+      "x": 9,
+      "y": 41
+    },
+    {
+      "x": 10,
+      "y": 25
+    },
+    {
+      "x": 10,
+      "y": 40
+    },
+    {
+      "x": 11,
+      "y": 24
+    },
+    {
+      "x": 11,
+      "y": 39
+    },
+    {
+      "x": 12,
+      "y": 24
+    },
+    {
+      "x": 13,
+      "y": 25
+    },
+    {
+      "x": 14,
+      "y": 26
+    },
+    {
+      "x": 14,
+      "y": 36
+    },
+    {
+      "x": 15,
+      "y": 26
+    },
+    {
+      "x": 15,
+      "y": 35
+    },
+    {
+      "x": 16,
+      "y": 27
+    },
+    {
+      "x": 16,
+      "y": 36
+    },
+    {
+      "x": 17,
+      "y": 28
+    },
+    {
+      "x": 17,
+      "y": 35
+    },
+    {
+      "x": 18,
+      "y": 28
+    },
+    {
+      "x": 19,
+      "y": 28
+    },
+    {
+      "x": 20,
+      "y": 28
+    },
+    {
+      "x": 21,
+      "y": 22
+    },
+    {
+      "x": 21,
+      "y": 23
+    },
+    {
+      "x": 22,
+      "y": 21
+    },
+    {
+      "x": 26,
+      "y": 47
+    },
+    {
+      "x": 27,
+      "y": 46
+    },
+    {
+      "x": 27,
+      "y": 48
+    },
+    {
+      "x": 29,
+      "y": 44
+    },
+    {
+      "x": 30,
+      "y": 43
+    },
+    {
+      "x": 31,
+      "y": 42
+    },
+    {
+      "x": 32,
+      "y": 41
+    },
+    {
+      "x": 34,
+      "y": 30
+    },
+    {
+      "x": 38,
+      "y": 41
+    },
+    {
+      "x": 38,
+      "y": 43
+    },
+    {
+      "x": 41,
+      "y": 42
+    }
+  ],
+  "addedRoadTiles": [
+    {
+      "x": 4,
+      "y": 40
+    },
+    {
+      "x": 5,
+      "y": 40
+    },
+    {
+      "x": 6,
+      "y": 30
+    },
+    {
+      "x": 6,
+      "y": 40
+    },
+    {
+      "x": 7,
+      "y": 30
+    },
+    {
+      "x": 7,
+      "y": 39
+    },
+    {
+      "x": 8,
+      "y": 30
+    },
+    {
+      "x": 8,
+      "y": 38
+    },
+    {
+      "x": 9,
+      "y": 30
+    },
+    {
+      "x": 9,
+      "y": 37
+    },
+    {
+      "x": 10,
+      "y": 30
+    },
+    {
+      "x": 10,
+      "y": 37
+    },
+    {
+      "x": 11,
+      "y": 30
+    },
+    {
+      "x": 11,
+      "y": 37
+    },
+    {
+      "x": 12,
+      "y": 30
+    },
+    {
+      "x": 13,
+      "y": 30
+    },
+    {
+      "x": 14,
+      "y": 30
+    },
+    {
+      "x": 14,
+      "y": 37
+    },
+    {
+      "x": 15,
+      "y": 30
+    },
+    {
+      "x": 15,
+      "y": 37
+    },
+    {
+      "x": 16,
+      "y": 30
+    },
+    {
+      "x": 16,
+      "y": 37
+    },
+    {
+      "x": 17,
+      "y": 30
+    },
+    {
+      "x": 17,
+      "y": 36
+    },
+    {
+      "x": 18,
+      "y": 30
+    },
+    {
+      "x": 19,
+      "y": 30
+    },
+    {
+      "x": 20,
+      "y": 30
+    },
+    {
+      "x": 23,
+      "y": 23
+    },
+    {
+      "x": 24,
+      "y": 22
+    },
+    {
+      "x": 25,
+      "y": 22
+    },
+    {
+      "x": 26,
+      "y": 23
+    },
+    {
+      "x": 27,
+      "y": 24
+    },
+    {
+      "x": 28,
+      "y": 37
+    },
+    {
+      "x": 28,
+      "y": 38
+    },
+    {
+      "x": 28,
+      "y": 40
+    },
+    {
+      "x": 28,
+      "y": 41
+    },
+    {
+      "x": 28,
+      "y": 42
+    },
+    {
+      "x": 28,
+      "y": 43
+    },
+    {
+      "x": 28,
+      "y": 44
+    },
+    {
+      "x": 28,
+      "y": 46
+    },
+    {
+      "x": 28,
+      "y": 47
+    },
+    {
+      "x": 28,
+      "y": 48
+    },
+    {
+      "x": 29,
+      "y": 32
+    },
+    {
+      "x": 29,
+      "y": 39
+    },
+    {
+      "x": 34,
+      "y": 31
+    },
+    {
+      "x": 38,
+      "y": 42
+    },
+    {
+      "x": 41,
+      "y": 43
+    }
+  ],
+  "perimeterTilesBefore": 38,
+  "perimeterTilesAfter": 38,
+  "queenRefillBeforePolicyFixes": {
+    "2": 14,
+    "3": 22,
+    "4": 41,
+    "5": 63,
+    "6": 86,
+    "7": 142,
+    "8": 268
+  },
+  "roadPruning": {
+    "roadTilesBefore": 169,
+    "roadTilesAfter": 166,
+    "removed": [
+      {
+        "x": 22,
+        "y": 37
+      },
+      {
+        "x": 25,
+        "y": 21
+      },
+      {
+        "x": 35,
+        "y": 33
+      }
+    ],
+    "allStagedServiceDistancesPreserved": true,
+    "worstRefillPreserved": true
+  },
+  "networkCompaction": {
+    "roadTilesBefore": 166,
+    "roadTilesAfter": 135,
+    "selectedOrder": "xy",
+    "candidates": [
+      {
+        "order": "xy",
+        "roadTiles": 135,
+        "worstRefillByLevel": {
+          "2": 14,
+          "3": 22,
+          "4": 41,
+          "5": 63,
+          "6": 86,
+          "7": 142,
+          "8": 195
+        }
+      },
+      {
+        "order": "reverseXY",
+        "roadTiles": 135,
+        "worstRefillByLevel": {
+          "2": 14,
+          "3": 22,
+          "4": 41,
+          "5": 63,
+          "6": 86,
+          "7": 142,
+          "8": 195
+        }
+      },
+      {
+        "order": "leastSharedFirst",
+        "roadTiles": 135,
+        "worstRefillByLevel": {
+          "2": 14,
+          "3": 22,
+          "4": 41,
+          "5": 63,
+          "6": 86,
+          "7": 142,
+          "8": 195
+        }
+      },
+      {
+        "order": "outerFirst",
+        "roadTiles": 135,
+        "worstRefillByLevel": {
+          "2": 14,
+          "3": 22,
+          "4": 41,
+          "5": 63,
+          "6": 86,
+          "7": 142,
+          "8": 195
+        }
+      }
+    ],
+    "removed": [
+      {
+        "x": 5,
+        "y": 31
+      },
+      {
+        "x": 6,
+        "y": 32
+      },
+      {
+        "x": 7,
+        "y": 33
+      },
+      {
+        "x": 8,
+        "y": 34
+      },
+      {
+        "x": 9,
+        "y": 35
+      },
+      {
+        "x": 10,
+        "y": 36
+      },
+      {
+        "x": 12,
+        "y": 37
+      },
+      {
+        "x": 14,
+        "y": 36
+      },
+      {
+        "x": 15,
+        "y": 35
+      },
+      {
+        "x": 16,
+        "y": 35
+      },
+      {
+        "x": 17,
+        "y": 35
+      },
+      {
+        "x": 19,
+        "y": 35
+      },
+      {
+        "x": 20,
+        "y": 36
+      },
+      {
+        "x": 21,
+        "y": 37
+      },
+      {
+        "x": 22,
+        "y": 38
+      },
+      {
+        "x": 23,
+        "y": 22
+      },
+      {
+        "x": 23,
+        "y": 39
+      },
+      {
+        "x": 24,
+        "y": 21
+      },
+      {
+        "x": 24,
+        "y": 40
+      },
+      {
+        "x": 25,
+        "y": 41
+      },
+      {
+        "x": 26,
+        "y": 40
+      },
+      {
+        "x": 27,
+        "y": 39
+      },
+      {
+        "x": 28,
+        "y": 39
+      },
+      {
+        "x": 30,
+        "y": 39
+      },
+      {
+        "x": 31,
+        "y": 39
+      },
+      {
+        "x": 32,
+        "y": 29
+      },
+      {
+        "x": 33,
+        "y": 30
+      },
+      {
+        "x": 34,
+        "y": 38
+      },
+      {
+        "x": 34,
+        "y": 39
+      },
+      {
+        "x": 34,
+        "y": 40
+      },
+      {
+        "x": 39,
+        "y": 41
+      }
+    ],
+    "fixedRoutes": [
+      "westToStorage",
+      "westToSpawn"
+    ],
+    "routes": {
+      "northSource": {
+        "before": {
+          "steps": 12,
+          "turns": 4,
+          "shapeCost": 256,
+          "axisDeparture": 13.333,
+          "maximumAxisDeparture": 2.333
+        },
+        "after": {
+          "steps": 12,
+          "turns": 4,
+          "shapeCost": 256,
+          "axisDeparture": 13.333,
+          "maximumAxisDeparture": 2.333
+        }
+      },
+      "westSource": {
+        "before": {
+          "steps": 22,
+          "turns": 2,
+          "shapeCost": 523,
+          "axisDeparture": 18.739,
+          "maximumAxisDeparture": 2.174
+        },
+        "after": {
+          "steps": 22,
+          "turns": 2,
+          "shapeCost": 523,
+          "axisDeparture": 18.739,
+          "maximumAxisDeparture": 2.174
+        }
+      },
+      "controller": {
+        "before": {
+          "steps": 13,
+          "turns": 2,
+          "shapeCost": 418,
+          "axisDeparture": 30.833,
+          "maximumAxisDeparture": 3.333
+        },
+        "after": {
+          "steps": 13,
+          "turns": 2,
+          "shapeCost": 418,
+          "axisDeparture": 30.833,
+          "maximumAxisDeparture": 3.333
+        }
+      },
+      "mineral": {
+        "before": {
+          "steps": 9,
+          "turns": 4,
+          "shapeCost": 158,
+          "axisDeparture": 7.8,
+          "maximumAxisDeparture": 1.8
+        },
+        "after": {
+          "steps": 9,
+          "turns": 4,
+          "shapeCost": 230,
+          "axisDeparture": 15.0,
+          "maximumAxisDeparture": 2.6
+        }
+      },
+      "eastSupply": {
+        "before": {
+          "steps": 24,
+          "turns": 6,
+          "shapeCost": 1748,
+          "axisDeparture": 67.455,
+          "maximumAxisDeparture": 5.636
+        },
+        "after": {
+          "steps": 24,
+          "turns": 7,
+          "shapeCost": 1836,
+          "axisDeparture": 69.455,
+          "maximumAxisDeparture": 5.636
+        }
+      },
+      "southExit": {
+        "before": {
+          "steps": 17,
+          "turns": 3,
+          "shapeCost": 244,
+          "axisDeparture": 8.353,
+          "maximumAxisDeparture": 1.765
+        },
+        "after": {
+          "steps": 17,
+          "turns": 6,
+          "shapeCost": 363,
+          "axisDeparture": 9.353,
+          "maximumAxisDeparture": 1.765
+        }
+      },
+      "westExit": {
+        "before": {
+          "steps": 27,
+          "turns": 6,
+          "shapeCost": 855,
+          "axisDeparture": 19.667,
+          "maximumAxisDeparture": 2.667
+        },
+        "after": {
+          "steps": 27,
+          "turns": 9,
+          "shapeCost": 1044,
+          "axisDeparture": 20.667,
+          "maximumAxisDeparture": 2.667
+        }
+      },
+      "northToSpawn": {
+        "before": {
+          "steps": 9,
+          "turns": 2,
+          "shapeCost": 138,
+          "axisDeparture": 9.8,
+          "maximumAxisDeparture": 2.6
+        },
+        "after": {
+          "steps": 9,
+          "turns": 3,
+          "shapeCost": 152,
+          "axisDeparture": 9.2,
+          "maximumAxisDeparture": 2.6
+        }
+      },
+      "northToStorage": {
+        "before": {
+          "steps": 11,
+          "turns": 5,
+          "shapeCost": 300,
+          "axisDeparture": 15.0,
+          "maximumAxisDeparture": 3.333
+        },
+        "after": {
+          "steps": 11,
+          "turns": 6,
+          "shapeCost": 328,
+          "axisDeparture": 15.333,
+          "maximumAxisDeparture": 3.333
+        }
+      },
+      "northToController": {
+        "before": {
+          "steps": 25,
+          "turns": 7,
+          "shapeCost": 1420,
+          "axisDeparture": 50.545,
+          "maximumAxisDeparture": 4.273
+        },
+        "after": {
+          "steps": 25,
+          "turns": 7,
+          "shapeCost": 2200,
+          "axisDeparture": 86.0,
+          "maximumAxisDeparture": 6.182
+        }
+      },
+      "westToSpawn": {
+        "before": {
+          "steps": 22,
+          "turns": 2,
+          "shapeCost": 460,
+          "axisDeparture": 16.0,
+          "maximumAxisDeparture": 4.0
+        },
+        "after": {
+          "steps": 22,
+          "turns": 2,
+          "shapeCost": 460,
+          "axisDeparture": 16.0,
+          "maximumAxisDeparture": 4.0
+        }
+      },
+      "westToStorage": {
+        "before": {
+          "steps": 20,
+          "turns": 1,
+          "shapeCost": 390,
+          "axisDeparture": 16.571,
+          "maximumAxisDeparture": 1.619
+        },
+        "after": {
+          "steps": 20,
+          "turns": 1,
+          "shapeCost": 390,
+          "axisDeparture": 16.571,
+          "maximumAxisDeparture": 1.619
+        }
+      },
+      "westToController": {
+        "before": {
+          "steps": 34,
+          "turns": 7,
+          "shapeCost": 2450,
+          "axisDeparture": 56.0,
+          "maximumAxisDeparture": 5.257
+        },
+        "after": {
+          "steps": 34,
+          "turns": 4,
+          "shapeCost": 3479,
+          "axisDeparture": 91.4,
+          "maximumAxisDeparture": 5.829
+        }
+      },
+      "storageToController": {
+        "before": {
+          "steps": 13,
+          "turns": 1,
+          "shapeCost": 308,
+          "axisDeparture": 20.0,
+          "maximumAxisDeparture": 2.857
+        },
+        "after": {
+          "steps": 13,
+          "turns": 1,
+          "shapeCost": 308,
+          "axisDeparture": 20.0,
+          "maximumAxisDeparture": 2.857
+        }
+      }
+    },
+    "allNamedShortestDistancesPreserved": true,
+    "allStagedServiceDistancesPreserved": true,
+    "worstRefillPreserved": true,
+    "queenRefillBefore": {
+      "2": 14,
+      "3": 22,
+      "4": 41,
+      "5": 63,
+      "6": 86,
+      "7": 142,
+      "8": 195
+    },
+    "queenRefillAfter": {
+      "2": 14,
+      "3": 22,
+      "4": 41,
+      "5": 63,
+      "6": 86,
+      "7": 142,
+      "8": 195
+    }
+  },
+  "queenRefillBefore": {
+    "2": 14,
+    "3": 22,
+    "4": 42,
+    "5": 64,
+    "6": 86,
+    "7": 145,
+    "8": 271
+  },
+  "queenRefillAfter": {
+    "2": 14,
+    "3": 22,
+    "4": 41,
+    "5": 63,
+    "6": 86,
+    "7": 142,
+    "8": 195
+  }
+}

@@ -1,4 +1,4 @@
-import { getRoomHostiles } from "../../game/Room";
+import { getRoomHostiles, getRoomClaimingPlayerHostiles } from "../../game/Room";
 import { CombatSetups, Roles } from "../../creepSetups/setups";
 import { DirectiveInvasionDefense } from "../../directives/defense/invasionDefense";
 import { CombatIntel } from "../../intel/CombatIntel";
@@ -60,7 +60,13 @@ export class RangedDefenseOverlord extends CombatOverlord {
     const maxDamageReceived = worstDamageMultiplier * (hydraliskDamage + towerDamage + 1);
     const needAdditionalDamage = Math.max(healAmount - maxDamageReceived, 0);
     const neededRangedParts = needAdditionalDamage / RANGED_ATTACK_POWER;
-    return neededRangedParts;
+    const controllerDefenseFloor =
+      Overmind.colonies[this.room.name]?.memory.colonyDefense?.enabled &&
+      getRoomClaimingPlayerHostiles(this.room).length > 0 &&
+      this.hydralisks.length == 0
+        ? 1
+        : 0;
+    return Math.max(neededRangedParts, controllerDefenseFloor);
   }
 
   init() {

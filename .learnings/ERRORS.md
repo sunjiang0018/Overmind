@@ -340,3 +340,103 @@ Give only this compiler integration test a 30-second timeout. Keep the unit suit
 - Tags: vitest, typescript, timeout
 
 ---
+
+## [ERR-20261106-CONSOLE-SIZE] Screeps console diagnostic queries
+
+**Logged**: 2026-11-06
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+Keep Screeps console probes short and retrieve structured results from a temporary Memory key.
+
+### Error
+The official `/api/user/console` rejected a long diagnostic expression with `expression size is too large`. A websocket console listener also timed out without receiving the expected initial frame.
+
+### Resolution
+A 704-character console expression succeeded. Save only the scoped diagnostic snapshot in a temporary Memory key, read it through `/api/user/memory?shard=shard3&path=<key>`, and delete the temporary keys after inspection. Never log authentication tokens. Keep probes below 1000 characters; the exact server limit was not measured.
+
+### Metadata
+- Reproducible: yes (expression size rejection)
+- Related Files: /tmp/overmind-outpost-defense-probe.js
+- Tags: screeps, console, diagnostics, memory
+
+---
+
+## [ERR-20261108-E57PREVIEW] Local layout preview fallback
+
+**Logged**: 2026-11-08
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+The CUA in-app browser timed out while opening a localhost layout preview.
+
+### Resolution
+Closed the CUA attempt with its required completion summary. Generated and visually inspected the standalone SVG through Quick Look instead, then exercised initialization, RCL selection, position selection, layer toggling and state writes in a DOM smoke harness. This does not establish full browser rendering or interaction coverage. The visualization render helper also requires `--force` when replacing an existing preview destination.
+
+### Metadata
+- Related Files: plans/E57S45/layout.svg, scripts/plan-e57s45.py
+- Tags: cua, preview, svg, visualization
+
+---
+
+## [ERR-20261108-UNSEEN-FLAG] Screeps unseen-room directive creation
+
+**Logged**: 2026-11-08
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+An accepted console request did not create a flag directly in an unseen room.
+
+### Context
+Creating the E57S45 colonize flag directly at the target produced neither a flag nor the post-creation marker. The console API's `ok` only confirmed queue acceptance; the target was absent from `Game.rooms`.
+
+### Resolution
+Follow `Directive.createIfNotPresent`: create the flag in a visible parent room and set `Memory.flags[name]` with `C` and `setPos` together. The native directive then uses the effective target immediately and relocates the flag. Verified target position, parent, both colonization Overlords and the 1-claimer/4-pioneer queue at tick 84146662. Record console results or catch exceptions in scoped diagnostics; verify effects separately before reporting success.
+
+### Metadata
+- Related Files: src/directives/Directive.ts, plans/E57S45/COLONIZATION.md
+- Tags: screeps, flags, console, visibility
+
+---
+
+## [ERR-20261108-URL] Screeps diagnostic URL construction
+
+**Logged**: 2026-11-08T20:00:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+A temporary read-only diagnostic concatenated the configured root path `/` with `/api/`, producing a double slash and an HTML response instead of JSON.
+
+### Error
+`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`
+
+### Resolution
+Normalize the base pathname and resolve `api/...` with `new URL`, as in scripts/upload.cjs. The corrected request successfully read live shard3 Memory. No credentials were printed. Reading the large code response subsequently exceeded the diagnostic's 20-second timeout; Memory requests succeeded independently.
+
+---
+
+## [ERR-20261108-DIFF] Compiled transporter comparison
+
+**Logged**: 2026-11-08T22:40:13+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A temporary deployment comparison removed an added helper and call text, but failed because the compiler also changed the surrounding `else if` into a nested `else` block.
+
+### Error
+`Unexpected production changes`
+
+### Resolution
+Reviewed the full production diff and verified that all code outside TransportOverlord was byte-identical. The changes inside it were the intended supply helper and fallback branch. All 117 tests and the deployment readback passed. Future comparisons must account for compiler control-flow formatting and inspect a failed comparison before proceeding with dependent deployment steps.
+
+---

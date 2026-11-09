@@ -165,3 +165,52 @@ test("queen returns to the hatchery when no valid work or recharge source exists
   assert.equal(r.ran.length, 0);
   assert.deepEqual(r.parked, [[r.overlord.hatchery.idlePos]]);
 });
+
+function bufferedRuntime() {
+  const r = runtime();
+  r.overlord.colony = { roomPlanner: { memory: { logisticsPolicy: { queenBufferFirst: true } } } };
+  r.queen.carry.energy = 0;
+  return r;
+}
+
+test("buffered queen takes a full load from a container before an 800-energy link", () => {
+  const r = bufferedRuntime();
+  const battery = { energy: 2000, capacity: 2000 };
+  r.overlord.hatchery.batteries = [battery];
+  r.overlord.hatchery.link = { energy: 800, capacity: 800 };
+  r.overlord.run();
+  assert.equal(r.queen.task.target, battery);
+});
+
+test("buffered queen uses a link if it can fill the requested remaining capacity", () => {
+  const r = bufferedRuntime();
+  r.queen.carry.energy = 900;
+  r.overlord.hatchery.batteries = [{ energy: 100, capacity: 2000 }];
+  const link = (r.overlord.hatchery.link = { energy: 800, capacity: 800 });
+  r.overlord.rechargeActions(r.queen);
+  assert.equal(r.queen.task.target, link);
+});
+
+test("buffered queen uses available partial energy instead of waiting for a full buffer", () => {
+  const r = bufferedRuntime();
+  const battery = { energy: 1000, capacity: 2000 };
+  r.overlord.hatchery.batteries = [battery];
+  r.overlord.hatchery.link = { energy: 800, capacity: 800 };
+  r.overlord.run();
+  assert.equal(r.queen.task.target, battery);
+  r.queen.task = null;
+  battery.energy = 0;
+  r.overlord.run();
+  assert.equal(r.queen.task.target, r.overlord.hatchery.link);
+});
+
+test("buffered queen retains a valid recharge while the other source refills", () => {
+  const r = bufferedRuntime();
+  const battery = { energy: 2000, capacity: 2000 };
+  r.overlord.hatchery.batteries = [battery];
+  r.overlord.run();
+  const task = r.queen.task;
+  r.overlord.hatchery.link = { energy: 800, capacity: 800 };
+  r.overlord.run();
+  assert.equal(r.queen.task, task);
+});

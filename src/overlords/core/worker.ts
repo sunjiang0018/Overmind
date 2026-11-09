@@ -22,6 +22,8 @@ import { minBy } from "../../utilities/utils";
 import { Visualizer } from "../../visuals/Visualizer";
 import { Zerg } from "../../zerg/Zerg";
 import { Overlord } from "../Overlord";
+import { isSouthDefenseActive } from "../../strategy/colonyDefense";
+import { runColonyRetreat } from "../../utilities/colonyRetreat";
 import { groupBy, sortBy, sum, remove, max, min } from "../../utilities/native";
 
 /**
@@ -343,6 +345,13 @@ export class WorkerOverlord extends Overlord {
   }
 
   private buildActions(worker: Zerg): boolean {
+    const defensiveSites = this.priorityDefenseSites();
+    if (defensiveSites.length) {
+      worker.task = Tasks.build(
+        roomPositionFindClosestByMultiRoomRange(worker.pos, defensiveSites)!,
+      );
+      return true;
+    }
     const priorities = new Set(
       (this.colony.memory.priorityRoads || []).map(developmentPositionKey),
     );
@@ -516,10 +525,49 @@ export class WorkerOverlord extends Overlord {
   }
 
   run() {
+    const workers = this.workers.filter((worker) => !runColonyRetreat(worker));
+    const defensiveSites = this.priorityDefenseSites();
+    if (defensiveSites.length) {
+      for (const worker of workers) {
+        const task = worker.task;
+        if (
+          task?.name == buildTaskName &&
+          !defensiveSites.some((site) => site.id == task.target?.id) &&
+          (task.target as ConstructionSite | undefined)?.structureType != STRUCTURE_SPAWN &&
+          (task.target as ConstructionSite | undefined)?.structureType != STRUCTURE_TOWER
+        )
+          worker.task = null;
+      }
+    }
     this.autoRun(
-      this.workers,
+      workers,
       (worker) => this.handleWorker(worker),
       (worker) => worker.flee(getRoomFleeDefaults(worker.room), { invalidateTask: true }),
+    );
+  }
+
+  private priorityDefenseSites(): ConstructionSite[] {
+    const policy = this.colony.memory.colonyDefense;
+    if (!isSouthDefenseActive(this.colony) || !policy?.priorityRamparts?.length) return [];
+    if (
+      this.constructionSites.some(
+        (s) => s.structureType == STRUCTURE_SPAWN || s.structureType == STRUCTURE_TOWER,
+      )
+    )
+      return [];
+    return this.constructionSites.filter(
+      (s) =>
+        s.structureType == STRUCTURE_RAMPART &&
+        policy.priorityRamparts!.some((p) => p.x == s.pos.x && p.y == s.pos.y),
+    );
+  }
+
+  /** Run an allied aid worker through this colony's ordinary worker priorities and task lifecycle. */
+  runSupportWorker(worker: Zerg): void {
+    this.autoRun(
+      [worker],
+      (w) => this.handleWorker(w),
+      (w) => w.flee(getRoomFleeDefaults(w.room), { invalidateTask: true }),
     );
   }
 }

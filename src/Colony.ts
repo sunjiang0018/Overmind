@@ -1,4 +1,5 @@
 import { MEM } from "./memory/MemoryKeys";
+import type { ColonyDefenseSettings } from "./strategy/colonyDefense";
 import { getStoredEnergy } from "./game/Structures";
 import { orderOutposts } from "./utilities/outpostDevelopment";
 import { roomPositionGetMultiRoomRangeTo, roomPositionLookForStructure } from "./game/RoomPosition";
@@ -94,6 +95,7 @@ export interface BunkerData {
 }
 
 export interface ColonyMemory {
+  colonyDefense?: ColonyDefenseSettings;
   defcon: {
     level: number;
     tick: number;

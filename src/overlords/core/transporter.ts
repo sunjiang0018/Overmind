@@ -113,6 +113,28 @@ export class TransportOverlord extends Overlord {
     }
   }
 
+  private supplyWithoutStorage(transporter: Zerg): boolean {
+    if (this.colony.storage || !transporter.carry.energy) return false;
+
+    const spawnTargets = [...this.colony.spawns, ...this.colony.extensions].filter(
+      (target) => target.store.getFreeCapacity(RESOURCE_ENERGY) > 0,
+    );
+    const workers = this.colony.creeps.filter(
+      (creep) =>
+        !creep.spawning &&
+        creep.pos.roomName == this.colony.name &&
+        [Roles.worker, Roles.pioneer, Roles.upgrader].includes(creep.memory.role) &&
+        creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0 &&
+        creep.store.energy < 25 * creep.getActiveBodyparts(WORK),
+    );
+    const targets: (StructureSpawn | StructureExtension | Creep)[] =
+      spawnTargets.length > 0 ? spawnTargets : workers;
+    const target = roomPositionFindClosestByMultiRoomRange(transporter.pos, targets);
+    if (!target) return false;
+    transporter.task = Tasks.transfer(target, RESOURCE_ENERGY);
+    return true;
+  }
+
   private handleTransporter(transporter: Zerg, request: LogisticsRequest | undefined) {
     if (request) {
       const choices = this.colony.logisticsNetwork.bufferChoices(transporter, request);
@@ -195,6 +217,7 @@ export class TransportOverlord extends Overlord {
       transporter.task = task;
       this.colony.logisticsNetwork.invalidateCache(transporter, request);
     } else {
+      if (this.supplyWithoutStorage(transporter)) return;
       // If nothing to do, put everything in a store structure
       if (sum(transporter.carry) > 0) {
         if (transporter.hasMineralsInCarry) {

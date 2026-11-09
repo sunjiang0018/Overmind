@@ -1,0 +1,1200 @@
+{
+  "candidateCount": 40,
+  "feasibleCount": 24,
+  "selected": {
+    "coreOffset": [
+      0,
+      1
+    ],
+    "extensionPolicy": 0,
+    "score": 562.5,
+    "firstSpawn": {
+      "x": 27,
+      "y": 30
+    },
+    "sourceRoadSteps": {
+      "north": {
+        "spawn": 9,
+        "storage": 11,
+        "controllerSupply": 25
+      },
+      "west": {
+        "spawn": 22,
+        "storage": 20,
+        "controllerSupply": 34
+      }
+    },
+    "controllerRoadSteps": 13,
+    "rcl2WorstRefill": 14,
+    "rcl6WorstRefill": 86,
+    "rcl8WorstRefill": 271,
+    "rcl8ContainerWorst": 200,
+    "perimeter": 38,
+    "roads": 129,
+    "extensionOrder": 3
+  },
+  "baseline": {
+    "coreOffset": [
+      0,
+      0
+    ],
+    "extensionPolicy": 0,
+    "score": 583.75,
+    "firstSpawn": {
+      "x": 27,
+      "y": 29
+    },
+    "sourceRoadSteps": {
+      "north": {
+        "spawn": 8,
+        "storage": 10,
+        "controllerSupply": 25
+      },
+      "west": {
+        "spawn": 22,
+        "storage": 20,
+        "controllerSupply": 34
+      }
+    },
+    "controllerRoadSteps": 14,
+    "rcl2WorstRefill": 22,
+    "rcl6WorstRefill": 96,
+    "rcl8WorstRefill": 284,
+    "rcl8ContainerWorst": 204,
+    "perimeter": 43,
+    "roads": 144
+  },
+  "candidates": [
+    {
+      "coreOffset": [
+        0,
+        0
+      ],
+      "extensionPolicy": 0,
+      "score": 583.75,
+      "firstSpawn": {
+        "x": 27,
+        "y": 29
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 8,
+          "storage": 10,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 14,
+      "rcl2WorstRefill": 22,
+      "rcl6WorstRefill": 96,
+      "rcl8WorstRefill": 284,
+      "rcl8ContainerWorst": 204,
+      "perimeter": 43,
+      "roads": 144
+    },
+    {
+      "coreOffset": [
+        0,
+        0
+      ],
+      "extensionPolicy": 1,
+      "score": 628.5,
+      "firstSpawn": {
+        "x": 27,
+        "y": 29
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 8,
+          "storage": 10,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 14,
+      "rcl2WorstRefill": 15,
+      "rcl6WorstRefill": 99,
+      "rcl8WorstRefill": 307,
+      "rcl8ContainerWorst": 248,
+      "perimeter": 43,
+      "roads": 152
+    },
+    {
+      "coreOffset": [
+        0,
+        0
+      ],
+      "extensionPolicy": 2,
+      "score": 586.0,
+      "firstSpawn": {
+        "x": 27,
+        "y": 29
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 8,
+          "storage": 10,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 14,
+      "rcl2WorstRefill": 15,
+      "rcl6WorstRefill": 90,
+      "rcl8WorstRefill": 289,
+      "rcl8ContainerWorst": 208,
+      "perimeter": 43,
+      "roads": 138
+    },
+    {
+      "coreOffset": [
+        0,
+        0
+      ],
+      "extensionPolicy": 3,
+      "score": 649.75,
+      "firstSpawn": {
+        "x": 27,
+        "y": 29
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 8,
+          "storage": 10,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 14,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 100,
+      "rcl8WorstRefill": 323,
+      "rcl8ContainerWorst": 258,
+      "perimeter": 43,
+      "roads": 152
+    },
+    {
+      "coreOffset": [
+        0,
+        0
+      ],
+      "extensionPolicy": 4,
+      "score": 635.0,
+      "firstSpawn": {
+        "x": 27,
+        "y": 29
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 8,
+          "storage": 10,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 14,
+      "rcl2WorstRefill": 15,
+      "rcl6WorstRefill": 100,
+      "rcl8WorstRefill": 316,
+      "rcl8ContainerWorst": 242,
+      "perimeter": 43,
+      "roads": 152
+    },
+    {
+      "coreOffset": [
+        0,
+        0
+      ],
+      "extensionPolicy": 5,
+      "score": 648.75,
+      "firstSpawn": {
+        "x": 27,
+        "y": 29
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 8,
+          "storage": 10,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 14,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 100,
+      "rcl8WorstRefill": 323,
+      "rcl8ContainerWorst": 256,
+      "perimeter": 43,
+      "roads": 152
+    },
+    {
+      "coreOffset": [
+        0,
+        0
+      ],
+      "extensionPolicy": 6,
+      "score": 621.25,
+      "firstSpawn": {
+        "x": 27,
+        "y": 29
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 8,
+          "storage": 10,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 14,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 95,
+      "rcl8WorstRefill": 308,
+      "rcl8ContainerWorst": 236,
+      "perimeter": 43,
+      "roads": 148
+    },
+    {
+      "coreOffset": [
+        0,
+        0
+      ],
+      "extensionPolicy": 7,
+      "score": 618.25,
+      "firstSpawn": {
+        "x": 27,
+        "y": 29
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 8,
+          "storage": 10,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 14,
+      "rcl2WorstRefill": 16,
+      "rcl6WorstRefill": 102,
+      "rcl8WorstRefill": 303,
+      "rcl8ContainerWorst": 232,
+      "perimeter": 43,
+      "roads": 147
+    },
+    {
+      "coreOffset": [
+        -2,
+        0
+      ],
+      "extensionPolicy": 0,
+      "rejected": "Failed staged geometry or perimeter coverage constraint"
+    },
+    {
+      "coreOffset": [
+        -2,
+        0
+      ],
+      "extensionPolicy": 1,
+      "rejected": "Failed staged geometry or perimeter coverage constraint"
+    },
+    {
+      "coreOffset": [
+        -2,
+        0
+      ],
+      "extensionPolicy": 2,
+      "rejected": "Failed staged geometry or perimeter coverage constraint"
+    },
+    {
+      "coreOffset": [
+        -2,
+        0
+      ],
+      "extensionPolicy": 3,
+      "rejected": "Failed staged geometry or perimeter coverage constraint"
+    },
+    {
+      "coreOffset": [
+        -2,
+        0
+      ],
+      "extensionPolicy": 4,
+      "rejected": "Failed staged geometry or perimeter coverage constraint"
+    },
+    {
+      "coreOffset": [
+        -2,
+        0
+      ],
+      "extensionPolicy": 5,
+      "rejected": "Failed staged geometry or perimeter coverage constraint"
+    },
+    {
+      "coreOffset": [
+        -2,
+        0
+      ],
+      "extensionPolicy": 6,
+      "rejected": "Failed staged geometry or perimeter coverage constraint"
+    },
+    {
+      "coreOffset": [
+        -2,
+        0
+      ],
+      "extensionPolicy": 7,
+      "rejected": "Failed staged geometry or perimeter coverage constraint"
+    },
+    {
+      "coreOffset": [
+        2,
+        0
+      ],
+      "extensionPolicy": 0,
+      "rejected": "Building intersects natural wall"
+    },
+    {
+      "coreOffset": [
+        2,
+        0
+      ],
+      "extensionPolicy": 1,
+      "rejected": "Building intersects natural wall"
+    },
+    {
+      "coreOffset": [
+        2,
+        0
+      ],
+      "extensionPolicy": 2,
+      "rejected": "Building intersects natural wall"
+    },
+    {
+      "coreOffset": [
+        2,
+        0
+      ],
+      "extensionPolicy": 3,
+      "rejected": "Building intersects natural wall"
+    },
+    {
+      "coreOffset": [
+        2,
+        0
+      ],
+      "extensionPolicy": 4,
+      "rejected": "Building intersects natural wall"
+    },
+    {
+      "coreOffset": [
+        2,
+        0
+      ],
+      "extensionPolicy": 5,
+      "rejected": "Building intersects natural wall"
+    },
+    {
+      "coreOffset": [
+        2,
+        0
+      ],
+      "extensionPolicy": 6,
+      "rejected": "Building intersects natural wall"
+    },
+    {
+      "coreOffset": [
+        2,
+        0
+      ],
+      "extensionPolicy": 7,
+      "rejected": "Building intersects natural wall"
+    },
+    {
+      "coreOffset": [
+        0,
+        -1
+      ],
+      "extensionPolicy": 0,
+      "score": 610.5,
+      "firstSpawn": {
+        "x": 27,
+        "y": 28
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 7,
+          "storage": 9,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 15,
+      "rcl2WorstRefill": 22,
+      "rcl6WorstRefill": 99,
+      "rcl8WorstRefill": 297,
+      "rcl8ContainerWorst": 228,
+      "perimeter": 52,
+      "roads": 138
+    },
+    {
+      "coreOffset": [
+        0,
+        -1
+      ],
+      "extensionPolicy": 1,
+      "score": 630.5,
+      "firstSpawn": {
+        "x": 27,
+        "y": 28
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 7,
+          "storage": 9,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 15,
+      "rcl2WorstRefill": 15,
+      "rcl6WorstRefill": 96,
+      "rcl8WorstRefill": 321,
+      "rcl8ContainerWorst": 229,
+      "perimeter": 47,
+      "roads": 142
+    },
+    {
+      "coreOffset": [
+        0,
+        -1
+      ],
+      "extensionPolicy": 2,
+      "score": 574.0,
+      "firstSpawn": {
+        "x": 27,
+        "y": 28
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 7,
+          "storage": 9,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 15,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 94,
+      "rcl8WorstRefill": 279,
+      "rcl8ContainerWorst": 203,
+      "perimeter": 46,
+      "roads": 132
+    },
+    {
+      "coreOffset": [
+        0,
+        -1
+      ],
+      "extensionPolicy": 3,
+      "score": 642.5,
+      "firstSpawn": {
+        "x": 27,
+        "y": 28
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 7,
+          "storage": 9,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 15,
+      "rcl2WorstRefill": 15,
+      "rcl6WorstRefill": 105,
+      "rcl8WorstRefill": 319,
+      "rcl8ContainerWorst": 248,
+      "perimeter": 47,
+      "roads": 142
+    },
+    {
+      "coreOffset": [
+        0,
+        -1
+      ],
+      "extensionPolicy": 4,
+      "score": 621.0,
+      "firstSpawn": {
+        "x": 27,
+        "y": 28
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 7,
+          "storage": 9,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 15,
+      "rcl2WorstRefill": 15,
+      "rcl6WorstRefill": 105,
+      "rcl8WorstRefill": 307,
+      "rcl8ContainerWorst": 229,
+      "perimeter": 47,
+      "roads": 142
+    },
+    {
+      "coreOffset": [
+        0,
+        -1
+      ],
+      "extensionPolicy": 5,
+      "score": 619.75,
+      "firstSpawn": {
+        "x": 27,
+        "y": 28
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 7,
+          "storage": 9,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 15,
+      "rcl2WorstRefill": 15,
+      "rcl6WorstRefill": 105,
+      "rcl8WorstRefill": 305,
+      "rcl8ContainerWorst": 231,
+      "perimeter": 46,
+      "roads": 137
+    },
+    {
+      "coreOffset": [
+        0,
+        -1
+      ],
+      "extensionPolicy": 6,
+      "score": 606.75,
+      "firstSpawn": {
+        "x": 27,
+        "y": 28
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 7,
+          "storage": 9,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 15,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 93,
+      "rcl8WorstRefill": 303,
+      "rcl8ContainerWorst": 221,
+      "perimeter": 47,
+      "roads": 142
+    },
+    {
+      "coreOffset": [
+        0,
+        -1
+      ],
+      "extensionPolicy": 7,
+      "score": 604.5,
+      "firstSpawn": {
+        "x": 27,
+        "y": 28
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 7,
+          "storage": 9,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 15,
+      "rcl2WorstRefill": 15,
+      "rcl6WorstRefill": 98,
+      "rcl8WorstRefill": 296,
+      "rcl8ContainerWorst": 225,
+      "perimeter": 47,
+      "roads": 141
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 0,
+      "score": 568.5,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 22,
+      "rcl6WorstRefill": 87,
+      "rcl8WorstRefill": 270,
+      "rcl8ContainerWorst": 209,
+      "perimeter": 38,
+      "roads": 129
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 1,
+      "score": 612.75,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 15,
+      "rcl6WorstRefill": 97,
+      "rcl8WorstRefill": 308,
+      "rcl8ContainerWorst": 215,
+      "perimeter": 38,
+      "roads": 135
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 2,
+      "score": 589.75,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 19,
+      "rcl6WorstRefill": 97,
+      "rcl8WorstRefill": 284,
+      "rcl8ContainerWorst": 215,
+      "perimeter": 38,
+      "roads": 128
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 3,
+      "score": 609.5,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 103,
+      "rcl8WorstRefill": 298,
+      "rcl8ContainerWorst": 223,
+      "perimeter": 38,
+      "roads": 133
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 4,
+      "score": 619.75,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 15,
+      "rcl6WorstRefill": 98,
+      "rcl8WorstRefill": 308,
+      "rcl8ContainerWorst": 228,
+      "perimeter": 38,
+      "roads": 133
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 5,
+      "score": 594.0,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 100,
+      "rcl8WorstRefill": 290,
+      "rcl8ContainerWorst": 211,
+      "perimeter": 38,
+      "roads": 131
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 6,
+      "score": 583.5,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 96,
+      "rcl8WorstRefill": 284,
+      "rcl8ContainerWorst": 206,
+      "perimeter": 38,
+      "roads": 133
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 7,
+      "score": 608.0,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 16,
+      "rcl6WorstRefill": 99,
+      "rcl8WorstRefill": 300,
+      "rcl8ContainerWorst": 219,
+      "perimeter": 38,
+      "roads": 133
+    }
+  ],
+  "extensionOrders": [
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 0,
+      "score": 568.5,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 22,
+      "rcl6WorstRefill": 87,
+      "rcl8WorstRefill": 270,
+      "rcl8ContainerWorst": 209,
+      "perimeter": 38,
+      "roads": 129,
+      "extensionOrder": 0
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 0,
+      "score": 565.0,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 86,
+      "rcl8WorstRefill": 269,
+      "rcl8ContainerWorst": 209,
+      "perimeter": 38,
+      "roads": 129,
+      "extensionOrder": 1
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 0,
+      "score": 563.0,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 94,
+      "rcl8WorstRefill": 263,
+      "rcl8ContainerWorst": 209,
+      "perimeter": 38,
+      "roads": 129,
+      "extensionOrder": 2
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 0,
+      "score": 562.5,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 86,
+      "rcl8WorstRefill": 271,
+      "rcl8ContainerWorst": 200,
+      "perimeter": 38,
+      "roads": 129,
+      "extensionOrder": 3
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 0,
+      "score": 568.25,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 15,
+      "rcl6WorstRefill": 94,
+      "rcl8WorstRefill": 267,
+      "rcl8ContainerWorst": 211,
+      "perimeter": 38,
+      "roads": 129,
+      "extensionOrder": 4
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 0,
+      "score": 573.5,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 86,
+      "rcl8WorstRefill": 283,
+      "rcl8ContainerWorst": 198,
+      "perimeter": 38,
+      "roads": 129,
+      "extensionOrder": 5
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 0,
+      "score": 579.0,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 14,
+      "rcl6WorstRefill": 96,
+      "rcl8WorstRefill": 279,
+      "rcl8ContainerWorst": 207,
+      "perimeter": 38,
+      "roads": 129,
+      "extensionOrder": 6
+    },
+    {
+      "coreOffset": [
+        0,
+        1
+      ],
+      "extensionPolicy": 0,
+      "score": 566.75,
+      "firstSpawn": {
+        "x": 27,
+        "y": 30
+      },
+      "sourceRoadSteps": {
+        "north": {
+          "spawn": 9,
+          "storage": 11,
+          "controllerSupply": 25
+        },
+        "west": {
+          "spawn": 22,
+          "storage": 20,
+          "controllerSupply": 34
+        }
+      },
+      "controllerRoadSteps": 13,
+      "rcl2WorstRefill": 15,
+      "rcl6WorstRefill": 94,
+      "rcl8WorstRefill": 274,
+      "rcl8ContainerWorst": 194,
+      "perimeter": 38,
+      "roads": 129,
+      "extensionOrder": 7
+    }
+  ],
+  "model": "Existing single mobile Queen; road-only movement; one transfer/withdrawal per tick; finite carry; full buffers; no traffic; both target orders and container/link refill at RCL8. Best searched joint objective, not a global optimality proof."
+}

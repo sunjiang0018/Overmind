@@ -13,6 +13,7 @@ import { maxBy } from "../utilities/utils";
 import { MAX_OWNED_ROOMS, SHARD3_MAX_OWNED_ROOMS } from "../~settings";
 import { MIN_EXPANSION_DISTANCE } from "./ExpansionEvaluator";
 import { sum, compactMap } from "../utilities/native";
+import { isRoomExpansionBlocked } from "./roomExpansionPolicy";
 
 const CHECK_EXPANSION_FREQUENCY = 1000;
 
@@ -99,6 +100,7 @@ export class ExpansionPlanner implements IExpansionPlanner {
     let bestRoom: string = "";
     let bestScore: number = -Infinity;
     for (const roomName in colony.memory.expansionData.possibleExpansions) {
+      if (isRoomExpansionBlocked(roomName)) continue;
       let score = colony.memory.expansionData.possibleExpansions[roomName] as number | boolean;
       if (typeof score != "number") continue;
       // Compute modified score

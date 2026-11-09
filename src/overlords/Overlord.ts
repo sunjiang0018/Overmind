@@ -600,7 +600,7 @@ export abstract class Overlord {
   ) {
     for (const creep of roleCreeps) {
       if (creep.spawning) {
-        return;
+        continue;
       }
       if (fleeCallback) {
         if (fleeCallback(creep)) continue;

@@ -39,6 +39,8 @@ import { Pathing } from "./movement/Pathing";
 import { Overlord } from "./overlords/Overlord";
 import { profile } from "./profiler/decorator";
 import { CombatPlanner } from "./strategy/CombatPlanner";
+import { colonySafeModeReason, updateSouthDefenseSchedule } from "./strategy/colonyDefense";
+import { isRoomExpansionBlocked } from "./strategy/roomExpansionPolicy";
 import {
   Cartographer,
   ROOMTYPE_ALLEY,
@@ -228,6 +230,10 @@ export class Overseer implements IOverseer {
   }
 
   init(): void {
+    // Supported colonies react before workers and spawning, including before their first spawn.
+    for (const colony of getAllColonies()) {
+      if (colony.memory.colonyDefense?.enabled) this.handleSafeMode(colony);
+    }
     this.ensureDirectivesCached();
     this.ensureOverlordsCached();
 
@@ -342,7 +348,11 @@ export class Overseer implements IOverseer {
 
   private handleColonyInvasions(colony: Colony, checkPersistent = false) {
     // See if invasion is big enough to warrant creep defenses
-    if (!colony.room.isSafe && colony.room.threatLevel > 0.25) {
+    if (
+      (!colony.room.isSafe && colony.room.threatLevel > 0.25) ||
+      (colony.memory.colonyDefense?.enabled &&
+        getRoomClaimingPlayerHostiles(colony.room).length > 0)
+    ) {
       if (checkPersistent) {
         // Place defensive directive after hostiles have been present for a long enough time
         const safetyData = RoomIntel.getSafetyData(colony.room.name);
@@ -413,7 +423,7 @@ export class Overseer implements IOverseer {
       }
       const alreadyOwned = RoomIntel.roomOwnedBy(roomName);
       const alreadyReserved = RoomIntel.roomReservedBy(roomName);
-      const isBlocked = Game.flags[roomName + "-Block"] != null; // TODO: this is ugly
+      const isBlocked = isRoomExpansionBlocked(roomName);
       if (isBlocked) {
         // Game.notify("Room " + roomName + " is blocked, not expanding there.");
       }
@@ -589,6 +599,14 @@ export class Overseer implements IOverseer {
   // Safe mode condition =============================================================================================
 
   private handleSafeMode(colony: Colony): void {
+    if (colony.memory.colonyDefense?.enabled) {
+      updateSouthDefenseSchedule(colony);
+      const policy = colony.memory.colonyDefense;
+      if (policy.lastSafeModeAttempt == Game.time || !colonySafeModeReason(colony)) return;
+      policy.lastSafeModeAttempt = Game.time;
+      policy.lastSafeModeResult = colony.controller.activateSafeMode();
+      return;
+    }
     if (colony.stage == ColonyStage.Larva && onPublicServer()) {
       return;
     }

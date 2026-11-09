@@ -6,6 +6,7 @@ import { Colony } from "../Colony";
 import { log } from "../console/log";
 import { CombatIntel } from "../intel/CombatIntel";
 import { WorkerOverlord } from "../overlords/core/worker";
+import { colonyDefenseTarget } from "../strategy/colonyDefense";
 import { profile } from "../profiler/decorator";
 import { CombatTargeting } from "../targeting/CombatTargeting";
 import { HiveCluster } from "./_HiveCluster";
@@ -143,6 +144,13 @@ export class SporeCrawler extends HiveCluster {
   // }
 
   run() {
+    if (this.colony.memory.colonyDefense?.enabled) {
+      const target = colonyDefenseTarget(this.colony);
+      if (target) {
+        this.attack(target);
+        return;
+      }
+    }
     if (getRoomHostiles(this.room).length > 0) {
       const myDefenders = getRoomCreeps(this.room).filter(
         (creep) => creep.getActiveBodyparts(ATTACK) > 1,

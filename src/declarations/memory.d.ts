@@ -118,6 +118,8 @@ declare global {
   interface PublicSegment {}
 
   interface CreepMemory {
+    colonyRetreatRoom?: string;
+    colonyRetreatThreatKey?: string;
     [MEM.OVERLORD]: string | null;
     [MEM.COLONY]: string | null;
     role: string;

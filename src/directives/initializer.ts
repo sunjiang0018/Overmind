@@ -3,6 +3,7 @@
 import { DirectiveClearRoom } from "./colony/clearRoom";
 import { DirectiveColonize } from "./colony/colonize";
 import { DirectiveIncubate } from "./colony/incubate";
+import { DirectiveColonySupport } from "./colony/support";
 import { DirectiveOutpost } from "./colony/outpost";
 import { DirectiveSKOutpost } from "./colony/outpostSK";
 import { DirectivePoisonRoom } from "./colony/poisonRoom";
@@ -43,6 +44,8 @@ export function DirectiveWrapper(flag: Flag): Directive | undefined {
     // Colony directives ===========================================================================================
     case COLOR_PURPLE:
       switch (flag.secondaryColor) {
+        case COLOR_BLUE:
+          return new DirectiveColonySupport(flag);
         case COLOR_PURPLE:
           return new DirectiveOutpost(flag);
         case COLOR_YELLOW:

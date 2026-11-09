@@ -15,6 +15,7 @@ import { minMax } from "../utilities/utils";
 import { Visualizer } from "../visuals/Visualizer";
 import { BUNKER_RADIUS, bunkerLayout, insideBunkerBounds } from "./layouts/bunker";
 import { hasRoomOverride } from "./roomOverrides";
+import { colonyCriticalRamparts, isControllerRampartDeferred } from "../strategy/colonyDefense";
 import { getAllStructureCoordsFromLayout, RoomPlanner, translatePositions } from "./RoomPlanner";
 import { memoize, compact } from "../utilities/native";
 
@@ -135,6 +136,12 @@ export class BarrierPlanner {
 
   /* Quick lookup for if a barrier should be in this position. Barriers returning false won't be maintained. */
   barrierShouldBeHere(pos: RoomPosition): boolean {
+    if (isControllerRampartDeferred(this.colony, pos)) return false;
+    if (
+      this.colony.memory.colonyDefense?.enabled &&
+      colonyCriticalRamparts(this.colony).some((p) => p.isEqualTo(pos))
+    )
+      return true;
     if (hasRoomOverride(this.colony.name)) {
       // A shield belongs on an actual critical building, not an empty future building tile.
       const criticalTypes: StructureConstant[] = [

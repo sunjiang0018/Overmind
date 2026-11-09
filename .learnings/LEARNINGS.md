@@ -118,3 +118,26 @@ Verify Screeps terrain assumptions against official mechanics. Preserve connecti
 - Tags: screeps, tunnels, pathfinding, room-intel
 
 ---
+
+## [LRN-20261108-MKT] best_practice
+
+**Logged**: 2026-11-08T09:41:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+Read Screeps Terminal inventory and market depth using authenticated GET requests; verify shard dimensions before estimating freight.
+
+### Details
+`auth/me` exposes in-game CR as `money`; its `credits` field is not Game.market.credits. `user/rooms?id=<userId>` identifies owned shards/rooms. `game/room-objects?room=<room>&shard=<shard>` returns Terminal stores. `game/market/orders?resourceType=<type>&shard=<shard>` returns active order depth; use `amount`, rather than remainingAmount, for presently fillable quantity. `game/world-size?shard=shard3` returned width/height 122 in this session. Use the actual shard size for continuous room distance; assuming 202 overstates freight. The attempted `game/market/history` URL returned HTML and must not be treated as a supported JSON endpoint.
+
+### Suggested Action
+Keep credentials out of output. Distinguish gross bid-depth valuation from a liquidation estimate funded by the Terminal's own energy. Account for both the energy sold and energy spent shipping it. Flag inventory without sufficient buy-order depth. These probes require no game console writes or code deployment.
+
+### Metadata
+- Source: error
+- Tags: screeps, market, valuation, api
+- See Also: ERR-20261106-CONSOLE-SIZE
+
+---
