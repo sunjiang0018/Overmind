@@ -1,5 +1,5 @@
 import { marketDeal } from "../game/Game";
-import { isTerminalReady } from "../game/Structures";
+import { getStoredEnergy, isTerminalReady } from "../game/Structures";
 import { getRoomPrint, isRoomMine } from "../game/Room";
 import { assimilationLocked } from "../assimilation/decorator";
 import { getAllColonies } from "../Colony";
@@ -764,7 +764,7 @@ export class TraderJoe implements ITradeNetwork {
       terminal.room.name,
       order.roomName!,
     );
-    if (terminal.store[RESOURCE_ENERGY] >= transactionCost) {
+    if (getStoredEnergy(terminal) >= transactionCost) {
       // If this is a dry run just check that you have enough credits
       if (opts.dryRun) {
         const haveEnoughCredits = Game.market.credits >= buyAmount * order.price;
@@ -872,14 +872,14 @@ export class TraderJoe implements ITradeNetwork {
     );
     if (resource == RESOURCE_ENERGY) {
       // if we're selling energy, make sure we have amount + cost
-      if (amount + transactionCost > terminal.store[RESOURCE_ENERGY]) {
+      if (amount + transactionCost > getStoredEnergy(terminal)) {
         sellAmount -= transactionCost;
         if (sellAmount <= 0) {
           return ERR_INSUFFICIENT_ENERGY_IN_TERMINAL;
         }
       }
     }
-    if (terminal.store[RESOURCE_ENERGY] >= transactionCost) {
+    if (getStoredEnergy(terminal) >= transactionCost) {
       // If this is a dry run we should be able to execute the deal by now, so just return OK
       if (opts.dryRun) {
         return OK;

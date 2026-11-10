@@ -1,4 +1,10 @@
 import { getRoomPositionPrint } from "../game/RoomPosition";
+import {
+  getEnergyCapacity,
+  getGhodiumCapacity,
+  getStoredGhodium,
+  getStoredEnergy,
+} from "../game/Structures";
 import { log } from "./log";
 
 const launchFrom = [
@@ -64,8 +70,8 @@ export function verifyLaunchManifest() {
       log.info(`${from} to ${to} is out of range!`);
     } else if (
       !nuker ||
-      nuker.store[RESOURCE_GHODIUM] < nuker.store.getCapacity(RESOURCE_GHODIUM) ||
-      nuker.store[RESOURCE_ENERGY] < nuker.store.getCapacity(RESOURCE_ENERGY)
+      getStoredGhodium(nuker) < getGhodiumCapacity(nuker) ||
+      getStoredEnergy(nuker) < getEnergyCapacity(nuker)
     ) {
       log.info(`Not enough resources in ${from} nuker!`);
     } else {

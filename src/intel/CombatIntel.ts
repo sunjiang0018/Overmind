@@ -6,6 +6,7 @@ import {
   isRoomMine,
 } from "../game/Room";
 import { getRoomBarriers, getRoomSpawns, getRoomTowers } from "../game/RoomStructures";
+import { getStoredEnergy } from "../game/Structures";
 import {
   getRoomPositionNeighbors,
   getRoomPositionPrint,
@@ -92,7 +93,7 @@ export class CombatIntel {
     if (room) {
       let expectedDamage = 0;
       for (const tower of getRoomTowers(room)) {
-        if (tower.store[RESOURCE_ENERGY] > 0 || ignoreEnergy) {
+        if (getStoredEnergy(tower) > 0 || ignoreEnergy) {
           expectedDamage += this.singleTowerDamage(pos.getRangeTo(tower));
         }
       }

@@ -76,7 +76,7 @@ export class TaskRecharge extends Task<rechargeTargetType> {
       }
     }
 
-    let amount = isResource(obj) ? obj.amount : obj.store[RESOURCE_ENERGY];
+    let amount = isResource(obj) ? obj.amount : getStoredEnergy(obj);
     if (amount < this.data.minEnergy) {
       return false;
     }

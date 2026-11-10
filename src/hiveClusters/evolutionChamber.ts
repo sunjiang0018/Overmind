@@ -3,6 +3,7 @@ import {
   getRoomPositionPrint,
   roomPositionLookForStructure,
 } from "../game/RoomPosition";
+import { getEnergyCapacity, getStoredEnergy } from "../game/Structures";
 import { $ } from "../caching/GlobalCache";
 import { Colony } from "../Colony";
 import { log } from "../console/log";
@@ -185,7 +186,7 @@ export class EvolutionChamber extends HiveCluster {
         if (this.memory.activeReaction) {
           log.info(
             `${this.colony.print}: starting synthesis of ${reagents[0]} + ${reagents[1]} ` +
-              `${rightArrow} ${this.memory.activeReaction.mineralType}`,
+            `${rightArrow} ${this.memory.activeReaction.mineralType}`,
           );
           this.memory.status = LabStatus.AcquiringMinerals;
           this.memory.statusTick = Game.time;
@@ -264,7 +265,7 @@ export class EvolutionChamber extends HiveCluster {
     if (timeout) {
       log.warning(
         `${this.print}: stuck in state ${this.memory.status} for ${ticksInStatus} ticks, ` +
-          `rebuilding reaction queue and reverting to idle state!`,
+        `rebuilding reaction queue and reverting to idle state!`,
       );
       this.memory.status = LabStatus.Idle;
       this.memory.statusTick = Game.time;
@@ -385,17 +386,17 @@ export class EvolutionChamber extends HiveCluster {
 
     // Handle energy requests for labs with different priorities
     const boostingRefillLabs = boostingProductLabs.filter(
-      (lab) => lab.store[RESOURCE_ENERGY] < lab.store.getCapacity(RESOURCE_ENERGY),
+      (lab) => getStoredEnergy(lab) < getEnergyCapacity(lab),
     );
     boostingRefillLabs.forEach((lab) => this.transportRequests.requestInput(lab, Priority.High));
     const reactionRefillLabs = reactionProductLabs.filter(
-      (lab) => lab.store[RESOURCE_ENERGY] < lab.store.getCapacity(RESOURCE_ENERGY),
+      (lab) => getStoredEnergy(lab) < getEnergyCapacity(lab),
     );
     reactionRefillLabs.forEach((lab) =>
       this.transportRequests.requestInput(lab, Priority.NormalLow),
     );
     const reagentRefillLabs = this.reagentLabs.filter(
-      (lab) => lab.store[RESOURCE_ENERGY] < lab.store.getCapacity(RESOURCE_ENERGY),
+      (lab) => getStoredEnergy(lab) < getEnergyCapacity(lab),
     );
     reagentRefillLabs.forEach((lab) =>
       this.transportRequests.requestInput(lab, Priority.NormalLow),

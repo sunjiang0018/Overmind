@@ -1,5 +1,5 @@
 import { roomPositionAvailableNeighbors } from "../../game/RoomPosition";
-import { getStoredEnergy } from "../../game/Structures";
+import { getEnergyCapacity, getStoredEnergy } from "../../game/Structures";
 import {
   getRoomContainers,
   getRoomLabs,
@@ -46,8 +46,7 @@ export class BootstrappingOverlord extends Overlord {
     this.fillers = this.zerg(Roles.filler);
     // Calculate structures fillers can supply / withdraw from
     this.supplyStructures = [...this.colony.spawns, ...this.colony.extensions].filter(
-      (structure) =>
-        structure.store[RESOURCE_ENERGY] < structure.store.getCapacity(RESOURCE_ENERGY),
+      (structure) => getStoredEnergy(structure) < getEnergyCapacity(structure),
     );
     this.withdrawStructures = compact([
       this.colony.storage!,

@@ -1,4 +1,5 @@
 import { profile } from "../../profiler/decorator";
+import { getStoredGhodium } from "../../game/Structures";
 import { Task } from "../Task";
 
 export type generateSafeModeTargetType = StructureController;
@@ -11,7 +12,7 @@ export class TaskGenerateSafeMode extends Task<generateSafeModeTargetType> {
   }
 
   isValidTask() {
-    return this.creep.store[RESOURCE_GHODIUM] >= 1000;
+    return getStoredGhodium(this.creep) >= 1000;
   }
 
   isValidTarget() {

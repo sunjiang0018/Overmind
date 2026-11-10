@@ -143,7 +143,7 @@ export class UpgradeSite extends HiveCluster {
 
   init(): void {
     // Register energy requests
-    if (this.link && this.link.store[RESOURCE_ENERGY] < UpgradeSite.settings.linksRequestBelow) {
+    if (this.link && getStoredEnergy(this.link) < UpgradeSite.settings.linksRequestBelow) {
       this.colony.linkNetwork.requestReceive(this.link);
     }
     const inThreshold = this.colony.stage == ColonyStage.Larva ? 0.75 : 0.5;

@@ -138,7 +138,7 @@ export class RemoteUpgradingOverlord extends Overlord {
       return;
     }
     // If you're out of energy, recharge from link or battery
-    if (this.upgradeSite.link && this.upgradeSite.link.store[RESOURCE_ENERGY] > 0) {
+    if (this.upgradeSite.link && getStoredEnergy(this.upgradeSite.link) > 0) {
       upgrader.task = Tasks.withdraw(this.upgradeSite.link);
       return;
     }
@@ -199,7 +199,7 @@ export class RemoteUpgradingOverlord extends Overlord {
       }
 
       const target = compact([this.parentColony.storage, this.parentColony.terminal]).find(
-        (s) => s!.store[RESOURCE_ENERGY] >= carrier.store.getCapacity(),
+        (s) => getStoredEnergy(s!) >= carrier.store.getCapacity(),
       );
       if (!target) {
         log.warning(`${this.print}: no energy withdraw target for ${carrier.print}!`);

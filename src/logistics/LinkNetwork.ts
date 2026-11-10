@@ -1,4 +1,5 @@
 import { Colony } from "../Colony";
+import { getEnergyCapacity, getStoredEnergy } from "../game/Structures";
 import { profile } from "../profiler/decorator";
 import { remove, min } from "../utilities/native";
 
@@ -50,7 +51,7 @@ export class LinkNetwork {
   getDropoffAvailability(link: StructureLink): number {
     const dest = this.colony.commandCenter ? this.colony.commandCenter.pos : this.colony.pos;
     const usualCooldown = link.pos.getRangeTo(dest);
-    if (link.store[RESOURCE_ENERGY] > this.settings.linksTrasmitAt) {
+    if (getStoredEnergy(link) > this.settings.linksTrasmitAt) {
       // Energy will be sent next time cooldown == 0
       return link.cooldown + usualCooldown;
     } else {
@@ -80,8 +81,8 @@ export class LinkNetwork {
       )
         return false;
       const amount = Math.min(
-        sender.store[RESOURCE_ENERGY],
-        receiver.store.getCapacity(RESOURCE_ENERGY) - receiver.store[RESOURCE_ENERGY],
+        getStoredEnergy(sender),
+        getEnergyCapacity(receiver) - getStoredEnergy(receiver),
       );
       if (amount <= 0 || sender.transferEnergy(receiver, amount) != OK) return false;
       sent.add(sender.id);
@@ -97,7 +98,7 @@ export class LinkNetwork {
           sender.id != receiver.id &&
           !sent.has(sender.id) &&
           sender.cooldown == 0 &&
-          sender.store[RESOURCE_ENERGY] > 0,
+          getStoredEnergy(sender) > 0,
       );
       while (candidates.length > 0) {
         const sender = receiver.pos.findClosestByRange(candidates)!;
@@ -139,8 +140,8 @@ export class LinkNetwork {
       if (closestTransmitLink) {
         // Send min of (all the energy in sender link, amount of available space in receiver link)
         const amountToSend = min([
-          closestTransmitLink.store[RESOURCE_ENERGY],
-          receiveLink.store.getCapacity(RESOURCE_ENERGY) - receiveLink.store[RESOURCE_ENERGY],
+          getStoredEnergy(closestTransmitLink),
+          getEnergyCapacity(receiveLink) - getStoredEnergy(receiveLink),
         ]);
         closestTransmitLink.transferEnergy(receiveLink, amountToSend);
         remove(this.transmit, (link) => link == closestTransmitLink);

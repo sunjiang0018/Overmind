@@ -598,7 +598,7 @@ export class CommandCenterOverlord extends Overlord {
       } else {
         const storage = this.commandCenter.storage;
         const terminal = this.commandCenter.terminal;
-        const energyTarget = storage.store[RESOURCE_ENERGY] > 0 ? storage : terminal;
+        const energyTarget = getStoredEnergy(storage) > 0 ? storage : terminal;
         if (energyTarget) {
           manager.withdraw(energyTarget);
         }

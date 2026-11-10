@@ -42,7 +42,7 @@ export function structureControllerNeedsReserving(
 }
 
 export function getStructureLinkStoreCapacity(structure: StructureLink): number {
-  return structure.store.getCapacity(RESOURCE_ENERGY);
+  return getEnergyCapacity(structure);
 }
 
 export function getStoreContents(store: ResourceAmounts): [ResourceConstant, number][] {
@@ -57,10 +57,27 @@ export function hasTerminalReceived(structure: StructureTerminal): boolean | und
   return getTerminalState(structure).hasReceived;
 }
 
-/** Store-backed energy used by containers, storage, terminals and tombstones. */
-export function getStoredEnergy(object: { store: StoreDefinition }): number {
-  return object.store[RESOURCE_ENERGY];
-}
+/** Creates resource-specific accessors by closing over the resource type. */
+const createResourceAccessors = (resourceType: ResourceConstant) => {
+  const getStored = (object: { store: StoreDefinition }): number => object.store[resourceType];
+  const getCapacity = (object: { store: StoreDefinition }): number =>
+    object.store.getCapacity(resourceType);
+  return { getStored, getCapacity };
+};
+
+const energyAccessors = createResourceAccessors(RESOURCE_ENERGY);
+const powerAccessors = createResourceAccessors(RESOURCE_POWER);
+const ghodiumAccessors = createResourceAccessors(RESOURCE_GHODIUM);
+const opsAccessors = createResourceAccessors(RESOURCE_OPS);
+
+export const getStoredEnergy = energyAccessors.getStored;
+export const getEnergyCapacity = energyAccessors.getCapacity;
+export const getStoredPower = powerAccessors.getStored;
+export const getPowerCapacity = powerAccessors.getCapacity;
+export const getStoredGhodium = ghodiumAccessors.getStored;
+export const getGhodiumCapacity = ghodiumAccessors.getCapacity;
+export const getStoredOps = opsAccessors.getStored;
+export const getOpsCapacity = opsAccessors.getCapacity;
 
 type FillableStructure =
   | StorageUnit
@@ -77,7 +94,7 @@ export function isStructureFull(structure: FillableStructure): boolean {
   ) {
     return sum(structure.store) >= structure.store.getCapacity();
   }
-  return structure.store[RESOURCE_ENERGY] >= structure.store.getCapacity(RESOURCE_ENERGY);
+  return getStoredEnergy(structure) >= getEnergyCapacity(structure);
 }
 
 export function isStructureEmpty(structure: FillableStructure): boolean {
@@ -88,7 +105,7 @@ export function isStructureEmpty(structure: FillableStructure): boolean {
   ) {
     return sum(structure.store) === 0;
   }
-  return structure.store[RESOURCE_ENERGY] === 0;
+  return getStoredEnergy(structure) === 0;
 }
 
 /** Record a successful intent without adding bookkeeping fields to engine terminals. */

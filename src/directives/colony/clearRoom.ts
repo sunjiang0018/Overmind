@@ -7,7 +7,7 @@ import {
   getRoomStructures,
   isRoomMine,
 } from "../../game/Room";
-import { isStructureEmpty, isStructureWalkable } from "../../game/Structures";
+import { getStoredEnergy, isStructureEmpty, isStructureWalkable } from "../../game/Structures";
 import { log } from "../../console/log";
 import { Pathing } from "../../movement/Pathing";
 import { ClaimingOverlord } from "../../overlords/colonization/claimer";
@@ -93,10 +93,7 @@ export class DirectiveClearRoom extends Directive {
           DirectiveHaul.createIfNotPresent(s.pos, "pos");
           continue;
         }
-        if (
-          s.structureType == STRUCTURE_NUKER &&
-          (s as StructureNuker).store[RESOURCE_ENERGY] > 50000
-        ) {
+        if (s.structureType == STRUCTURE_NUKER && getStoredEnergy(s as StructureNuker) > 50000) {
           DirectiveHaul.createIfNotPresent(s.pos, "pos");
         }
         if (keepRoads && s.structureType == STRUCTURE_ROAD) {

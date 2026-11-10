@@ -266,7 +266,7 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 									  + Energetics.settings.terminal.energy.tolerance;
 				}
 				const amount = Energetics.settings.terminal.energy.tradeAmount;
-				if (terminal.store[RESOURCE_ENERGY] > energyThreshold) {
+				if (getStoredEnergy(terminal) > energyThreshold) {
 					// don't do anything if you have storage that is below energy cap and energy can be moved there
 					const storage = colonyOf(terminal).storage;
 					const storageEnergyCap = Energetics.settings.storage.total.cap;
@@ -474,7 +474,7 @@ export class TerminalNetwork /*implements ITerminalNetwork*/ {
 
 	handleOverflowWithNoEnergy() {
 		for (const terminal of this.terminals) {
-			if (terminal.store.getFreeCapacity() < 5000 && terminal.store[RESOURCE_ENERGY] < 10000) {
+			if (terminal.store.getFreeCapacity() < 5000 && getStoredEnergy(terminal) < 10000) {
 				const roomOrders = Object.values(Game.market.orders ?? {}).filter(order => order.roomName == terminal.room.name);
 				for (const res in terminal.store) {
 					const quantity = terminal.store[res as ResourceConstant];

@@ -284,7 +284,7 @@ export class Hatchery extends HiveCluster {
     // let refillSpawns = _.filter(this.spawns, spawn => spawn.energy < spawn.energyCapacity);
     // let refillExtensions = _.filter(this.extensions, extension => extension.energy < extension.energyCapacity);
     const refillTowers = this.towers.filter(
-      (tower) => tower.store[RESOURCE_ENERGY] < this.settings.refillTowersBelow,
+      (tower) => getStoredEnergy(tower) < this.settings.refillTowersBelow,
     );
     // _.forEach(refillSpawns, spawn => this.transportRequests.requestInput(spawn, Priority.NormalLow));
     // _.forEach(refillExtensions, extension => this.transportRequests.requestInput(extension, Priority.NormalLow));

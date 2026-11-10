@@ -1,5 +1,13 @@
 import { getRoomPrint } from "../game/Room";
-import { getStoredEnergy } from "../game/Structures";
+import {
+  getEnergyCapacity,
+  getGhodiumCapacity,
+  getPowerCapacity,
+  getStoredGhodium,
+  getStoredEnergy,
+  getStoredOps,
+  getStoredPower,
+} from "../game/Structures";
 import {
   getRoomPositionNeighbors,
   roomPositionFindClosestByLimitedRange,
@@ -119,7 +127,7 @@ export class CommandCenter extends HiveCluster {
   /* Register a link transfer store if the link is sufficiently full */
   private registerLinkTransferRequests(): void {
     if (this.link) {
-      if (this.link.store[RESOURCE_ENERGY] > CommandCenter.settings.linksTransmitAt) {
+      if (getStoredEnergy(this.link) > CommandCenter.settings.linksTransmitAt) {
         this.colony.linkNetwork.requestTransmit(this.link);
       }
     }
@@ -129,15 +137,15 @@ export class CommandCenter extends HiveCluster {
     // Refill core spawn (only applicable to bunker layouts)
     if (this.colony.bunker?.coreSpawn) {
       if (
-        this.colony.bunker.coreSpawn.store[RESOURCE_ENERGY] <
-        this.colony.bunker.coreSpawn.store.getCapacity(RESOURCE_ENERGY)
+        getStoredEnergy(this.colony.bunker.coreSpawn) <
+        getEnergyCapacity(this.colony.bunker.coreSpawn)
       ) {
         this.transportRequests.requestInput(this.colony.bunker.coreSpawn, Priority.Normal);
       }
     }
 
     // If the link has energy and nothing needs it, empty it
-    if (this.link && this.link.store[RESOURCE_ENERGY] > 0) {
+    if (this.link && getStoredEnergy(this.link) > 0) {
       if (this.colony.linkNetwork.receive.length == 0 || this.link.cooldown > 3) {
         this.transportRequests.requestOutput(this.link, Priority.High);
       }
@@ -153,7 +161,7 @@ export class CommandCenter extends HiveCluster {
     // If the link is empty and can send energy and something needs energy, fill it up
     if (
       this.link &&
-      this.link.store[RESOURCE_ENERGY] < 0.9 * this.link.store.getCapacity(RESOURCE_ENERGY) &&
+      getStoredEnergy(this.link) < 0.9 * getEnergyCapacity(this.link) &&
       this.link.cooldown <= 1
     ) {
       if (this.colony.linkNetwork.receive.length > 0) {
@@ -163,23 +171,18 @@ export class CommandCenter extends HiveCluster {
     }
     // Refill towers as needed with variable priority
     const refillTowers = this.towers.filter(
-      (tower) => tower.store[RESOURCE_ENERGY] < CommandCenter.settings.refillTowersBelow,
+      (tower) => getStoredEnergy(tower) < CommandCenter.settings.refillTowersBelow,
     );
     refillTowers.forEach((tower) => this.transportRequests.requestInput(tower, Priority.High));
 
     // Refill power spawn
     if (this.powerSpawn) {
-      if (
-        this.powerSpawn.store[RESOURCE_ENERGY] <
-        this.powerSpawn.store.getCapacity(RESOURCE_ENERGY) * 0.5
-      ) {
+      if (getStoredEnergy(this.powerSpawn) < getEnergyCapacity(this.powerSpawn) * 0.5) {
         this.transportRequests.requestInput(this.powerSpawn, Priority.NormalLow);
       } else if (
-        this.powerSpawn.store[RESOURCE_POWER] <
-          this.powerSpawn.store.getCapacity(RESOURCE_POWER) * 0.5 &&
+        getStoredPower(this.powerSpawn) < getPowerCapacity(this.powerSpawn) * 0.5 &&
         this.terminal &&
-        this.terminal.store[RESOURCE_POWER] &&
-        this.terminal.store[RESOURCE_POWER] >= 100
+        getStoredPower(this.terminal) >= 100
       ) {
         this.transportRequests.requestInput(this.powerSpawn, Priority.NormalLow, {
           resourceType: RESOURCE_POWER,
@@ -189,14 +192,14 @@ export class CommandCenter extends HiveCluster {
     // Refill nuker with low priority
     if (this.nuker) {
       if (
-        this.nuker.store[RESOURCE_ENERGY] < this.nuker.store.getCapacity(RESOURCE_ENERGY) &&
+        getStoredEnergy(this.nuker) < getEnergyCapacity(this.nuker) &&
         ((getStoredEnergy(this.storage) > 200000 && this.nuker.cooldown <= 1000) ||
           getStoredEnergy(this.storage) > 800000)
       ) {
         this.transportRequests.requestInput(this.nuker, Priority.Low);
       }
       if (
-        this.nuker.store[RESOURCE_GHODIUM] < this.nuker.store.getCapacity(RESOURCE_GHODIUM) &&
+        getStoredGhodium(this.nuker) < getGhodiumCapacity(this.nuker) &&
         this.colony.assets[RESOURCE_GHODIUM] >= LAB_MINERAL_CAPACITY
       ) {
         this.transportRequests.requestInput(this.nuker, Priority.Low, {
@@ -206,7 +209,7 @@ export class CommandCenter extends HiveCluster {
     }
 
     if (this.storage && this.terminal) {
-      if (this.storage.store[RESOURCE_OPS] < 3000 && this.terminal.store[RESOURCE_OPS] > 100) {
+      if (getStoredOps(this.storage) < 3000 && getStoredOps(this.terminal) > 100) {
         this.transportRequests.requestInput(this.storage, Priority.Normal, {
           resourceType: RESOURCE_OPS,
         });

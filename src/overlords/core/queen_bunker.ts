@@ -1,4 +1,5 @@
 import { getRoomContainers, getRoomLinks } from "../../game/RoomStructures";
+import { getStoredGhodium } from "../../game/Structures";
 import { $ } from "../../caching/GlobalCache";
 import { Colony } from "../../Colony";
 import { log } from "../../console/log";
@@ -365,7 +366,7 @@ export class BunkerQueenOverlord extends Overlord {
       this.colony.level > 5 &&
       this.colony.controller.safeModeAvailable < 3 &&
       this.colony.terminal &&
-      this.colony.terminal.store[RESOURCE_GHODIUM] >= 1000 &&
+      getStoredGhodium(this.colony.terminal) >= 1000 &&
       queen.store.getCapacity() >= 1000
     ) {
       // Only use 1 queen to avoid adding 2 safemodes

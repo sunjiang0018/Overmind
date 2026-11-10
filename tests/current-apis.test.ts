@@ -80,6 +80,19 @@ test("structure helpers distinguish shared cargo capacity from resource-specific
   assert.equal(api.isStructureEmpty(spawn), true);
   spawn.store.energy = 300;
   assert.equal(api.isStructureFull(spawn), true);
+  assert.equal(api.getEnergyCapacity(spawn), 300);
+  const nuker = {
+    store: createStore(
+      { energy: 100, G: 20, power: 50, ops: 5 },
+      { energy: 300, G: 100, power: 200, ops: 100 },
+    ),
+  };
+  assert.equal(api.getStoredGhodium(nuker), 20);
+  assert.equal(api.getGhodiumCapacity(nuker), 100);
+  assert.equal(api.getStoredPower(nuker), 50);
+  assert.equal(api.getPowerCapacity(nuker), 200);
+  assert.equal(api.getStoredOps(nuker), 5);
+  assert.equal(api.getOpsCapacity(nuker), 100);
   assert.equal(
     api.getStructureLinkStoreCapacity({ store: createStore({ energy: 200 }, { energy: 800 }) }),
     800,

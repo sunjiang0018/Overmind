@@ -92,7 +92,7 @@ export class UpgradingOverlord extends Overlord {
       upgrader.task = Tasks.upgrade(this.upgradeSite.controller);
     } else {
       // Recharge from link or battery
-      if (this.upgradeSite.link && this.upgradeSite.link.store[RESOURCE_ENERGY] > 0) {
+      if (this.upgradeSite.link && getStoredEnergy(this.upgradeSite.link) > 0) {
         upgrader.task = Tasks.withdraw(this.upgradeSite.link);
       } else if (this.upgradeSite.battery && getStoredEnergy(this.upgradeSite.battery) > 0) {
         upgrader.task = Tasks.withdraw(this.upgradeSite.battery);

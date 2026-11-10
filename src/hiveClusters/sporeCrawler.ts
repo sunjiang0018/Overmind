@@ -1,4 +1,5 @@
 import { getRoomPositionRangeToEdge } from "../game/RoomPosition";
+import { getStoredEnergy } from "../game/Structures";
 import { getRoomRamparts, getRoomRoads } from "../game/RoomStructures";
 import { getRoomCreeps, getRoomHostiles } from "../game/Room";
 import { $ } from "../caching/GlobalCache";
@@ -41,9 +42,9 @@ export class SporeCrawler extends HiveCluster {
   private registerEnergyRequests() {
     // Request energy from transporters if below request threshold
     for (const tower of this.towers) {
-      if (tower.store[RESOURCE_ENERGY] < SporeCrawler.settings.requestThreshold) {
+      if (getStoredEnergy(tower) < SporeCrawler.settings.requestThreshold) {
         const multiplier =
-          tower.store[RESOURCE_ENERGY] < SporeCrawler.settings.criticalEnergyThreshold ? 2 : 1;
+          getStoredEnergy(tower) < SporeCrawler.settings.criticalEnergyThreshold ? 2 : 1;
         const dAmountdt = getRoomHostiles(this.room).length > 0 ? 10 : 0;
         this.colony.logisticsNetwork.requestInput(tower, {
           multiplier: multiplier,

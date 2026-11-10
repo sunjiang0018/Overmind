@@ -1,5 +1,10 @@
 import { getRoomDroppedEnergy, getRoomPrint, getRoomStructures } from "../../game/Room";
-import { isControllerReservedByMe, isStructureWalkable } from "../../game/Structures";
+import {
+  getStoredEnergy,
+  getEnergyCapacity,
+  isControllerReservedByMe,
+  isStructureWalkable,
+} from "../../game/Structures";
 import { getRoomContainers, getRoomSources } from "../../game/RoomStructures";
 import {
   getRoomPositionPrint,
@@ -379,10 +384,7 @@ export class MiningOverlord extends Overlord {
     if (this.link) {
       // If the link will be full with next deposit from the miner
       const minerCapacity = 150;
-      if (
-        this.link.store[RESOURCE_ENERGY] + minerCapacity >
-        this.link.store.getCapacity(RESOURCE_ENERGY)
-      ) {
+      if (getStoredEnergy(this.link) + minerCapacity > getEnergyCapacity(this.link)) {
         this.colony.linkNetwork.requestTransmit(this.link);
       }
     }

@@ -1,4 +1,4 @@
-import { getStoreContents } from "../../game/Structures";
+import { getStoredPower, getStoreContents } from "../../game/Structures";
 import { getRoomDrops, getRoomPrint, getRoomRuins } from "../../game/Room";
 import { log } from "../../console/log";
 import { Roles, Setups } from "../../creepSetups/setups";
@@ -76,9 +76,7 @@ export class PowerHaulingOverlord extends Overlord {
           }
           return;
         } else if (this.room && getRoomRuins(this.room)) {
-          const pb = getRoomRuins(this.room).filter(
-            (ruin) => !!ruin.store[RESOURCE_POWER] && ruin.store[RESOURCE_POWER]! > 0,
-          );
+          const pb = getRoomRuins(this.room).filter((ruin) => getStoredPower(ruin) > 0);
           if (pb.length > 0) {
             hauler.task = Tasks.withdraw(pb[0], RESOURCE_POWER);
           }

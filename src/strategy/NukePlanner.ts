@@ -1,5 +1,11 @@
 import { MEM } from "../memory/MemoryKeys";
 import { getRoomStructures } from "../game/Room";
+import {
+  getEnergyCapacity,
+  getGhodiumCapacity,
+  getStoredGhodium,
+  getStoredEnergy,
+} from "../game/Structures";
 import { Colony } from "../Colony";
 import { getCacheExpiration, maxBy, minBy } from "../utilities/utils";
 import { defaults, sum } from "../utilities/native";
@@ -111,8 +117,8 @@ export class NukePlanner {
     if (
       !colony.nuker ||
       colony.nuker.cooldown > 0 ||
-      colony.nuker.store[RESOURCE_GHODIUM] < colony.nuker.store.getCapacity(RESOURCE_GHODIUM) ||
-      colony.nuker.store[RESOURCE_ENERGY] < colony.nuker.store.getCapacity(RESOURCE_ENERGY)
+      getStoredGhodium(colony.nuker) < getGhodiumCapacity(colony.nuker) ||
+      getStoredEnergy(colony.nuker) < getEnergyCapacity(colony.nuker)
     ) {
       return;
     }

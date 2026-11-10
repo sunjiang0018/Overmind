@@ -5,6 +5,7 @@ import {
   isPositionVisible,
   roomPositionLookForStructure,
 } from "../../game/RoomPosition";
+import { getStoredPower } from "../../game/Structures";
 import { log } from "../../console/log";
 import { PowerDrillOverlord } from "../../overlords/powerMining/PowerDrill";
 import { PowerHaulingOverlord } from "../../overlords/powerMining/PowerHauler";
@@ -202,9 +203,7 @@ export class DirectivePowerMine extends Directive {
       this.room &&
       isPositionVisible(this.pos) &&
       !this.hasDrops &&
-      getRoomRuins(this.room).filter(
-        (ruin) => !!ruin.store[RESOURCE_POWER] && ruin.store[RESOURCE_POWER]! > 0,
-      ).length == 0
+      getRoomRuins(this.room).filter((ruin) => getStoredPower(ruin) > 0).length == 0
     ) {
       Game.notify(
         `Hauler pickup is complete for ${this.print} in ${getRoomPrint(this.room)} at time ${Game.time}`,

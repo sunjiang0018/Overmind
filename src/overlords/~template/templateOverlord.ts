@@ -1,4 +1,5 @@
 import { roomPositionFindClosestByMultiRoomRange } from "../../game/RoomPosition";
+import { getStoredEnergy } from "../../game/Structures";
 import { getRoomContainers, getRoomRamparts, getRoomTowers } from "../../game/RoomStructures";
 import { $ } from "../../caching/GlobalCache";
 import { Roles, Setups } from "../../creepSetups/setups";
@@ -152,7 +153,7 @@ export class TemplateOverlord extends Overlord {
       return;
     }
     // If you're out of energy, recharge from link or battery
-    if (this.colony.upgradeSite.link && this.colony.upgradeSite.link.store[RESOURCE_ENERGY] > 0) {
+    if (this.colony.upgradeSite.link && getStoredEnergy(this.colony.upgradeSite.link) > 0) {
       upgrader.task = Tasks.withdraw(this.colony.upgradeSite.link);
       return;
     }
