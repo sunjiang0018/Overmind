@@ -14,6 +14,7 @@ import { CombatOverlord } from "../CombatOverlord";
  */
 @profile
 export class OutpostDefenseOverlord extends CombatOverlord {
+  directive: DirectiveOutpostDefense;
   zerglings: CombatZerg[];
   hydralisks: CombatZerg[];
   healers: CombatZerg[];
@@ -105,6 +106,36 @@ export class OutpostDefenseOverlord extends CombatOverlord {
     }
   }
 
+  private getSurplusHydralisks(): Set<CombatZerg> {
+    if (
+      !this.directive.memory.persistent ||
+      !this.room ||
+      getRoomHostiles(this.room).length > 0 ||
+      !(Game.time - this.directive.memory.safeSince > 100) ||
+      this.colony.spawns.length == 0
+    ) {
+      return new Set();
+    }
+    // Keep one capable sentry at a persistent outpost after the threat has passed.
+    const ranked = [...this.hydralisks].sort(
+      (a, b) =>
+        b.getActiveBodyparts(RANGED_ATTACK) - a.getActiveBodyparts(RANGED_ATTACK) ||
+        (b.ticksToLive ?? CREEP_LIFE_TIME) - (a.ticksToLive ?? CREEP_LIFE_TIME),
+    );
+    return new Set(ranked.slice(1));
+  }
+
+  private recycleDefender(defender: CombatZerg): void {
+    const spawn = defender.pos.findClosestByRange(this.colony.spawns) || this.colony.spawns[0];
+    if (spawn) {
+      if (defender.pos.isNearTo(spawn)) {
+        spawn.recycleCreep(defender.creep);
+      } else {
+        defender.goTo(spawn);
+      }
+    }
+  }
+
   init() {
     const enemyPotentials = this.getEnemyPotentials();
     const needAttack = enemyPotentials.attack * 1.1;
@@ -121,11 +152,6 @@ export class OutpostDefenseOverlord extends CombatOverlord {
     if (needAttack > 100 || needRanged > 100 || needHeal > 100) {
       return; // fuck it let's not fight this
     }
-
-    // Only try to obtain one additional creep at a time
-    if (this.reassignIdleCreeps(Roles.melee, 1)) return;
-    if (this.reassignIdleCreeps(Roles.ranged, 1)) return;
-    if (this.reassignIdleCreeps(Roles.healer, 1)) return;
 
     const noBigColoniesNearby = this.spawnGroup.colonies.every(
       (col) => col.room.energyCapacityAvailable < 800,
@@ -151,17 +177,24 @@ export class OutpostDefenseOverlord extends CombatOverlord {
     const healerSetup = CombatSetups.transfusers.default;
 
     if (myPotentials.ranged < needRanged) {
-      this.requestCreep(hydraliskSetup);
+      if (!this.reassignIdleCreeps(Roles.ranged, 1)) this.requestCreep(hydraliskSetup);
     } else if (myPotentials.heal < needHeal) {
-      this.requestCreep(healerSetup);
+      if (!this.reassignIdleCreeps(Roles.healer, 1)) this.requestCreep(healerSetup);
     } else if (myPotentials.attack < needAttack) {
-      this.requestCreep(zerglingSetup);
+      if (!this.reassignIdleCreeps(Roles.melee, 1)) this.requestCreep(zerglingSetup);
     }
   }
 
   run() {
+    const surplusHydralisks = this.getSurplusHydralisks();
     this.autoRun(this.zerglings, (zergling) => this.handleCombat(zergling));
-    this.autoRun(this.hydralisks, (hydralisk) => this.handleCombat(hydralisk));
+    this.autoRun(this.hydralisks, (hydralisk) => {
+      if (surplusHydralisks.has(hydralisk)) {
+        this.recycleDefender(hydralisk);
+      } else {
+        this.handleCombat(hydralisk);
+      }
+    });
     this.autoRun(this.healers, (healer) => this.handleHealer(healer));
   }
 }

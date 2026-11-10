@@ -60,3 +60,16 @@ test("the independent Pixel pause can be cleared to resume generation", () => {
   ctx.exports.generatePixelIfFull();
   assert.equal(calls(), 1);
 });
+
+test("a live raid retains CPU through withdrawal and restores pixel generation on completion", () => {
+  const { ctx, calls } = setup(10000);
+  ctx.Memory.flags = { raid: { raid: { phase: "assembling" } } };
+  for (const phase of ["assembling", "draining", "breaching", "looting", "retreating"]) {
+    ctx.Memory.flags.raid.raid.phase = phase;
+    ctx.exports.generatePixelIfFull();
+    assert.equal(calls(), 0);
+  }
+  ctx.Memory.flags.raid.raid.phase = "complete";
+  ctx.exports.generatePixelIfFull();
+  assert.equal(calls(), 1);
+});

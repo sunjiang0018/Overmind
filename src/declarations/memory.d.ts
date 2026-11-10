@@ -116,6 +116,7 @@ declare global {
   interface PublicSegment {}
 
   interface CreepMemory {
+    queenRecharging?: boolean;
     colonyRetreatRoom?: string;
     colonyRetreatThreatKey?: string;
     [MEM.OVERLORD]: string | null;

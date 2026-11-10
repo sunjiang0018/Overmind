@@ -4,6 +4,7 @@ import { Roles, Setups } from "../../creepSetups/setups";
 import { Hatchery } from "../../hiveClusters/hatchery";
 import { OverlordPriority } from "../../priorities/priorities_overlords";
 import { profile } from "../../profiler/decorator";
+import { refillPassingQueen } from "./queenDelivery";
 import { Tasks } from "../../tasks/Tasks";
 import { Zerg } from "../../zerg/Zerg";
 import { DEFAULT_PRESPAWN, Overlord } from "../Overlord";
@@ -37,114 +38,74 @@ export class QueenOverlord extends Overlord {
     this.wishlist(amount, this.queenSetup, { prespawn: prespawn });
   }
 
-  private supplyActions(queen: Zerg) {
+  private assignDelivery(queen: Zerg): boolean {
     // Select the closest supply target out of the highest priority and refill it
     const request = this.hatchery.transportRequests.getPrioritizedClosestRequest(
       queen.pos,
       "supply",
     );
-    if (request) {
-      queen.task = Tasks.transfer(request.target);
-    } else {
-      this.rechargeActions(queen); // if there are no targets, refill yourself
-    }
+    if (!request) return false;
+    queen.task = Tasks.transfer(request.target);
+    return true;
   }
 
-  private rechargeActions(queen: Zerg): void {
+  private getRechargeSource(queen: Zerg): StructureContainer | StructureLink | null {
+    const wanted = queen.store.getFreeCapacity();
+    if (wanted <= 0) return null;
     if (this.colony?.roomPlanner?.memory.logisticsPolicy?.queenBufferFirst) {
-      const wanted = queen.store.getCapacity() - queen.store.energy;
-      if (wanted <= 0) return;
       const batteries = this.hatchery.batteries.filter((b) => getStoredEnergy(b) > 0);
       // A full buffer supports one full load; a live Link holds only 800.
       const fullBattery = queen.pos.findClosestByRange(
         batteries.filter((b) => getStoredEnergy(b) >= wanted),
       );
-      if (fullBattery) {
-        queen.task = Tasks.withdraw(fullBattery);
-        return;
-      }
+      if (fullBattery) return fullBattery;
       const link = this.hatchery.link;
       if (link && getStoredEnergy(link) >= wanted) {
-        queen.task = Tasks.withdraw(link);
-        return;
+        return link;
       }
       // Never wait for a full load when energy is scarce. Use the largest
       // available partial load, with distance breaking equal-amount ties.
       const sources = link && !isStructureEmpty(link) ? [...batteries, link] : batteries;
       const available = Math.max(0, ...sources.map((source) => getStoredEnergy(source)));
-      const source = queen.pos.findClosestByRange(
+      return queen.pos.findClosestByRange(
         sources.filter((candidate) => getStoredEnergy(candidate) == available),
       );
-      queen.task = source ? Tasks.withdraw(source) : Tasks.recharge();
-      return;
     }
     if (this.hatchery.link && !isStructureEmpty(this.hatchery.link)) {
-      queen.task = Tasks.withdraw(this.hatchery.link);
-    } else if (this.hatchery.batteries.length > 0) {
-      const target = queen.pos.findClosestByRange(
-        this.hatchery.batteries.filter((b) => getStoredEnergy(b) > 0),
-      );
-      if (target) {
-        queen.task = Tasks.withdraw(target);
-      } else {
-        queen.task = Tasks.recharge();
-      }
-    } else {
-      queen.task = Tasks.recharge();
+      return this.hatchery.link;
     }
+    return queen.pos.findClosestByRange(
+      this.hatchery.batteries.filter((b) => getStoredEnergy(b) > 0),
+    );
   }
 
-  private idleActions(queen: Zerg): void {
-    // will only have one battery when this overlord is called
-    const battery = queen.pos.findClosestByRange(this.hatchery.batteries);
-    if (this.hatchery.link) {
-      // Can energy be moved from the link to the battery?
-      if (battery && !isStructureFull(battery) && !isStructureEmpty(this.hatchery.link)) {
-        // Move energy to battery as needed
-        if (queen.store.energy < queen.store.getCapacity()) {
-          queen.task = Tasks.withdraw(this.hatchery.link);
-        } else {
-          queen.task = Tasks.transfer(battery);
-        }
-      } else {
-        if (queen.store.energy < queen.store.getCapacity()) {
-          // make sure you're recharged
-          if (!isStructureEmpty(this.hatchery.link)) {
-            queen.task = Tasks.withdraw(this.hatchery.link);
-          } else if (battery && !isStructureEmpty(battery)) {
-            queen.task = Tasks.withdraw(battery);
-          }
-        }
-      }
-    } else {
-      if (battery && queen.store.energy < queen.store.getCapacity()) {
-        queen.task = Tasks.withdraw(battery);
-      }
-    }
+  private rechargeActions(queen: Zerg): boolean {
+    const source = this.getRechargeSource(queen);
+    if (!source) return false;
+    queen.task = Tasks.withdraw(source);
+    return true;
   }
 
   private handleQueen(queen: Zerg): void {
-    if (queen.store.energy > 0) {
-      this.supplyActions(queen);
-    } else {
-      this.rechargeActions(queen);
+    const wasRecharging = queen.memory.queenRecharging;
+    if (wasRecharging) {
+      if (this.rechargeActions(queen)) return;
+      delete queen.memory.queenRecharging;
     }
-    // If there aren't any tasks that need to be done, recharge the battery from link
-    if (queen.isIdle) {
-      this.idleActions(queen);
+    if (queen.store.energy > 0 && this.assignDelivery(queen)) return;
+    if (!wasRecharging && this.rechargeActions(queen)) {
+      // Withdraw is a one-shot task; continue this refill on the next tick.
+      queen.memory.queenRecharging = true;
+      return;
     }
-    // // If all of the above is done and hatchery is not in emergencyMode, move to the idle point and renew as needed
-    // if (!this.emergencyMode && queen.isIdle) {
-    // 	if (queen.pos.isEqualTo(this.idlePos)) {
-    // 		// If queen is at idle position, renew her as needed
-    // 		if (queen.ticksToLive < this.settings.renewQueenAt && this.availableSpawns.length > 0) {
-    // 			this.availableSpawns[0].renewCreep(queen.creep);
-    // 		}
-    // 	} else {
-    // 		// Otherwise, travel back to idle position
-    // 		queen.goTo(this.idlePos);
-    // 	}
-    // }
+    if (queen.store.getFreeCapacity() > 0) {
+      queen.task = Tasks.recharge();
+      if (queen.task) queen.memory.queenRecharging = true;
+    } else if (this.hatchery.link && !isStructureEmpty(this.hatchery.link)) {
+      // Move link energy into the battery while idle.
+      const battery = queen.pos.findClosestByRange(this.hatchery.batteries);
+      if (battery && !isStructureFull(battery)) queen.task = Tasks.transfer(battery);
+    }
   }
 
   run() {
@@ -157,6 +118,7 @@ export class QueenOverlord extends Overlord {
       // Run the task if you have one; else move back to idle pos
       if (queen.hasValidTask) {
         queen.run();
+        refillPassingQueen(queen);
       } else {
         if (this.queens.length > 1) {
           queen.goTo(this.hatchery.idlePos, { range: 1 });

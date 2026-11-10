@@ -26,7 +26,7 @@ function defender(
   ownRanged = 0,
   enemy = { attack: 0, ranged: 0, heal: 0 },
   inspect?: (subject: TestScope) => void,
-  opts: { hostiles?: number; persistent?: boolean } = {},
+  opts: { hostiles?: number; persistent?: boolean; safeSince?: number } = {},
 ) {
   const code = ts.transpileModule(
     fs.readFileSync("src/overlords/defense/outpostDefense.ts", "utf8"),
@@ -53,7 +53,10 @@ function defender(
       getRoomDangerousPlayerHostiles: () => [],
       getRoomHostiles: () => Array(opts.hostiles ?? 1).fill({}),
     },
-    "../../creepSetups/setups": { Roles: {}, CombatSetups: setups },
+    "../../creepSetups/setups": {
+      Roles: { melee: "zergling", ranged: "hydralisk", healer: "healer" },
+      CombatSetups: setups,
+    },
     "../../targeting/GoalFinder": {
       GoalFinder: { skirmishGoals: () => ({ avoid: ["danger-zone"] }) },
     },
@@ -67,14 +70,16 @@ function defender(
       CombatIntel: { getMyCombatPotentials: () => ({ attack: 0, ranged: ownRanged, heal: 0 }) },
     },
   };
-  new Function("exports", "require", "RANGED_ATTACK", code)(
+  new Function("exports", "require", "RANGED_ATTACK", "Game", "CREEP_LIFE_TIME", code)(
     out,
     (n: string) => deps[n] || {},
     constants.RANGED_ATTACK,
+    { time: 200 },
+    constants.CREEP_LIFE_TIME,
   );
   const o = Object.create(out.OutpostDefenseOverlord.prototype);
   Object.assign(o, {
-    directive: { memory: { persistent: !!opts.persistent } },
+    directive: { memory: { persistent: !!opts.persistent, safeSince: opts.safeSince ?? 0 } },
     room: {},
     spawnGroup: { colonies: [{ room: { energyCapacityAvailable: 2300 } }] },
     zerglings: [],
@@ -145,6 +150,147 @@ test("persistent outpost stops reinforcements when enemies leave", () =>
   assert.deepEqual(defender(0, 0, undefined, undefined, { persistent: true, hostiles: 0 }), []));
 test("persistent outpost does not repeatedly spawn when a ranged defender already exists", () =>
   assert.deepEqual(defender(0, 1, undefined, undefined, { persistent: true }), []));
+
+function runHydralisks(o: TestScope, atSpawn = false, crossRoom = false) {
+  const returning: string[] = [],
+    guarding: string[] = [];
+  const recycled: string[] = [];
+  const spawn = { recycleCreep: (creep: TestScope) => recycled.push(creep.name) };
+  o.colony = { spawns: [spawn] };
+  o.hydralisks = [341, 537, 984].map((ticksToLive, i) => ({
+    name: `hydralisk_${i}`,
+    creep: { name: `hydralisk_${i}` },
+    ticksToLive,
+    getActiveBodyparts: () => 7,
+    pos: { findClosestByRange: () => (crossRoom ? null : spawn), isNearTo: () => atSpawn },
+    goTo: () => returning.push(`hydralisk_${i}`),
+  }));
+  o.autoRun = (zs: TestScope[], handler: (z: TestScope) => void) => zs.forEach(handler);
+  o.handleCombat = (z: TestScope) => guarding.push(z.name);
+  o.run();
+  return { returning, guarding, recycled };
+}
+
+test("quiet persistent E58S44 returns two surplus hydralisks and keeps the youngest sentry", () => {
+  defender(
+    0,
+    21,
+    undefined,
+    (o) => {
+      const { returning, guarding } = runHydralisks(o);
+      assert.deepEqual(returning, ["hydralisk_0", "hydralisk_1"]);
+      assert.deepEqual(guarding, ["hydralisk_2"]);
+    },
+    { persistent: true, hostiles: 0 },
+  );
+});
+
+test("a satisfied defense does not absorb idle fighters on every tick", () => {
+  defender(
+    1,
+    7,
+    undefined,
+    (o) => {
+      const adopted: string[] = [];
+      o.reassignIdleCreeps = (role: string) => {
+        adopted.push(role);
+        return true;
+      };
+      o.init();
+      assert.deepEqual(adopted, []);
+    },
+    { persistent: true },
+  );
+});
+
+test("surplus defenders are recycled at the home spawn", () => {
+  defender(
+    0,
+    21,
+    undefined,
+    (o) => {
+      const { recycled, guarding } = runHydralisks(o, true);
+      assert.deepEqual(recycled, ["hydralisk_0", "hydralisk_1"]);
+      assert.deepEqual(guarding, ["hydralisk_2"]);
+    },
+    { persistent: true, hostiles: 0 },
+  );
+});
+
+test("surplus defenders can select a home spawn in a different room", () => {
+  defender(
+    0,
+    21,
+    undefined,
+    (o) => {
+      const { returning, guarding } = runHydralisks(o, false, true);
+      assert.deepEqual(returning, ["hydralisk_0", "hydralisk_1"]);
+      assert.deepEqual(guarding, ["hydralisk_2"]);
+    },
+    { persistent: true, hostiles: 0 },
+  );
+});
+
+test("active threats, recent fighting and lost vision each prevent downsizing", () => {
+  for (const scenario of ["hostiles", "recent", "noVision", "temporary", "unknownSafety"]) {
+    defender(
+      0,
+      21,
+      undefined,
+      (o) => {
+        if (scenario === "noVision") o.room = undefined;
+        if (scenario === "unknownSafety") delete o.directive.memory.safeSince;
+        const { returning, recycled, guarding } = runHydralisks(o);
+        assert.deepEqual(returning, [], scenario);
+        assert.deepEqual(recycled, [], scenario);
+        assert.equal(guarding.length, 3, scenario);
+      },
+      {
+        persistent: scenario !== "temporary",
+        hostiles: scenario === "hostiles" ? 1 : 0,
+        safeSince: scenario === "recent" ? 100 : 0,
+      },
+    );
+  }
+});
+
+test("returning defenders rejoin combat when a threat reappears", () => {
+  defender(
+    1,
+    21,
+    undefined,
+    (o) => {
+      const { guarding, returning, recycled } = runHydralisks(o);
+      assert.equal(guarding.length, 3);
+      assert.deepEqual(returning, []);
+      assert.deepEqual(recycled, []);
+    },
+    { persistent: true },
+  );
+});
+
+test("outpost defense still requests reinforcements when one hydralisk is insufficient", () => {
+  assert.deepEqual(defender(0, 7, { attack: 0, ranged: 10, heal: 0 }), ["ranged"]);
+});
+
+test("a ranged shortfall adopts only a ranged idle creep before requesting a spawn", () => {
+  defender(
+    1,
+    0,
+    undefined,
+    (o) => {
+      const adopted: string[] = [];
+      o.reassignIdleCreeps = (role: string) => {
+        adopted.push(role);
+        return true;
+      };
+      o.requestCreep = () => assert.fail("an idle ranged defender already filled the shortfall");
+      o.init();
+      assert.deepEqual(adopted, ["hydralisk"]);
+    },
+    { persistent: true },
+  );
+});
 
 test("persistent defense keeps its monitoring flag through quiet periods", () => {
   const code = ts.transpileModule(

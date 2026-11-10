@@ -186,7 +186,7 @@ export class EvolutionChamber extends HiveCluster {
         if (this.memory.activeReaction) {
           log.info(
             `${this.colony.print}: starting synthesis of ${reagents[0]} + ${reagents[1]} ` +
-            `${rightArrow} ${this.memory.activeReaction.mineralType}`,
+              `${rightArrow} ${this.memory.activeReaction.mineralType}`,
           );
           this.memory.status = LabStatus.AcquiringMinerals;
           this.memory.statusTick = Game.time;
@@ -265,7 +265,7 @@ export class EvolutionChamber extends HiveCluster {
     if (timeout) {
       log.warning(
         `${this.print}: stuck in state ${this.memory.status} for ${ticksInStatus} ticks, ` +
-        `rebuilding reaction queue and reverting to idle state!`,
+          `rebuilding reaction queue and reverting to idle state!`,
       );
       this.memory.status = LabStatus.Idle;
       this.memory.statusTick = Game.time;

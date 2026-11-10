@@ -22,14 +22,13 @@ import { Zerg } from "../../zerg/Zerg";
 import { Overlord } from "../Overlord";
 import { compact, zipObject, sum, sortBy } from "../../utilities/native";
 
-type SupplyStructure = StructureExtension | StructureSpawn | StructureTower | StructureLab;
+import { isSupplyStructure, refillPassingQueen, type SupplyStructure } from "./queenDelivery";
 
-function isSupplyStructure(structure: Structure): structure is SupplyStructure {
+type SupplySource = StructureContainer | StructureLink | StructureStorage | StructureTerminal;
+
+function isEnergyBuffer(structure: SupplySource): boolean {
   return (
-    structure.structureType == STRUCTURE_EXTENSION ||
-    structure.structureType == STRUCTURE_LAB ||
-    structure.structureType == STRUCTURE_TOWER ||
-    structure.structureType == STRUCTURE_SPAWN
+    structure.structureType == STRUCTURE_LINK || structure.structureType == STRUCTURE_CONTAINER
   );
 }
 
@@ -56,7 +55,7 @@ export class BunkerQueenOverlord extends Overlord {
   room: Room;
   queens: Zerg[];
   queenSetup: CreepSetup;
-  storeStructures: AnyStoreStructure[];
+  storeStructures: SupplySource[];
   batteries: StructureContainer[];
   links: StructureLink[]; // hacky workaround for new typings
   quadrants: { [quadrant: string]: SupplyStructure[] };
@@ -144,24 +143,11 @@ export class BunkerQueenOverlord extends Overlord {
 
   // Builds a series of tasks to empty unnecessary carry contents, withdraw required resources, and supply structures
   private buildSupplyTaskManifest(queen: Zerg): Task<any> | null {
-    let tasks: Task<any>[] = [];
-
-    // Step 1: empty all contents (this shouldn't be necessary since queen is normally empty at this point)
-    let queenPos = queen.pos;
-    if (sum(queen.store) > 0) {
-      const transferTarget = this.colony.terminal || this.colony.storage || this.batteries[0];
-      if (transferTarget) {
-        tasks.push(Tasks.transferAll(transferTarget));
-        queenPos = transferTarget.pos;
-      } else {
-        log.warning(`No transfer targets for ${queen.print}!`);
-        return null;
-      }
-    }
-
-    // Step 2: figure out what you need to supply for and calculate the needed resources
+    const tasks: Task<any>[] = [];
     const queenCarry = {} as { [resourceType: string]: number };
     const allStore = mergeSum(this.storeStructures.map((s) => s.store));
+    const carriedEnergy = queen.store.getUsedCapacity(RESOURCE_ENERGY);
+    allStore.energy = (allStore.energy || 0) + carriedEnergy;
     const supplyRequests: TransportRequest[] = [];
     for (const priority in this.colony.transportRequests.supply) {
       for (const request of this.colony.transportRequests.supply[priority]) {
@@ -184,71 +170,94 @@ export class BunkerQueenOverlord extends Overlord {
         queenCarry[request.resourceType] = 0;
       }
       queenCarry[request.resourceType] += amount;
+      allStore[request.resourceType] -= amount;
       // add a task to supply the target
       supplyTasks.push(Tasks.transfer(request.target, request.resourceType, amount));
     }
 
-    // Step 3: make withdraw tasks to get the needed resources
-    const withdrawTasks: Task<any>[] = [];
-    const neededResources = Object.keys(queenCarry ?? {}) as ResourceConstant[];
-    const targets: AnyStoreStructure[] = this.storeStructures.filter((s) =>
-      neededResources.every((resource) => (s.store[resource] || 0) >= (queenCarry[resource] || 0)),
-    );
-    const withdrawTarget = minBy(
-      targets,
-      (target) => Pathing.distance(queenPos, target.pos) || Infinity,
-    );
-    if (withdrawTarget) {
-      for (const resourceType of neededResources) {
-        withdrawTasks.push(Tasks.withdraw(withdrawTarget, resourceType, queenCarry[resourceType]));
+    // Keep energy between delivery rounds, leaving room for this round's minerals.
+    const capacity = queen.store.getCapacity();
+    const energyDemand = queenCarry.energy || 0;
+    const mineralDemand = sum(queenCarry) - energyDemand;
+    const keptEnergy = Math.min(carriedEnergy, capacity - mineralDemand);
+    let queenPos = queen.pos;
+    const unloadMinerals = hasMinerals(queen.store);
+    if (unloadMinerals || carriedEnergy > keptEnergy) {
+      const deposit = this.colony.terminal || this.colony.storage || this.batteries[0];
+      if (!deposit) return null;
+      if (unloadMinerals) tasks.push(Tasks.transferAll(deposit, true));
+      if (carriedEnergy > keptEnergy) {
+        tasks.push(Tasks.transfer(deposit, RESOURCE_ENERGY, carriedEnergy - keptEnergy));
       }
-    } else {
-      const closestTarget = minBy(
-        this.storeStructures,
-        (target) => Pathing.distance(queenPos, target.pos) || Infinity,
-      );
-      if (!closestTarget) {
-        log.error(`Can't seem to find any pathable store structures in ${this.colony.print}`);
-      } else {
-        for (const resourceType of neededResources) {
-          if (closestTarget.store[resourceType] >= queenCarry[resourceType]) {
-            withdrawTasks.push(
-              Tasks.withdraw(closestTarget, resourceType, queenCarry[resourceType]),
-            );
-          } else {
-            // TODO ordering tasks for fastest route, maybe a sortby for withdraw targets?
-            const hasResource = sortBy(
-              this.storeStructures.filter((s) => s.store[resourceType] > 0),
-              (s) => -s.store[resourceType],
-            ); // descending sort
-            let collected = 0;
-            for (const storeLoc of hasResource) {
-              // Might be bug in overwithdrawing
-              withdrawTasks.push(
-                Tasks.withdraw(
-                  storeLoc,
-                  resourceType,
-                  Math.min(queenCarry[resourceType] - collected, storeLoc.store[resourceType]),
-                ),
-              );
-              collected += storeLoc.store[resourceType];
-              if (collected >= queenCarry[resourceType]) {
-                break;
-              }
-            }
-          }
-        }
-      }
-    }
-    if (!withdrawTarget && withdrawTasks.length == 0) {
-      log.warning(`Could not find adequate withdraw structure for ${queen.print}! (neededResources:\x20
-			${neededResources}, queenCarry: ${JSON.stringify(queenCarry)})`);
-      return null;
+      queenPos = deposit.pos;
     }
 
-    // Step 4: put all the tasks in the correct order, set nextPos for each, and chain them together
-    tasks = tasks.concat(withdrawTasks, supplyTasks);
-    return Tasks.chain(tasks);
+    // Load minerals before an open-ended energy withdrawal.
+    const neededResources: ResourceConstant[] = (
+      Object.keys(queenCarry) as ResourceConstant[]
+    ).filter((resource) => resource != RESOURCE_ENERGY);
+    queenCarry.energy = Math.max(0, energyDemand - keptEnergy);
+    if (queenCarry.energy > 0) neededResources.push(RESOURCE_ENERGY);
+    if (neededResources.length) {
+      const targets = this.storeStructures.filter((source) =>
+        neededResources.every((resource) => source.store[resource] >= queenCarry[resource]),
+      );
+      const distance = (target: SupplySource) => Pathing.distance(queenPos, target.pos) ?? Infinity;
+      const closest = minBy(targets, distance) || minBy(this.storeStructures, distance);
+      if (!closest) return null;
+      for (const resource of neededResources) {
+        this.addSupplyWithdrawals(
+          tasks,
+          closest,
+          resource,
+          queenCarry[resource],
+          capacity - mineralDemand - keptEnergy,
+        );
+      }
+    }
+    return Tasks.chain(tasks.concat(supplyTasks));
+  }
+
+  private addSupplyWithdrawals(
+    tasks: Task<any>[],
+    closest: SupplySource,
+    resource: ResourceConstant,
+    required: number,
+    energySpace: number,
+  ): void {
+    // Prefer one stop when possible; otherwise draw from the largest stocks first.
+    const sources =
+      closest.store[resource] >= required
+        ? [closest]
+        : sortBy(
+            this.storeStructures.filter((s) => s.store[resource] > 0),
+            (s) => -s.store[resource],
+          );
+    const buffers: SupplySource[] = [];
+    for (const source of sources) {
+      const available = source.store[resource];
+      const amount = Math.min(required, available);
+      if (resource == RESOURCE_ENERGY && isEnergyBuffer(source)) {
+        buffers.push(source);
+        energySpace -= available;
+      } else {
+        tasks.push(Tasks.withdraw(source, resource, amount));
+        energySpace -= amount;
+      }
+      required -= amount;
+      if (required == 0) break;
+    }
+
+    if (buffers.length && energySpace > 0) {
+      for (const source of this.storeStructures) {
+        if (!isEnergyBuffer(source) || !source.store.energy || buffers.includes(source)) continue;
+        buffers.push(source);
+        energySpace -= source.store.energy;
+        if (energySpace <= 0) break;
+      }
+    }
+    // Take exact order quantities first, then use the live stock and remaining cargo space.
+    for (const buffer of buffers) tasks.push(Tasks.withdraw(buffer));
   }
 
   /**
@@ -391,5 +400,6 @@ export class BunkerQueenOverlord extends Overlord {
 
   run() {
     this.autoRun(this.queens, (queen) => this.handleQueen(queen));
+    for (const queen of this.queens) refillPassingQueen(queen);
   }
 }

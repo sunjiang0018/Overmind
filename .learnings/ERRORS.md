@@ -440,3 +440,89 @@ A temporary deployment comparison removed an added helper and call text, but fai
 Reviewed the full production diff and verified that all code outside TransportOverlord was byte-identical. The changes inside it were the intended supply helper and fallback branch. All 117 tests and the deployment readback passed. Future comparisons must account for compiler control-flow formatting and inspect a failed comparison before proceeding with dependent deployment steps.
 
 ---
+
+## [ERR-20261110-HYD] Existing validation failures during hydralisk fix
+
+**Logged**: 2026-11-10T09:57:03.587Z
+**Priority**: medium
+**Status**: pending
+**Area**: tests
+
+### Summary
+Full unit validation has six existing LinkNetwork mock failures; full check also stops on existing evolutionChamber formatting.
+
+### Error
+`pnpm run test:unit`: getStoredEnergy is not a function in tests/e57s45-logistics-policy.test.ts (six cases).
+`pnpm run check`: formatting issue in src/hiveClusters/evolutionChamber.ts.
+
+### Context
+The same six tests fail in a clean git archive of HEAD. Neither affected file was modified in the hydralisk fix. Defense regression tests, typecheck and build pass.
+
+### Suggested Fix
+Update the LinkNetwork test runtime to provide the imported Structures helpers and separately format evolutionChamber. Keep those changes separate from defense behavior.
+
+### Metadata
+- Reproducible: yes
+- Related Files: tests/e57s45-logistics-policy.test.ts, src/logistics/LinkNetwork.ts, src/hiveClusters/evolutionChamber.ts
+
+---
+
+## [ERR-20261110-HRC] Cross-room spawn selection
+
+**Logged**: 2026-11-10T10:00:11.960Z
+**Priority**: low
+**Status**: resolved
+**Area**: backend
+
+### Summary
+Native RoomPosition.findClosestByRange does not select a spawn in another room.
+
+### Details
+Live hydralisk diagnostics omitted the spawn result while all home spawns were remote. Added a regression with null from findClosestByRange; the initial return-home logic failed. Fall back to the home colony's first spawn for cross-room travel.
+
+### Metadata
+- Reproducible: yes
+- Related Files: src/overlords/defense/outpostDefense.ts, tests/outpost-controller-defense.test.ts
+
+---
+
+## [ERR-20261110-HCS] Screeps console diagnostic length
+
+**Logged**: 2026-11-10T10:02:01.624Z
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+A large one-off console diagnostic was rejected with expression size is too large.
+
+### Resolution
+Reduced the expression to the needed room, combat demand, safeSince and surplus names. Avoid echoing full console API payloads; print only queued status. No gameplay changes resulted from the rejected expression.
+
+---
+
+## [ERR-20261110-API-PATH] Screeps API base path normalization
+
+**Logged**: 2026-11-10T10:14:30.216896+00:00
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+Normalize the configured root path before appending Screeps API endpoints.
+
+### Error
+`Unexpected token '<' ... is not valid JSON`
+
+### Context
+A read-only battle assessment interpolated configuration path `/` before `/api/`, producing `//api/` and receiving the frontend HTML instead of JSON. Normalizing the path and querying `/api/` returned current room, Memory and market data successfully.
+
+### Suggested Fix
+Use URL construction and strip leading/trailing path slashes as scripts/upload.cjs already does. Inspect status and content type before JSON parsing. Keep authentication headers and unrelated account fields out of output.
+
+### Metadata
+- Reproducible: yes
+- Related Files: scripts/upload.cjs, screeps.json
+- Tags: screeps, api, path, readonly-assessment
+
+---

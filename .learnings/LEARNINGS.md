@@ -141,3 +141,70 @@ Keep credentials out of output. Distinguish gross bid-depth valuation from a liq
 - See Also: ERR-20261106-CONSOLE-SIZE
 
 ---
+
+## [LRN-20261110-HYD] correction
+
+**Logged**: 2026-11-10T10:00:11.959Z
+**Priority**: medium
+**Status**: resolved
+**Area**: backend
+
+### Summary
+Several peaceful defenders do not prove duplicate spawning; repeated enemy visits may leave several legitimate reinforcements.
+
+### Details
+The user identified recurring harassment as an alternative explanation for three E58S44 hydralisks. Live diagnostics showed no spawn requests, different birth times (196 and 447 ticks apart), and a refreshed safeSince value during investigation. Keep confirmed behavior defects (unconditional idle adoption and no peacetime downsizing) separate from unproven spawn history.
+
+### Suggested Action
+Inspect demand and arrival history before claiming over-spawning. Preserve threat-driven reinforcements and require a quiet period before downsizing.
+
+### Metadata
+- Source: user_feedback
+- Related Files: src/overlords/defense/outpostDefense.ts
+
+---
+
+## [LRN-20261110-E57S44] correction
+
+**Logged**: 2026-11-10T10:24:19.697938+00:00
+**Priority**: medium
+**Status**: resolved
+**Area**: backend
+
+### Summary
+Use the user's empirical tower-draining and prior engagement evidence when evaluating E57S44.
+
+### Details
+The user reported prior probe attacks against pcunning, observed exposed remote harvesting creeps, and confirmed that its tower AI spent all tower energy. This raises the feasibility of a capped unboosted border-drain then demolition raid. Assess this as escalation of prior engagement. Preserve the distinction between tower exhaustion and a lasting supply blockade: a later read-only snapshot at tick 84185217 showed tower (11,14) refilled from 278 to 548 while storage and terminal were still empty. Safe mode remained inactive with four activations available.
+
+### Suggested Action
+Treat prior tower exhaustion as user-provided evidence, check current refill and defense response, and separate limited raid budgets from full capture and complete loot hauling. No game orders were issued.
+
+### Metadata
+- Source: user_feedback
+- Tags: screeps, combat-assessment, empirical-evidence, tower-drain
+
+---
+
+## [LRN-20261110-RAID-CPU] best_practice
+
+**Logged**: 2026-11-10T10:51:39.495468+00:00
+**Priority**: medium
+**Status**: resolved
+**Area**: backend
+
+### Summary
+Reserve CPU through a budgeted raid and its withdrawal; validate eligibility again immediately before spawning.
+
+### Details
+The E57S44 order was accepted at tick 84185519, then ordinary pixel generation consumed the CPU bucket at tick 84185530. The initial custom 1500-bucket recruitment gate delayed the queued medic. Active limited-raid flags now suppress pixel production through withdrawal without changing the independent user pause setting, and recruitment follows the existing main-loop 100-bucket floor. A regression also caught queued breakers remaining eligible after tower refilling; execution-time validation now checks role-specific phase and live vision as well as the cumulative budget.
+
+### Suggested Action
+Keep cost reservations durable across uncertain spawn outcomes, charge native home-tower healing against the same cap, and compare unrelated compiled modules with the live backup before deployment. Current unit, bundle, lint, format, type and deprecated-API checks pass.
+
+### Metadata
+- Source: error
+- Related Files: src/strategy/limitedRaid.ts, src/overlords/offense/limitedRaid.ts, src/hiveClusters/hatchery.ts, src/utilities/pixels.ts, tests/limited-raid.test.ts
+- Tags: screeps, raid, budget, spawn-queue, cpu
+
+---

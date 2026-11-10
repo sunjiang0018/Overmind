@@ -7,6 +7,7 @@ import { constants } from "./helpers/constants";
 import { classMembers } from "./helpers/source";
 import * as native from "../src/utilities/native";
 import type { TestScope } from "./helpers/types";
+import { createGameRuntime } from "./helpers/game-runtime";
 
 function linkRuntime(storageFirst = true) {
   const code = ts.transpileModule(fs.readFileSync("src/logistics/LinkNetwork.ts", "utf8"), {
@@ -16,6 +17,7 @@ function linkRuntime(storageFirst = true) {
   const deps: TestScope = {
     "../profiler/decorator": { profile: <T>(x: T) => x },
     "../utilities/native": native,
+    "../game/Structures": createGameRuntime().load("Structures"),
   };
   new Function("scope", `with(scope){return function(exports,require){${code}}}`)(constants)(
     out,

@@ -8,6 +8,7 @@ import { log } from "../console/log";
 import { CombatIntel } from "../intel/CombatIntel";
 import { WorkerOverlord } from "../overlords/core/worker";
 import { colonyDefenseTarget } from "../strategy/colonyDefense";
+import { healWithRaidBudget } from "../strategy/limitedRaid";
 import { profile } from "../profiler/decorator";
 import { CombatTargeting } from "../targeting/CombatTargeting";
 import { HiveCluster } from "./_HiveCluster";
@@ -223,7 +224,8 @@ export class SporeCrawler extends HiveCluster {
     );
     if (closestDamagedAlly) {
       for (const tower of this.towers) {
-        tower.heal(closestDamagedAlly);
+        if (healWithRaidBudget(tower, closestDamagedAlly) === undefined)
+          tower.heal(closestDamagedAlly);
       }
       return;
     }
