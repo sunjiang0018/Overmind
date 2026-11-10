@@ -1,0 +1,1531 @@
+{
+  "flag": "limitedRaid:E57S44:first",
+  "shard": "shard3",
+  "home": "E58S42",
+  "target": "E57S44",
+  "authorization": "Current attrition operation authorized to spend at most 30000 energy cumulatively, including all previous commitments. User explicitly chose additional medics and a second tank. No ledger reset or automatic renewal.",
+  "previousOperation": {
+    "version": 1,
+    "target": "E57S44",
+    "owner": "pcunning",
+    "budget": 10000,
+    "created": 84185519,
+    "deadline": 84188519,
+    "phase": "complete",
+    "route": ["E58S42", "E58S43", "E58S44", "E57S44"],
+    "entry": {
+      "x": 48,
+      "y": 25,
+      "roomName": "E57S44"
+    },
+    "staging": {
+      "x": 2,
+      "y": 25,
+      "roomName": "E58S44"
+    },
+    "receipts": [
+      {
+        "name": "raid_medic_0",
+        "role": "medic",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84185740,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_tank_0",
+        "role": "tank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84185783,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_tank_0",
+        "role": "tank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84185784,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_tank_0",
+        "role": "tank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84185785,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_interceptor_0",
+        "role": "interceptor",
+        "cost": 2300,
+        "parts": 20,
+        "tick": 84185912,
+        "state": "spawned",
+        "result": 0
+      }
+    ],
+    "status": {
+      "tick": 84186376,
+      "spent": 5730,
+      "remaining": 4270,
+      "units": 0,
+      "phase": "complete"
+    },
+    "tankRecovering": false,
+    "drainStarted": 84186039,
+    "lastProgress": 84186042,
+    "lastSeen": 84186065,
+    "towerEnergy": 2328,
+    "minimumTowerEnergy": 1728,
+    "stopReason": "enemy reinforcement in E57S44: Def_6041_0",
+    "stoppedAt": 84186085,
+    "finishedAt": 84186376
+  },
+  "order": {
+    "version": 1,
+    "target": "E57S44",
+    "owner": "pcunning",
+    "budget": 30000,
+    "tactics": "attrition",
+    "phase": "complete",
+    "route": ["E58S42", "E58S43", "E58S44", "E57S44"],
+    "entry": {
+      "x": 48,
+      "y": 25,
+      "roomName": "E57S44"
+    },
+    "staging": {
+      "x": 2,
+      "y": 25,
+      "roomName": "E58S44"
+    },
+    "receipts": [
+      {
+        "name": "raid_medic_0",
+        "role": "medic",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84187200,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_tank_0",
+        "role": "tank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84187242,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_interceptor_0",
+        "role": "interceptor",
+        "cost": 2300,
+        "parts": 20,
+        "tick": 84187368,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_medic_1",
+        "role": "medic",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84188380,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_tank_1",
+        "role": "tank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84188674,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_interceptor_1",
+        "role": "interceptor",
+        "cost": 2300,
+        "parts": 20,
+        "tick": 84188800,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_medic_0",
+        "role": "medic",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84189471,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_tank_0",
+        "role": "tank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84189800,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_interceptor_0",
+        "role": "interceptor",
+        "cost": 2300,
+        "parts": 20,
+        "tick": 84190133,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190193,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190194,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190195,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190196,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190197,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190198,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190199,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190200,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190201,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190202,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190203,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190204,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190205,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190206,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190207,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190208,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190209,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190210,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190211,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190212,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190213,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190214,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190215,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190216,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190217,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190218,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190219,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190220,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190221,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190222,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190223,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicA_0",
+        "role": "supportMedicA",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190224,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190266,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190267,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190268,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190269,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190270,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190271,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190272,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190273,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190274,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190275,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190276,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190277,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190278,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190279,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190280,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190281,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190282,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190283,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190284,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190285,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190286,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190287,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190288,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190289,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190290,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190291,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190292,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190293,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190294,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190295,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190296,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicB_0",
+        "role": "supportMedicB",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190297,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190339,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190340,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190341,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190342,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190343,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190344,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190345,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190346,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190347,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190348,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190349,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190350,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190351,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190352,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190353,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190354,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190355,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190356,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190357,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190358,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190359,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190360,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190361,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190362,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190363,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190364,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190365,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190366,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190367,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190368,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190369,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190370,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190371,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190372,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190373,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190374,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190375,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190376,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190377,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190378,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190379,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190380,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190381,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190382,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190383,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190384,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_supportMedicC_0",
+        "role": "supportMedicC",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190385,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190427,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190428,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190429,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190430,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190431,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190432,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190433,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190434,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190435,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190436,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190437,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190438,
+        "state": "failed",
+        "result": -6
+      },
+      {
+        "name": "raid_extraTank_0",
+        "role": "extraTank",
+        "cost": 1330,
+        "parts": 42,
+        "tick": 84190439,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_medic_1",
+        "role": "medic",
+        "cost": 2100,
+        "parts": 14,
+        "tick": 84190565,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_breaker_0",
+        "role": "breaker",
+        "cost": 2250,
+        "parts": 30,
+        "tick": 84190948,
+        "state": "spawned",
+        "result": 0
+      },
+      {
+        "name": "raid_skirmisher_0",
+        "role": "skirmisher",
+        "cost": 600,
+        "parts": 6,
+        "tick": 84191233,
+        "state": "spawned",
+        "result": 0
+      }
+    ],
+    "operationId": "E57S44-attrition-20261110",
+    "created": 84186606,
+    "deadline": 84194441,
+    "status": {
+      "tick": 84191565,
+      "spent": 29770,
+      "remaining": 230,
+      "units": 0,
+      "phase": "complete"
+    },
+    "tankRecovering": false,
+    "drainStarted": 84187500,
+    "lastProgress": 84191402,
+    "lastSeen": 84191404,
+    "towerEnergy": 324,
+    "minimumTowerEnergy": 34,
+    "replacing": [],
+    "retiring": [],
+    "reinforcements": true,
+    "targetHits": {
+      "id": "6aee7c2515f4661f670bf71f",
+      "hits": 8411
+    },
+    "tankEntered": 84191404,
+    "stopReason": "enemy safe mode",
+    "stoppedAt": 84191405,
+    "finishedAt": 84191565
+  },
+  "policy": {
+    "previousSpent": 5730,
+    "maximumCombinedSpend": 35730,
+    "replacements": "Request relief below 500 TTL; explicitly retain the veteran on duty regardless of enumeration order until healthy relief arrives within three tiles of staging. Military veterans continue to the end of their paid lifetime if relief is delayed. Loaded cargo units preserve a 200-tick return reserve. Receipts and support healing stay in the same cumulative 30000 cap.",
+    "arena": "E58S44",
+    "tactics": [
+      "Tank baits at the target border, recovers outside tower fire, and advances toward defenders after all towers are below the energy needed to fire",
+      "Interceptor attacks pursuing military units and kites within the adjacent room",
+      "Medic heals and avoids nearby defenders",
+      "Wounded units recover locally; tank resumes when core team is healthy",
+      "No abort merely for target defenders or tower refills",
+      "Hold demolition and hauling while defenders remain",
+      "Wait for interceptor within three tiles of staging before tank departure",
+      "Tower safety means every individual tower has less than TOWER_ENERGY_COST, not exactly zero energy"
+    ],
+    "retainedStops": [
+      "safe mode",
+      "military reinforcements earlier on the approach",
+      "hostile power creeps",
+      "ownership change",
+      "budget/accounting uncertainty",
+      "operation deadline; individual lifetime reserve triggers rotation rather than whole-raid withdrawal"
+    ],
+    "homeEnergyRecruitmentFloor": 150000,
+    "boosts": false,
+    "spawnPriority": 505,
+    "spawnPriorityPolicy": "Behind queens, defenses, first transport, miners and essential workers; before routine transport replacements",
+    "operationEnergyCap": 30000,
+    "reinforcements": {
+      "enabled": true,
+      "medics": 4,
+      "tanks": 2,
+      "interceptors": 1,
+      "coreBodyEnergy": 13360,
+      "fullWaveWithBreakerAndHauler": 17110,
+      "stations": {
+        "supportMedicA": {
+          "x": 1,
+          "y": 25
+        },
+        "supportMedicB": {
+          "x": 3,
+          "y": 26
+        },
+        "supportMedicC": {
+          "x": 1,
+          "y": 26
+        },
+        "extraTank": {
+          "x": 2,
+          "y": 26
+        },
+        "breaker": {
+          "x": 2,
+          "y": 24
+        }
+      },
+      "terrain": "All four support stations verified plain in E58S44 via server terrain readback",
+      "finalRangeGuard": {
+        "role": "skirmisher",
+        "energy": 600,
+        "rangedAttack": 3,
+        "move": 3,
+        "arenaOnly": true,
+        "reason": "Original interceptor lost after target tower refill; replacement stays in E58S44 while towers exist"
+      }
+    },
+    "recruitmentBudgetPolicy": "Deny unaffordable spawns and optional home healing, keep paid field units active; stop for budget only when no viable attackers or affordable reinforcements remain",
+    "borderProbes": "Only at the entry, against at most two distant charged towers, with at least three healthy nearby medics. Retreat at half health or when a defender approaches; another healthy tank may sustain the probe."
+  },
+  "deployment": {
+    "branch": "main",
+    "verified": true,
+    "sha256": "204e70aab48a82b0e18c6a76886ec3881de3adcb101c8202ecb45af48eae27cb",
+    "verifiedAt": "2026-11-10T17:52:29.060Z"
+  },
+  "validation": {
+    "unitTests": 215,
+    "bundleTests": 20,
+    "checks": "format, lint, types and deprecated API scan passed",
+    "budgetLedger": "Final authenticated game-console snapshot: 29770 committed, 230 remaining, zero live assigned creeps"
+  },
+  "lastReadback": {
+    "at": "2026-11-10T18:18:29.657Z",
+    "tick": 84191719,
+    "phase": "complete",
+    "stopReason": "enemy safe mode",
+    "stoppedAt": 84191405,
+    "finishedAt": 84191565,
+    "budget": 30000,
+    "spent": 29770,
+    "remaining": 230,
+    "units": 0,
+    "safeModeEndsAtTick": 84211404,
+    "safeModeRemainingTicksAtReadback": 19685
+  },
+  "control": {
+    "manualRetreat": "Memory.flags['limitedRaid:E57S44:first'].raid.phase='retreating'"
+  },
+  "monitoring": {
+    "previousSessions": [
+      {
+        "startedAt": "2026-11-10T12:09:13.666Z",
+        "endedAt": "2026-11-10T13:52:47.353Z",
+        "observations": 379,
+        "combatObservationStart": "2026-11-10T13:10:10.363Z",
+        "combatObservationStartTick": 84187504,
+        "lastTick": 84188087,
+        "observedTankEntries": 24,
+        "minimumObservedTowerEnergy": 588,
+        "confirmedDeparture": true,
+        "confirmedNoEnemyTriggeredStop": true,
+        "confirmedCombat": false,
+        "arenaDefenderObservations": 0,
+        "result": "Squad deployed and repeatedly drains towers without enemy-triggered withdrawal. Defender remained in the target core; luring into E58S44 was NOT verified. Opponent repeatedly refills towers. Live raid remains active within the authorized budget.",
+        "fixes": [
+          "Attrition receives spawn priority 505 ahead of routine transport replacement; essential economy remains ahead",
+          "Tank waits for interceptor firing position, not merely presence in the staging room",
+          "Distant defenders do not interrupt the continuous tower observation window",
+          "Tank attacks adjacent gate while baiting and advances after it opens",
+          "Per-tower energy below 10 is treated as unable to fire, even if the sum of residues exceeds 10"
+        ]
+      }
+    ],
+    "resumedAt": "2026-11-10T14:04:46.335Z",
+    "target": "Wait for towers to become unable to fire, advance and verify a defender fought in E58S44",
+    "confirmedCombat": false,
+    "movementStall": {
+      "diagnosedAtTick": 84188459,
+      "cause": "New medic was enumerated before its still-serving veteran; tank incorrectly waited for the remote new medic",
+      "fixedAtTick": 84188481,
+      "fix": "Select a non-retiring veteran explicitly until a staged relief has taken over; regression test reverses group enumeration",
+      "liveVerified": "Tank crossed into target and returned wounded after correction; new medic later took over and veteran returned home"
+    },
+    "reinforcementOrderAt": "2026-11-10T16:15:00.250Z",
+    "endedAt": "2026-11-10T18:18:29.657Z",
+    "resultCode": "enemy-safe-mode",
+    "goalAchieved": false,
+    "arenaDefenderObservations": 0,
+    "confirmedDisabledTowerWindow": {
+      "at": "2026-11-10T17:01:14.471Z",
+      "tick": 84190667,
+      "energyByTower": [9, 6, 6, 8, 1, 4],
+      "phase": "breaching"
+    },
+    "result": "Verified towers temporarily unable to fire and entry demolition attempted. No defender was observed fighting in E58S44. Enemy safe mode activated at 84191404; controller withdrew at 84191405. Surviving forces returned and were recycled; operation complete at 84191565, no assigned live creeps remain. The entry rampart and six towers still existed.",
+    "httpMemoryDailyLimit": {
+      "limit": 1440,
+      "resetAtUnix": 1794388168,
+      "pollingStopped": true
+    },
+    "finalReadTransport": "Authenticated WebSocket reading a private serialized game-console status snapshot; no rate-limit account settings changed"
+  },
+  "budgetHistory": [
+    {
+      "budget": 10000,
+      "previousObservedSpend": 5730
+    },
+    {
+      "budget": 20000,
+      "amendedAt": "2026-11-10T14:08:35.208Z",
+      "includesExistingSpend": true
+    },
+    {
+      "budget": 30000,
+      "amendedAt": "2026-11-10T16:08:04.593Z",
+      "includesExistingSpend": true
+    }
+  ]
+}

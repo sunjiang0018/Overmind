@@ -6,6 +6,8 @@ import { NotifierPriority } from "../Notifier";
 
 interface DirectiveInvasionDefenseMemory extends FlagMemory {
   persistent?: boolean;
+  idlePos?: Coord;
+  controllerGuard?: boolean;
   created: number;
   safeSince: number;
 }

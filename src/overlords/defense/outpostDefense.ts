@@ -31,6 +31,14 @@ export class OutpostDefenseOverlord extends CombatOverlord {
   }
 
   private handleCombat(zerg: CombatZerg) {
+    const controllerGuard =
+      this.directive.memory.controllerGuard && zerg.memory.role == Roles.ranged;
+    if (controllerGuard && zerg.needsToRecover()) {
+      zerg.healSelfIfPossible();
+      delete zerg.memory._go;
+      zerg.recover();
+      return;
+    }
     if (
       this.room &&
       zerg.room.name == this.pos.roomName &&
@@ -50,8 +58,19 @@ export class OutpostDefenseOverlord extends CombatOverlord {
         return;
       }
     }
+    if (controllerGuard) {
+      // This guard intercepts CLAIM units and returns to its post, without medic duties.
+      zerg.healSelfIfPossible();
+      const idlePos = this.directive.memory.idlePos || this.pos;
+      zerg.goTo(new RoomPosition(idlePos.x, idlePos.y, this.pos.roomName), { range: 0 });
+      return;
+    }
     if (this.room && getRoomHostiles(this.room).length == 0) {
-      zerg.doMedicActions(this.room.name);
+      const isDoingMedicActions = zerg.doMedicActions(this.room.name);
+      const idlePos = this.directive.memory.idlePos;
+      if (!isDoingMedicActions && idlePos && zerg.memory.role == Roles.ranged) {
+        zerg.goTo(new RoomPosition(idlePos.x, idlePos.y, this.pos.roomName), { range: 0 });
+      }
     } else {
       if (zerg.room.name == this.pos.roomName && !zerg.needsToRecover()) delete zerg.memory._go;
       zerg.autoSkirmish(this.pos.roomName);

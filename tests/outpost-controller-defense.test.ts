@@ -26,7 +26,13 @@ function defender(
   ownRanged = 0,
   enemy = { attack: 0, ranged: 0, heal: 0 },
   inspect?: (subject: TestScope) => void,
-  opts: { hostiles?: number; persistent?: boolean; safeSince?: number } = {},
+  opts: {
+    hostiles?: number;
+    persistent?: boolean;
+    safeSince?: number;
+    idlePos?: Coord;
+    controllerGuard?: boolean;
+  } = {},
 ) {
   const code = ts.transpileModule(
     fs.readFileSync("src/overlords/defense/outpostDefense.ts", "utf8"),
@@ -70,16 +76,38 @@ function defender(
       CombatIntel: { getMyCombatPotentials: () => ({ attack: 0, ranged: ownRanged, heal: 0 }) },
     },
   };
-  new Function("exports", "require", "RANGED_ATTACK", "Game", "CREEP_LIFE_TIME", code)(
+  new Function(
+    "exports",
+    "require",
+    "RANGED_ATTACK",
+    "Game",
+    "CREEP_LIFE_TIME",
+    "RoomPosition",
+    code,
+  )(
     out,
     (n: string) => deps[n] || {},
     constants.RANGED_ATTACK,
     { time: 200 },
     constants.CREEP_LIFE_TIME,
+    class {
+      constructor(
+        public x: number,
+        public y: number,
+        public roomName: string,
+      ) {}
+    },
   );
   const o = Object.create(out.OutpostDefenseOverlord.prototype);
   Object.assign(o, {
-    directive: { memory: { persistent: !!opts.persistent, safeSince: opts.safeSince ?? 0 } },
+    directive: {
+      memory: {
+        persistent: !!opts.persistent,
+        safeSince: opts.safeSince ?? 0,
+        idlePos: opts.idlePos,
+        controllerGuard: opts.controllerGuard,
+      },
+    },
     room: {},
     spawnGroup: { colonies: [{ room: { energyCapacityAvailable: 2300 } }] },
     zerglings: [],
@@ -148,6 +176,178 @@ test("persistent contested outpost replaces a dead defender even against carrier
   assert.deepEqual(defender(0, 0, undefined, undefined, { persistent: true }), ["ranged"]));
 test("persistent outpost stops reinforcements when enemies leave", () =>
   assert.deepEqual(defender(0, 0, undefined, undefined, { persistent: true, hostiles: 0 }), []));
+test("an idle position does not change the original peacetime reinforcement policy", () =>
+  assert.deepEqual(
+    defender(0, 0, undefined, undefined, {
+      persistent: true,
+      hostiles: 0,
+      idlePos: { x: 25, y: 48 },
+    }),
+    [],
+  ));
+test("an idle position changes only idle movement and preserves medic actions", () => {
+  for (const doingMedic of [false, true]) {
+    defender(
+      0,
+      7,
+      undefined,
+      (o) => {
+        o.pos = { roomName: "E58S44" };
+        o.room = { name: "E58S44" };
+        const calls: unknown[][] = [];
+        const memory: TestScope = { role: "hydralisk" };
+        o.handleCombat({
+          memory,
+          room: { name: "E58S44" },
+          getActiveBodyparts: () => 7,
+          needsToRecover: () => false,
+          pos: { findClosestByRange: () => undefined },
+          doMedicActions: (room: string) => {
+            calls.push(["medic", room]);
+            return doingMedic;
+          },
+          goTo: (target: RoomPosition, options: unknown) =>
+            calls.push(["move", target.x, target.y, target.roomName, options]),
+        });
+        assert.deepEqual(
+          calls,
+          doingMedic
+            ? [["medic", "E58S44"]]
+            : [
+                ["medic", "E58S44"],
+                ["move", 25, 48, "E58S44", { range: 0 }],
+              ],
+        );
+        assert.equal(memory._go, undefined);
+      },
+      { persistent: true, hostiles: 0, idlePos: { x: 25, y: 48 } },
+    );
+  }
+});
+test("a sentry leaves its post to pursue ordinary hostiles using normal skirmishing", () => {
+  defender(
+    0,
+    7,
+    undefined,
+    (o) => {
+      o.pos = { roomName: "E58S44" };
+      const memory: TestScope = { role: "hydralisk", _go: { priority: 0 } };
+      const calls: string[] = [];
+      o.handleCombat({
+        memory,
+        room: { name: "E58S44" },
+        getActiveBodyparts: () => 7,
+        needsToRecover: () => false,
+        pos: { findClosestByRange: () => undefined },
+        autoSkirmish: (room: string) => calls.push(room),
+      });
+      assert.deepEqual(calls, ["E58S44"]);
+      assert.equal(memory._go, undefined);
+    },
+    { persistent: true, idlePos: { x: 25, y: 48 } },
+  );
+});
+test("a sentry pursues controller attackers instead of staying at the entrance", () => {
+  defender(
+    1,
+    7,
+    undefined,
+    (o) => {
+      o.pos = { roomName: "E58S44" };
+      const memory: TestScope = { role: "hydralisk", _go: { priority: 0 } };
+      const calls: string[] = [];
+      o.handleCombat({
+        memory,
+        room: { name: "E58S44" },
+        getActiveBodyparts: () => 7,
+        needsToRecover: () => false,
+        pos: { findClosestByRange: (targets: unknown[]) => targets[0] },
+        autoRanged: () => calls.push("attack"),
+        healSelfIfPossible() {},
+        testCombatMove: () => calls.push("pursue"),
+      });
+      assert.deepEqual(calls, ["attack", "pursue"]);
+      assert.equal(memory._go, undefined);
+    },
+    { persistent: true, idlePos: { x: 25, y: 48 } },
+  );
+});
+test("controller guard ignores medic duties and non-CLAIM hostiles, retaining self-healing", () => {
+  for (const hostiles of [0, 1]) {
+    defender(
+      0,
+      7,
+      undefined,
+      (o) => {
+        o.pos = { roomName: "E58S44" };
+        const calls: unknown[][] = [];
+        o.handleCombat({
+          memory: { role: "hydralisk" },
+          room: { name: "E58S44" },
+          getActiveBodyparts: () => 7,
+          needsToRecover: () => false,
+          pos: { findClosestByRange: () => undefined },
+          healSelfIfPossible: () => calls.push(["selfHeal"]),
+          goTo: (target: RoomPosition, options: unknown) =>
+            calls.push(["move", target.x, target.y, target.roomName, options]),
+        });
+        assert.deepEqual(calls, [["selfHeal"], ["move", 25, 48, "E58S44", { range: 0 }]]);
+      },
+      { controllerGuard: true, hostiles, idlePos: { x: 25, y: 48 } },
+    );
+  }
+});
+test("controller guard pursues CLAIM threats with normal threat avoidance", () => {
+  defender(
+    1,
+    7,
+    undefined,
+    (o) => {
+      o.pos = { roomName: "E58S44" };
+      const memory: TestScope = { role: "hydralisk", _go: { path: "old" } };
+      const calls: unknown[][] = [];
+      o.handleCombat({
+        memory,
+        room: { name: "E58S44" },
+        getActiveBodyparts: () => 7,
+        needsToRecover: () => false,
+        pos: { findClosestByRange: (targets: unknown[]) => targets[0] },
+        autoRanged: (targets: unknown[], mass: boolean) =>
+          calls.push(["attack", targets.length, mass]),
+        healSelfIfPossible: () => calls.push(["selfHeal"]),
+        testCombatMove: (approach: unknown[], avoid: unknown[]) =>
+          calls.push(["pursue", approach, avoid]),
+      });
+      assert.deepEqual(calls, [
+        ["attack", 1, false],
+        ["selfHeal"],
+        ["pursue", [{ pos: { x: 7, y: 11 }, range: 3 }], ["danger-zone"]],
+      ]);
+      assert.equal(memory._go, undefined);
+    },
+    { controllerGuard: true, idlePos: { x: 25, y: 48 } },
+  );
+});
+test("controller guard retains self-preservation without taking medic tasks", () => {
+  defender(
+    1,
+    7,
+    undefined,
+    (o) => {
+      const calls: string[] = [];
+      const memory: TestScope = { role: "hydralisk", _go: { path: "old" } };
+      o.handleCombat({
+        memory,
+        needsToRecover: () => true,
+        healSelfIfPossible: () => calls.push("selfHeal"),
+        recover: () => calls.push("recover"),
+      });
+      assert.deepEqual(calls, ["selfHeal", "recover"]);
+      assert.equal(memory._go, undefined);
+    },
+    { controllerGuard: true },
+  );
+});
 test("persistent outpost does not repeatedly spawn when a ranged defender already exists", () =>
   assert.deepEqual(defender(0, 1, undefined, undefined, { persistent: true }), []));
 

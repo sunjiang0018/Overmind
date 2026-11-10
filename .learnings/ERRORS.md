@@ -526,3 +526,77 @@ Use URL construction and strip leading/trailing path slashes as scripts/upload.c
 - Tags: screeps, api, path, readonly-assessment
 
 ---
+
+## [ERR-20261110-001] bundle class extraction
+
+**Logged**: 2026-11-10T13:06:00Z
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+Bundled Overmind classes are named class expressions assigned to variables.
+
+### Error
+An AST search limited to ClassDeclaration could not find OutpostDefenseOverlord.
+
+### Suggested Fix
+Accept ClassExpression as well as ClassDeclaration, require exactly one match, and parse the patched bundle before uploading. The deployment replaced only the defense class in freshly read live code.
+
+---
+
+## [ERR-20261111-RAID-COVER] covered demolition fallback
+
+**Logged**: 2026-11-11
+**Priority**: medium
+**Status**: resolved
+**Area**: tests
+
+### Summary
+Regression testing caught a formation-follow fallback that could advance the breaker without its local escort.
+
+### Error
+The covered-demolition test rejected the escort-loss case: dismantling was denied, but fallback movement still entered the target room.
+
+### Context
+New breach-and-lure tactics allow following the tank toward the next work site before direct dismantling is possible.
+
+### Suggested Fix
+Require the following movement to retain a healthy tank screen, active medical cover within two tiles, cold towers and a local defender buffer, just like direct demolition.
+
+### Metadata
+- Reproducible: yes
+- Related Files: src/overlords/offense/limitedRaid.ts, tests/limited-raid.test.ts
+
+### Resolution
+- Notes: Added the missing movement gates; all 228 unit tests and 20 bundle tests passed before deployment.
+
+---
+
+## [ERR-20261111-RAID-ARM] native console order preparation
+
+**Logged**: 2026-11-11
+**Priority**: medium
+**Status**: resolved
+**Area**: infra
+
+### Summary
+Native console payload size and missing target-room vision rejected the initial scheduled-order registration.
+
+### Error
+A 2,089-character console expression was rejected as too large. The shortened expression then reported `Could not access room E57S44` while creating the flag at the unseen target.
+
+### Context
+The previous force had already recovered. HTTP Memory polling remained paused because its daily quota was exhausted.
+
+### Suggested Fix
+Use a short, idempotent expression and a directive flag in a visible owned room; keep target and route explicitly in operation memory. Read the registered controller through the native authenticated WebSocket rather than altering account rate limits.
+
+### Resolution
+- Notes: An 829-character expression armed the operation at the home flag. Native tick 84196174 verified the controller, future launch gate, canRecruit=false, empty receipts, zero assigned units, and the unchanged prior 29,770 ledger.
+
+### Metadata
+- Reproducible: yes
+- Related Files: plans/E57S44/next-raid.json
+
+---

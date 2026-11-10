@@ -1,6 +1,20 @@
 import type { OverlordMemory } from "../overlords/Overlord";
 
-export const RAID_ROLES = ["medic", "tank", "interceptor", "breaker", "hauler"] as const;
+export const RAID_REINFORCEMENT_ROLES = [
+  "supportMedicA",
+  "supportMedicB",
+  "supportMedicC",
+  "extraTank",
+] as const;
+export const RAID_ROLES = [
+  "medic",
+  "tank",
+  "interceptor",
+  ...RAID_REINFORCEMENT_ROLES,
+  "breaker",
+  "hauler",
+  "skirmisher",
+] as const;
 export type RaidRole = (typeof RAID_ROLES)[number];
 export type RaidPhase =
   | "assembling"
@@ -32,6 +46,44 @@ export interface LimitedRaidMemory extends OverlordMemory {
   entry: ProtoPos;
   staging: ProtoPos;
   receipts: RaidSpawnReceipt[];
+  tactics?: "attrition";
+  launch?: { notBefore: number; startedAt?: number };
+  breachAndLure?: { maxDepth: number; probeTicks: number };
+  lure?: {
+    mode:
+      | "draining"
+      | "opening"
+      | "probing"
+      | "fighting"
+      | "pulling"
+      | "arena"
+      | "pressure"
+      | "recovering";
+    since: number;
+    probeStarted?: number;
+    lastProbeEnded?: number;
+    attempts: number;
+    noPursuit: number;
+    defender?: string;
+    arenaSeenAt?: number;
+    arenaAttackAt?: number;
+    arenaAttackResult?: number;
+    arenaDamageObservedAt?: number;
+    arenaTarget?: { name: string; hits: number; tick: number };
+    reason?: string;
+    engagement?: {
+      tick: number;
+      canWin: boolean;
+      friendlyDamage: number;
+      enemyDamage: number;
+      enemyHealing: number;
+      killTicks: number;
+      survivalTicks: number;
+    };
+  };
+  reinforcements?: boolean;
+  replacing?: string[];
+  retiring?: string[];
   stopReason?: string;
   stoppedAt?: number;
   finishedAt?: number;
@@ -47,6 +99,7 @@ export interface LimitedRaidMemory extends OverlordMemory {
   delivered?: { [resource: string]: number };
   supportEnergy?: number;
   supportTowerTicks?: { [tower: string]: number };
+  recruitmentPaused?: { tick: number; role: RaidRole; remaining: number };
   status?: { tick: number; spent: number; remaining: number; units: number; phase: RaidPhase };
 }
 
@@ -55,8 +108,12 @@ export function raidBody(role: RaidRole): BodyPartConstant[] {
     Array<BodyPartConstant>(amount).fill(part);
   switch (role) {
     // Preserve the last MOVE and the threatening ATTACK part after front-loaded damage.
+    case "extraTank":
     case "tank":
       return [...parts(TOUGH, 20), ...parts(MOVE, 20), ATTACK, MOVE];
+    case "supportMedicA":
+    case "supportMedicB":
+    case "supportMedicC":
     case "medic":
       return [...parts(MOVE, 6), ...parts(HEAL, 7), MOVE];
     case "interceptor":
@@ -65,6 +122,8 @@ export function raidBody(role: RaidRole): BodyPartConstant[] {
       return [...parts(MOVE, 14), ...parts(WORK, 15), MOVE];
     case "hauler":
       return [...parts(CARRY, 20), ...parts(MOVE, 10)];
+    case "skirmisher":
+      return [...parts(MOVE, 2), ...parts(RANGED_ATTACK, 3), MOVE];
   }
 }
 
@@ -83,6 +142,10 @@ export function raidCommitted(memory: LimitedRaidMemory): number {
   );
 }
 
+export function raidBudgetLimit(memory: LimitedRaidMemory): number {
+  return Number.isFinite(memory.budget) && memory.budget > 0 ? Math.min(memory.budget, 30000) : 0;
+}
+
 /** Native home-tower healing is part of the same cap, even during withdrawal. */
 export function healWithRaidBudget(
   tower: StructureTower,
@@ -97,8 +160,8 @@ export function healWithRaidBudget(
   )
     return undefined;
   if (memory.supportTowerTicks?.[tower.id] === Game.time) return OK;
-  if (raidCommitted(memory) + TOWER_ENERGY_COST > Math.min(memory.budget, 10000)) {
-    stopRaid(memory, "budget limit");
+  if (raidCommitted(memory) + TOWER_ENERGY_COST > raidBudgetLimit(memory)) {
+    if (memory.tactics !== "attrition") stopRaid(memory, "budget limit");
     return ERR_NOT_ENOUGH_RESOURCES;
   }
   memory.supportEnergy = (memory.supportEnergy || 0) + TOWER_ENERGY_COST;
@@ -116,7 +179,16 @@ export function stopRaid(memory: LimitedRaidMemory, reason: string): void {
 }
 
 export function raidHasRole(memory: LimitedRaidMemory, role: RaidRole): boolean {
-  return memory.receipts.some((receipt) => receipt.role === role && receipt.state !== "failed");
+  return memory.receipts.some(
+    (receipt) =>
+      receipt.role === role &&
+      receipt.state !== "failed" &&
+      !memory.retiring?.includes(receipt.name) &&
+      !memory.replacing?.includes(receipt.name) &&
+      (memory.tactics !== "attrition" ||
+        receipt.state !== "spawned" ||
+        !!Game.creeps[receipt.name]),
+  );
 }
 
 export function reserveRaidSpawn(
@@ -137,14 +209,21 @@ export function reserveRaidSpawn(
     return false;
   }
   const cost = raidBodyCost(creep.body);
-  if (
-    !Number.isFinite(memory.budget) ||
-    memory.budget <= 0 ||
-    raidCommitted(memory) + cost > Math.min(memory.budget, 10000)
-  ) {
+  if (!Number.isFinite(memory.budget) || memory.budget <= 0) {
     stopRaid(memory, "budget limit");
     return false;
   }
+  if (raidCommitted(memory) + cost > raidBudgetLimit(memory)) {
+    if (memory.tactics === "attrition") {
+      memory.recruitmentPaused = {
+        tick: Game.time,
+        role,
+        remaining: Math.max(0, raidBudgetLimit(memory) - raidCommitted(memory)),
+      };
+    } else stopRaid(memory, "budget limit");
+    return false;
+  }
+  delete memory.recruitmentPaused;
   memory.receipts.push({
     name: creep.name,
     role,
@@ -169,6 +248,9 @@ export function settleRaidSpawn(memory: LimitedRaidMemory, name: string, result:
 }
 
 export function reconcileRaidSpawns(memory: LimitedRaidMemory): void {
+  // Names can be reused after recycling; never classify a later replacement as retired.
+  if (memory.retiring) memory.retiring = memory.retiring.filter((name) => !!Game.creeps[name]);
+  if (memory.replacing) memory.replacing = memory.replacing.filter((name) => !!Game.creeps[name]);
   if (
     !Array.isArray(memory.receipts) ||
     memory.receipts.some(
@@ -181,7 +263,7 @@ export function reconcileRaidSpawns(memory: LimitedRaidMemory): void {
     stopRaid(memory, "invalid cost ledger");
     return;
   }
-  if (raidCommitted(memory) > Math.min(memory.budget, 10000)) stopRaid(memory, "budget limit");
+  if (raidCommitted(memory) > raidBudgetLimit(memory)) stopRaid(memory, "budget limit");
   for (const receipt of memory.receipts) {
     if (receipt.state === "reserved" && Game.time > receipt.tick) {
       if (Game.creeps[receipt.name]) receipt.state = "spawned";
@@ -191,7 +273,7 @@ export function reconcileRaidSpawns(memory: LimitedRaidMemory): void {
       }
     }
     if (receipt.state === "spawned" && Game.time > receipt.tick + 1 && !Game.creeps[receipt.name]) {
-      stopRaid(memory, `lost ${receipt.role}; no replacements`);
+      if (memory.tactics !== "attrition") stopRaid(memory, `lost ${receipt.role}; no replacements`);
     }
   }
 }

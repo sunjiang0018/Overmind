@@ -208,3 +208,71 @@ Keep cost reservations durable across uncertain spawn outcomes, charge native ho
 - Tags: screeps, raid, budget, spawn-queue, cpu
 
 ---
+
+## [LRN-20261110-001] correction
+
+**Logged**: 2026-11-10T13:15:00Z
+**Priority**: medium
+**Status**: resolved
+**Area**: backend
+
+### Summary
+An order to guard an entrance sets a home post; it does not authorize disabling pursuit.
+
+### Details
+The user corrected the strict stationary behavior. Preserve normal pursuit, target selection, healing and recovery during combat, then return to the assigned entrance when the room is peaceful.
+
+### Suggested Action
+Treat guard positions as idle rally points unless the user explicitly requests a strict hold-position order.
+
+### Metadata
+- Source: user_feedback
+- Related Files: src/overlords/defense/outpostDefense.ts
+
+---
+
+## [LRN-20261110-002] correction
+
+**Logged**: 2026-11-10T14:07:07.578Z
+**Priority**: medium
+**Status**: resolved
+**Area**: backend
+
+### Summary
+Changing a hydralisk waiting location must preserve the complete existing defense task.
+
+### Details
+The user clarified that only the waiting location should change. Restore original healing, recovery, combat, yielding and reinforcement decisions. Add the idle destination only when original medic actions report no work; remove the strict hold and extra peacetime spawning policy.
+
+### Metadata
+- Source: user_feedback
+- Related Files: src/overlords/defense/outpostDefense.ts
+
+---
+
+## [LRN-20261111-E57-LURE] correction
+
+**Logged**: 2026-11-11
+**Priority**: high
+**Status**: resolved
+**Area**: backend
+
+### Summary
+Border tower draining does not demonstrate luring; fight a winnable contact before retreating.
+
+### Details
+The 29,770-energy E57S44 operation observed three 5-ATTACK defenders only at x=4..13, while tanks reached x=48..49 and the breaker only x=49. The entry rampart survived. The old five-tile retreat and room-wide defender veto on dismantling prevented a supported fight and productive gate pressure. The user explicitly corrected automatic contact retreat: fight when local force can win; retreat when it cannot. Core patrols suggest a defensive leash but do not prove the opponent chase rule.
+
+### Suggested Action
+Use an opt-in screened breach with mobile healing and ranged support. Evaluate active and boosted body parts, local attack reach, hostile healing and the weakest friendly survival margin. Do not count remote support or simultaneous ranged shooting and ranged healing. Distinguish arena sightings, accepted attack intents and observed hit loss. Keep a new operation ledger separate and suppress spawning until the native safe-mode expiry; preserve old receipts. Forward progress still risks losses on tower refill.
+
+### Metadata
+- Source: user_feedback
+- Related Files: src/overlords/offense/limitedRaid.ts, src/strategy/limitedRaid.ts, tests/limited-raid.test.ts, plans/E57S44/next-raid.json
+- Tags: screeps, luring, local-combat, budget, safe-mode
+- See Also: LRN-20261110-E57S44, LRN-20261110-RAID-CPU
+
+### Resolution
+- Notes: Regression coverage checks winning and losing fights, destroyed and boosted parts, remote support exclusion, covered demolition, tower refill and future launch. Runtime combat effectiveness remains to be observed in the next operation.
+
+---

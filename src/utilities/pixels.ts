@@ -4,8 +4,16 @@ export function generatePixelIfFull(): void {
   // Keep the CPU reserve until the explicitly ordered raid and its withdrawal finish.
   if (
     Object.values(Memory.flags || {}).some((flag) => {
-      const raid = (flag as FlagMemory & { raid?: { phase: string } }).raid;
-      return raid && raid.phase !== "complete";
+      const raid = (
+        flag as FlagMemory & {
+          raid?: { phase: string; launch?: { notBefore: number } };
+        }
+      ).raid;
+      return (
+        raid &&
+        raid.phase !== "complete" &&
+        (!raid.launch || Game.time >= raid.launch.notBefore - 100)
+      );
     })
   )
     return;
