@@ -273,6 +273,7 @@ Use an opt-in screened breach with mobile healing and ranged support. Evaluate a
 - See Also: LRN-20261110-E57S44, LRN-20261110-RAID-CPU
 
 ### Resolution
+- **Cancelled**: 2026-11-11. User revoked the next E57S44 attack before launch. The pending 30,000-energy operation spent zero; its flags, memory, plans and dedicated implementation were removed. This entry is historical evidence and grants no standing attack authorization.
 - Notes: Regression coverage checks winning and losing fights, destroyed and boosted parts, remote support exclusion, covered demolition, tower refill and future launch. Runtime combat effectiveness remains to be observed in the next operation.
 
 ---

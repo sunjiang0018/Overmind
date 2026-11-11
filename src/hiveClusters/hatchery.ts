@@ -33,7 +33,6 @@ import { difference, sum, sortBy, sortedIndex, remove, compact } from "../utilit
 
 const ERR_ROOM_ENERGY_CAPACITY_NOT_ENOUGH = -20;
 const ERR_SPECIFIED_SPAWN_BUSY = -21;
-const ERR_SPAWN_REQUEST_CANCELLED = -22;
 
 export interface SpawnRequest {
   setup: CreepSetup | CombatCreepSetup; // creep body generator to use
@@ -46,8 +45,6 @@ export interface SpawnRequest {
 export interface SpawnRequestOptions {
   spawn?: StructureSpawn; // allows you to specify which spawn to use; only use for high priority
   directions?: DirectionConstant[]; // StructureSpawn.spawning.directions
-  beforeSpawn?: (creep: ProtoCreep) => boolean;
-  onSpawnResult?: (creep: ProtoCreep, result: number) => void;
 }
 
 // interface SpawnOrder {
@@ -335,19 +332,12 @@ export class Hatchery extends HiveCluster {
       protoCreep.name = this.generateCreepName(protoCreep.name); // modify the creep name to make it unique
       protoCreep.memory.data.origin = spawnToUse.pos.roomName;
 
-      // Revalidate at execution time: an order can stop after it entered this tick's queue.
-      if (options.beforeSpawn && !options.beforeSpawn(protoCreep)) {
-        this.availableSpawns.unshift(spawnToUse);
-        return ERR_SPAWN_REQUEST_CANCELLED;
-      }
-
       // Spawn the creep
       const result = spawnToUse.spawnCreep(protoCreep.body, protoCreep.name, {
         memory: protoCreep.memory,
         energyStructures: this.energyStructures,
         directions: options.directions,
       });
-      options.onSpawnResult?.(protoCreep, result);
 
       if (result == OK) {
         // Creep has been successfully spawned; add cost into profiling
@@ -446,8 +436,6 @@ export class Hatchery extends HiveCluster {
           const result = this.spawnCreep(protoCreep, request.options);
           if (result == OK) {
             return result;
-          } else if (result == ERR_SPAWN_REQUEST_CANCELLED) {
-            continue;
           } else if (result == ERR_SPECIFIED_SPAWN_BUSY) {
             return result; // continue to spawn other things while waiting on specified spawn
           } else {

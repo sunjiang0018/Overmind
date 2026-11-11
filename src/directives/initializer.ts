@@ -14,7 +14,6 @@ import { Directive } from "./Directive";
 import { DirectiveDrop } from "./logistics/drop";
 import { DirectiveControllerAttack } from "./offense/controllerAttack";
 import { DirectiveHarass } from "./offense/harass";
-import { DirectiveLimitedRaid } from "./offense/limitedRaid";
 import { DirectivePairDestroy } from "./offense/pairDestroy";
 import { DirectiveSwarmDestroy } from "./offense/swarmDestroy";
 import { DirectiveBaseOperator } from "./powerCreeps/baseOperator";
@@ -65,8 +64,6 @@ export function DirectiveWrapper(flag: Flag): Directive | undefined {
     // Offensive combat directives =================================================================================
     case COLOR_RED:
       switch (flag.secondaryColor) {
-        case COLOR_YELLOW:
-          return new DirectiveLimitedRaid(flag);
         case COLOR_RED:
           return new DirectiveSwarmDestroy(flag);
         case COLOR_CYAN:
