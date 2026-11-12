@@ -29,6 +29,33 @@ function load(file: string, deps: TestScope, scope: TestScope = {}) {
   return out;
 }
 
+test("reclaimed colonies initialize retained defense memory between global resets", () => {
+  const retained = { persistent: true, colonyDefense: { enabled: true, protectController: false } };
+  const scope = {
+    Game: { time: 101 },
+    LATEST_GLOBAL_RESET_TICK: 100,
+    Memory: { colonies: { E57S45: retained } },
+    global: {},
+  };
+  const { Colony } = load(
+    "src/Colony.ts",
+    { "./memory/Memory": load("src/memory/Memory.ts", {}, scope) },
+    scope,
+  );
+  Colony.prototype.build = () => {};
+  const colony = new Colony(0, "E57S45", []);
+  assert.equal(colony.memory, retained);
+  assert.deepEqual(colony.memory.outposts, {});
+  assert.deepEqual(colony.memory.defcon, { level: 0, tick: -Infinity });
+  assert.deepEqual(colony.memory.expansionData, { possibleExpansions: {}, expiration: 0 });
+  assert.equal(colony.memory.maxLevel, 0);
+  colony.memory.maxLevel = 3;
+  const rebuilt = new Colony(0, "E57S45", []);
+  assert.equal(rebuilt.memory.maxLevel, 3);
+  assert.equal(rebuilt.memory.persistent, true);
+  assert.deepEqual(rebuilt.memory.colonyDefense, { enabled: true, protectController: false });
+});
+
 function defense() {
   let threats: TestScope[] = [],
     claims: TestScope[] = [];

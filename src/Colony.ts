@@ -48,7 +48,6 @@ import { LogisticsNetwork } from "./logistics/LogisticsNetwork";
 import { RoadLogistics } from "./logistics/RoadLogistics";
 import { SpawnGroup } from "./logistics/SpawnGroup";
 import { TransportRequestGroup } from "./logistics/TransportRequestGroup";
-import { Mem } from "./memory/Memory";
 import { DefaultOverlord } from "./overlords/core/default";
 import { TransportOverlord } from "./overlords/core/transporter";
 import { WorkerOverlord } from "./overlords/core/worker";
@@ -66,7 +65,16 @@ import {
 import { Cartographer, ROOMTYPE_CONTROLLER } from "./utilities/Cartographer";
 import { maxBy, mergeSum, minBy } from "./utilities/utils";
 import { Zerg } from "./zerg/Zerg";
-import { groupBy, clone, compact, sortBy, sum, flatten, compactMap } from "./utilities/native";
+import {
+  groupBy,
+  clone,
+  compact,
+  sortBy,
+  sum,
+  flatten,
+  compactMap,
+  defaultsDeep,
+} from "./utilities/native";
 
 export enum ColonyStage {
   Larva = 0, // No storage and no incubator
@@ -255,7 +263,8 @@ export class Colony {
     this.id = id;
     this.name = roomName;
     this.ref = roomName;
-    this.memory = Mem.wrap(Memory.colonies, roomName, getDefaultColonyMemory);
+    // A reclaimed room can retain defense settings without the rest of its colony memory.
+    this.memory = defaultsDeep((Memory.colonies[roomName] ??= {}), getDefaultColonyMemory());
     // Format outpost state memory
     outposts.forEach((outpost) => {
       if (!this.memory.outposts[outpost]) {
