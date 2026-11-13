@@ -1,3 +1,4 @@
+import { stagingLoad } from "../../strategy/terminalEvacuation";
 import { getStoredEnergy } from "../../game/Structures";
 import { getRoomPositionRoom } from "../../game/RoomPosition";
 import { getRoomBarriers, getRoomSpawns } from "../../game/RoomStructures";
@@ -249,6 +250,20 @@ export class CommandCenterOverlord extends Overlord {
     const storage = this.commandCenter.storage;
     const terminal = this.commandCenter.terminal;
     if (!storage || !terminal) return false;
+
+    if (this.colony.memory.terminalEvacuation) {
+      const load = stagingLoad(this.colony, manager.store.getCapacity());
+      if (!load) return false;
+      if (manager.store.getUsedCapacity() > 0) {
+        manager.task = Tasks.transferAll(terminal);
+        return true;
+      }
+      manager.task = Tasks.chain([
+        Tasks.withdraw(storage, load.resource, load.amount),
+        Tasks.transfer(terminal, load.resource, load.amount),
+      ]);
+      return true;
+    }
 
     const roomSellOrders = Overmind.tradeNetwork.getExistingOrders(
       ORDER_SELL,

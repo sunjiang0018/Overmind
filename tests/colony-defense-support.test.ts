@@ -1914,3 +1914,85 @@ test("the gate reactor preserves repair stock after the guard consumes its boost
   );
   assert.equal(chamber.southReactor, undefined);
 });
+
+test("stage resources but only liquidate after a confirmed breach; respect fuel, cooldown and own orders", () => {
+  const { o, room, game, pos, enemy, strategy } = gateBattle();
+  o.colony.spawns = [];
+  o.colony.memory.terminalEvacuation = { armedAt: game.time };
+  const storage = (o.colony.storage = {
+    id: "bank",
+    store: createStore({ energy: 23100, H: 550 }, 100000),
+  });
+  const term = (o.colony.terminal = {
+    id: "terminal",
+    my: true,
+    cooldown: 0,
+    store: createStore({ H: 500, energy: 200 }, 2000),
+  });
+  let offers = [
+    { id: "own", type: "buy", resourceType: "H", amount: 999, price: 99, roomName: "x" },
+    { id: "H", type: "buy", resourceType: "H", amount: 500, price: 4, roomName: "x" },
+    { id: "fuel", type: "buy", resourceType: "energy", amount: 1000, price: 1, roomName: "x" },
+  ];
+  const sales: unknown[][] = [];
+  game.market = {
+    getAllOrders: () => offers,
+    orders: { own: {} },
+    calcTransactionCost: (n: number) => Math.ceil(n / 2),
+  };
+  const policy = load(
+    "src/strategy/terminalEvacuation.ts",
+    {
+      "./southGate": strategy,
+      "../game/Room": { getRoomPlayerHostiles: () => room.enemies },
+      "../game/Structures": { isTerminalReady: () => term.cooldown === 0 },
+      "../game/Game": {
+        marketDeal: (...a: unknown[]) => {
+          sales.push(a);
+          return constants.OK;
+        },
+      },
+    },
+    { Game: game },
+  );
+  assert.deepEqual(policy.stagingLoad(o.colony, 800), { resource: "H", amount: 550 });
+  storage.store.H = 0;
+  assert.deepEqual(policy.stagingLoad(o.colony, 800), { resource: "energy", amount: 100 });
+  room.enemies = [enemy];
+  enemy.pos = pos(23, 48);
+  room.events = [
+    { event: constants.EVENT_ATTACK, objectId: enemy.id, data: { targetId: "wall-24" } },
+  ];
+  policy.checkTerminalBreach(o.colony);
+  policy.sellOnBreach(o.colony);
+  assert.deepEqual(sales, []);
+  game.time++;
+  room.events = [
+    { event: constants.EVENT_OBJECT_DESTROYED, objectId: "unrelated", data: { type: "rampart" } },
+  ];
+  policy.checkTerminalBreach(o.colony);
+  policy.sellOnBreach(o.colony);
+  assert.deepEqual(sales, []);
+  game.time++;
+  room.walls = room.walls.filter((w: TestScope) => w.id !== "wall-24");
+  room.events = [
+    { event: constants.EVENT_OBJECT_DESTROYED, objectId: "wall-24", data: { type: "rampart" } },
+  ];
+  policy.checkTerminalBreach(o.colony);
+  policy.sellOnBreach(o.colony);
+  policy.sellOnBreach(o.colony);
+  assert.deepEqual(sales, [["H", 400, "E58S42"]]);
+  assert.equal(o.colony.memory.terminalEvacuation.breachedAt, game.time);
+  game.time++;
+  term.cooldown = 9;
+  room.enemies = [];
+  policy.sellOnBreach(o.colony);
+  assert.equal(sales.length, 1);
+  game.time++;
+  term.cooldown = 0;
+  offers = offers.slice(-1);
+  term.store.H = 0;
+  policy.sellOnBreach(o.colony);
+  assert.deepEqual(sales[1], ["fuel", 133, "E58S42"]);
+  assert.deepEqual(policy.stagingLoad(o.colony, 800), { resource: "energy", amount: 800 });
+});

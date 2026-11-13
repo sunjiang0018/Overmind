@@ -1,3 +1,4 @@
+import { checkTerminalBreach, sellOnBreach } from "../strategy/terminalEvacuation";
 import { getRoomPrint } from "../game/Room";
 import { getRoomMineral } from "../game/RoomStructures";
 import { hasTerminalReceived, isTerminalReady, sendTerminalResources } from "../game/Structures";
@@ -731,6 +732,7 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
     }
     // Assign a state to each colony whose state isn't already specified
     for (const colony of this.colonies) {
+      if (colony.memory.terminalEvacuation) continue;
       for (const resource of RESOURCE_EXCHANGE_ORDER) {
         if (!this.colonyThresholds[colony.name]) {
           this.colonyThresholds[colony.name] = {};
@@ -1255,6 +1257,11 @@ export class TerminalNetworkV2 implements ITerminalNetwork {
   }
 
   run(): void {
+    for (const colony of this.colonies)
+      if (colony.memory.terminalEvacuation) {
+        checkTerminalBreach(colony);
+        sellOnBreach(colony);
+      }
     // Assign states to each colony; manual state specification should have already been done in directive.init()
     this.assignColonyStates();
 

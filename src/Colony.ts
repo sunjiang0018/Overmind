@@ -1,3 +1,4 @@
+import type { TerminalEvacuation } from "./strategy/terminalEvacuation";
 import { MEM } from "./memory/MemoryKeys";
 import type { ColonyDefenseSettings } from "./strategy/colonyDefense";
 import { getStoredEnergy } from "./game/Structures";
@@ -107,6 +108,7 @@ export interface ColonyMemory {
   southWatch?: SouthWatch;
   pauseHydralisks?: boolean;
   orderSouthSniper?: boolean;
+  terminalEvacuation?: TerminalEvacuation;
   colonyDefense?: ColonyDefenseSettings;
   defcon: {
     level: number;
