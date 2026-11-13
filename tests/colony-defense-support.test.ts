@@ -1433,6 +1433,24 @@ test("spare menders recover separate drops even with no transporters or active c
   assert.deepEqual(banked.sort(), ["collector1", "collector2"]);
 });
 
+test("a collector crossing a safe rampart can finish the approach to a nonadjacent spill", () => {
+  const { o, room, pos, game, strategy } = gateBattle();
+  room.drops = [{ id: "east-spill", pos: pos(33, 48), amount: 900 }];
+  const src = pos(30, 47),
+    directions: number[] = [];
+  const unit = {
+    creep: {
+      pos: src,
+      memory: {},
+      store: createStore({}, 1200),
+      move: (d: number) => directions.push(d),
+    },
+  };
+  game.search = () => ({ incomplete: false, path: [pos(31, 47), pos(32, 47)] });
+  assert.equal(strategy.recoverGateCargo(o.colony, unit), true);
+  assert.equal(directions.length, 1);
+});
+
 test("a home without carriers dispatches a recovery truck and banks energy from recycled defenders", () => {
   const { o, room, pos, requests } = gateBattle();
   const tomb = { pos: pos(28, 40), store: { energy: 1450 }, ticksToDecay: 75 };

@@ -543,7 +543,6 @@ function collectGateEnergy(colony: Colony, creep: Creep): boolean {
   const drops = salvagePiles(colony.room).filter(
     (drop) =>
       drop.amount > (claims.get(drop.id) || 0) &&
-      (creep.pos.y < 47 || creep.pos.isNearTo(drop)) &&
       drop.amount > Math.max(0, creep.pos.getRangeTo(drop) - 1),
   );
   if (!drops.length) return false;
