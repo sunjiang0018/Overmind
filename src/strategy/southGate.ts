@@ -133,7 +133,25 @@ export function interceptSouthRaid(colony: Colony, squad: Zerg[]): Set<Zerg> {
   } else {
     for (const u of squad)
       if (!u.spawning && (u.room.name !== home.name || u.pos.y >= 48)) {
-        u.creep.moveTo(home.getPositionAt(20, 46)!, { range: 1, maxRooms: 2, reusePath: 2 });
+        if (u.room.name === home.name && u.pos.y === 49) {
+          // On the entry tick the engine still sees this creep on the exit. Take an actual
+          // inward step; a cached cross-room moveTo here can send it straight back outside.
+          const inward = [0, -1, 1]
+            .map((dx) => home.getPositionAt(u.pos.x + dx, 48))
+            .find(
+              (p) =>
+                p &&
+                Game.map.getRoomTerrain(home.name).get(p.x, p.y) !== TERRAIN_MASK_WALL &&
+                !p.lookFor(LOOK_CREEPS).length,
+            );
+          if (inward) u.creep.move(u.pos.getDirectionTo(inward));
+        } else {
+          u.creep.moveTo(home.getPositionAt(20, 46)!, {
+            range: 1,
+            maxRooms: u.room.name === home.name ? 1 : 2,
+            reusePath: 0,
+          });
+        }
         u.blockMovement = true;
         taken.add(u);
       }
@@ -821,6 +839,30 @@ export function supplyGateSpawn(colony: Colony, unit: Zerg): boolean {
 
 export function recoverGateCargo(colony: Colony, unit: Zerg): boolean {
   const c = unit.creep;
+  const repair = colony.memory.southWatch?.restore;
+  const wallPile = salvagePiles(colony.room).some((p) => p.pos.y >= 47 && p.amount >= 50);
+  if (
+    repair &&
+    !repair.finished &&
+    !wallPile &&
+    !c.memory.southGateDelivery &&
+    !mobilized(colony) &&
+    !recentSouthFront(colony)
+  ) {
+    const tower = colony.towers
+      .filter((t) => t.store.energy < 850)
+      .sort((a, b) => a.store.energy - b.store.energy)[0];
+    const source = colony.storage?.store.energy ? colony.storage : colony.terminal;
+    if (tower && source && (c.store.energy || source.store.energy)) {
+      const target = c.store.energy ? tower : source;
+      const result = c.store.energy
+        ? c.transfer(tower, RESOURCE_ENERGY)
+        : c.withdraw(source, RESOURCE_ENERGY);
+      if (result === ERR_NOT_IN_RANGE) insideMove(unit, target.pos, 1);
+      unit.blockMovement = true;
+      return true;
+    }
+  }
   if (c.store.energy > 0) {
     const destinations = colony.memory.terminalEvacuation
       ? [colony.terminal, colony.storage]
