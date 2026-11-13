@@ -19,6 +19,7 @@ import {
   needsRecoveryTruck,
   southFront,
   supplyWallWorker,
+  supplyGateSpawn,
   updateSouthWatch,
   warningRoom,
 } from "../../strategy/southGate";
@@ -158,6 +159,18 @@ export class SouthGateOverlord extends Overlord {
     }
     for (const unit of this.trucks) {
       if (unit.spawning) continue;
+      const waitingBreaker = !this.breakers.length && this.colony.assets[breakerBoost] >= 720;
+      const waitingGuard =
+        this.breakers.length > 0 &&
+        !this.guards.some((u) => u.spawning || (u.ticksToLive ?? 0) > 145);
+      if (
+        (waitingBreaker || waitingGuard) &&
+        !this.colony.controller.safeMode &&
+        needsGateBreaker(this.colony) &&
+        this.colony.room.energyAvailable < (waitingBreaker ? 2270 : 2100) &&
+        supplyGateSpawn(this.colony, unit)
+      )
+        continue;
       if (!recoverGateCargo(this.colony, unit))
         unit.reassign(this.colony.overlords.logistics, "transport");
     }

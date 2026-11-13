@@ -1525,6 +1525,37 @@ test("spare menders recover separate drops even with no transporters or active c
   assert.deepEqual(banked.sort(), ["collector1", "collector2"]);
 });
 
+test("the recovery truck fills the production pool from cargo and refuels when empty", () => {
+  const { o, pos, strategy } = gateBattle();
+  const spawn = { pos: pos(29, 40), isActive: () => true, store: createStore({ energy: 10 }, 300) };
+  const bank = { pos: pos(24, 40), store: createStore({ energy: 5000 }, 10000) };
+  o.colony.spawns = [spawn];
+  o.colony.extensions = [];
+  o.colony.storage = bank;
+  const spot = { ...pos(28, 40), findClosestByPath: (xs: unknown[]) => xs[0] };
+  const store = createStore({ energy: 290 }, 1200);
+  const unit = {
+    pos: spot,
+    store,
+    creep: {
+      transfer(s: unknown) {
+        assert.equal(s, spawn);
+        store.energy = 0;
+        return constants.OK;
+      },
+      withdraw(s: unknown) {
+        assert.equal(s, bank);
+        store.energy = 1200;
+        return constants.OK;
+      },
+    },
+  };
+  assert.ok(strategy.supplyGateSpawn(o.colony, unit));
+  assert.equal(store.energy, 0);
+  assert.ok(strategy.supplyGateSpawn(o.colony, unit));
+  assert.equal(store.energy, 1200);
+});
+
 test("a collector keeps its pile around a detour instead of oscillating between closer piles", () => {
   const { o, room, pos, game, strategy } = gateBattle();
   const first = { id: "spawn", pos: pos(28, 40), amount: 1500 },

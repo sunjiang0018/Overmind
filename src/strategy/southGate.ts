@@ -655,6 +655,25 @@ function collectGateEnergy(colony: Colony, creep: Creep): boolean {
   return false;
 }
 
+// A dedicated recovery truck may deliver its cargo straight into a pending siege spawn.
+export function supplyGateSpawn(colony: Colony, unit: Zerg): boolean {
+  if (!unit.store.energy) {
+    const bank = colony.storage?.store.energy ? colony.storage : colony.terminal;
+    if (!bank?.store.energy) return false;
+    if (unit.creep.withdraw(bank, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE)
+      insideMove(unit, bank.pos, 1);
+    return true;
+  }
+  const sinks = [...colony.spawns, ...colony.extensions].filter(
+    (s) => s.isActive() && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0,
+  );
+  const target = unit.pos.findClosestByPath(sinks, { maxRooms: 1 });
+  if (!target) return false;
+  if (unit.creep.transfer(target, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE)
+    insideMove(unit, target.pos, 1);
+  return true;
+}
+
 export function recoverGateCargo(colony: Colony, unit: Zerg): boolean {
   const c = unit.creep;
   if (c.store.energy > 0) {
