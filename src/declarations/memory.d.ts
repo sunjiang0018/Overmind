@@ -118,6 +118,7 @@ declare global {
   interface CreepMemory {
     queenRecharging?: boolean;
     southGateDelivery?: boolean;
+    southPickup?: Id<Resource>;
     southSupplySince?: number;
     southRangerPost?: Id<StructureRampart>;
     colonyRetreatRoom?: string;

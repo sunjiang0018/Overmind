@@ -10,6 +10,7 @@ import {
   menderRole,
   mobilized,
   needsGateRanger,
+  needsGateBreaker,
   prepWall,
   repairBoost,
   rangerBoosts,
@@ -24,6 +25,11 @@ import {
 
 const scout = new CreepSetup("southLookout", { pattern: [MOVE], sizeLimit: 1 });
 const guard = new CreepSetup(guardRole, { pattern: [ATTACK, ATTACK, MOVE], sizeLimit: 10 });
+const breaker = new CreepSetup("southBreaker", {
+  pattern: [...Array<BodyPartConstant>(24).fill(ATTACK), ...Array<BodyPartConstant>(7).fill(MOVE)],
+  sizeLimit: 1,
+});
+const breakerBoost = RESOURCE_CATALYZED_UTRIUM_ACID;
 const ranger = new CreepSetup("southRanger", {
   pattern: [RANGED_ATTACK, RANGED_ATTACK, MOVE],
   sizeLimit: 5,
@@ -44,6 +50,7 @@ const mender = new CreepSetup(menderRole, {
 export class SouthGateOverlord extends Overlord {
   private scouts = this.zerg(scout.role);
   private guards = this.zerg(guard.role);
+  private breakers = this.zerg(breaker.role);
   private rangers = this.zerg(ranger.role);
   private trucks = this.zerg(recoveryTruck.role);
   private menders = this.zerg(mender.role);
@@ -70,6 +77,20 @@ export class SouthGateOverlord extends Overlord {
     }
     if (this.colony.room.energyCapacityAvailable >= 1200 && needsRecoveryTruck(this.colony))
       this.wishlist(1, recoveryTruck, { priority: 3, noLifetimeFilter: true });
+    const attackPair =
+      !this.colony.controller.safeMode &&
+      this.colony.room.energyCapacityAvailable >= 2270 &&
+      needsGateBreaker(this.colony);
+    const pending = this.breakers.some((u) =>
+      u.creep.body.some((p) => p.type === ATTACK && p.hits && !p.boost),
+    );
+    if (
+      (pending || (attackPair && !this.breakers.length)) &&
+      this.colony.assets[breakerBoost] >= 720
+    )
+      this.colony.evolutionChamber?.requestBoosts({ [breakerBoost]: 720 });
+    if (attackPair && this.colony.assets[breakerBoost] >= 720)
+      this.wishlist(1, breaker, { priority: 0, noLifetimeFilter: true });
     if (!mobilized(this.colony)) return;
     if (this.colony.room.energyCapacityAvailable >= 2100)
       this.wishlist(1, guard, { priority: 1, prespawn: 50 });
@@ -120,6 +141,10 @@ export class SouthGateOverlord extends Overlord {
       if (unit.spawning || this.visitBoost(unit, ATTACK, guardBoost, !!front && unit.pos.y >= 44))
         continue;
       defendSouthGate(unit, this.colony, front);
+    }
+    for (const unit of this.breakers) {
+      if (unit.spawning || this.visitBoost(unit, ATTACK, breakerBoost, false)) continue;
+      defendSouthGate(unit, this.colony, front, 1, true);
     }
     for (const unit of this.rangers) {
       if (unit.spawning) continue;

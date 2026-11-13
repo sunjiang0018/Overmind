@@ -237,6 +237,70 @@ export function needsGateRanger(colony: Colony): boolean {
   );
 }
 
+// Commit a second melee attacker only to a persistent wall fight where it can beat the escort's healing.
+export const needsGateBreaker = createTickCache((colony: Colony): boolean => {
+  const room = colony.room,
+    target = gateEnemy(room);
+  if (
+    !target ||
+    !target.getActiveBodyparts(WORK) ||
+    !southRamparts(room).some((w) => w.pos.isNearTo(target))
+  )
+    return false;
+  const enemies = getRoomPlayerHostiles(room);
+  if (!enemies.some((e) => e !== target && e.pos.isNearTo(target) && e.getActiveBodyparts(HEAL)))
+    return false;
+  const heals = healingAt(target, enemies);
+  const normal = 20 * ATTACK_POWER * BOOSTS.attack[guardBoost].attack;
+  const burst = 24 * ATTACK_POWER * BOOSTS.attack[RESOURCE_CATALYZED_UTRIUM_ACID].attack;
+  const volley = volleyAt(colony, target.pos) + normal;
+  return (
+    damageAfterArmor(target, volley + 200) <= heals &&
+    damageAfterArmor(target, volley + burst) > heals
+  );
+});
+
+function supportingMeleePost(
+  unit: Zerg,
+  colony: Colony,
+  target: Creep,
+  walls: StructureRampart[],
+): RoomPosition | undefined {
+  const open = walls.find(
+    (w) => w.pos.isNearTo(target) && (unit.pos.isEqualTo(w) || !w.pos.lookFor(LOOK_CREEPS).length),
+  );
+  if (open) return open.pos;
+  // Only the two gaps in our own shield line; never step towards the exit. Reserve enough HP
+  // to finish the focus and retreat even if the whole visible escort turns on this guard.
+  for (const x of [23, 22]) {
+    const p = colony.room.getPositionAt(x, 47);
+    if (
+      !p ||
+      !p.isNearTo(target) ||
+      Game.map.getRoomTerrain(colony.name).get(x, 47) === TERRAIN_MASK_WALL ||
+      p
+        .lookFor(LOOK_STRUCTURES)
+        .some(
+          (s) =>
+            s.structureType !== STRUCTURE_ROAD &&
+            s.structureType !== STRUCTURE_CONTAINER &&
+            !(s.structureType === STRUCTURE_RAMPART && s.my),
+        ) ||
+      (!unit.pos.isEqualTo(p) && p.lookFor(LOOK_CREEPS).length)
+    )
+      continue;
+    const incoming = getRoomPlayerHostiles(colony.room).reduce((n, e) => {
+      const range = p.getRangeTo(e);
+      return (
+        n +
+        (range <= 2 ? ATTACK_POWER * CombatIntel.getAttackPotential(e) : 0) +
+        (range <= 4 ? RANGED_ATTACK_POWER * CombatIntel.getRangedAttackPotential(e) : 0)
+      );
+    }, 0);
+    if (unit.creep.hits > Math.max(unit.creep.hitsMax / 2, incoming * 12)) return p;
+  }
+}
+
 export function gateTowerTarget(colony: Colony): Creep | undefined {
   const room = colony.room;
   const enemies = getRoomPlayerHostiles(room);
@@ -299,6 +363,7 @@ export function defendSouthGate(
   colony: Colony,
   front?: StructureRampart,
   range = 1,
+  supportMelee = false,
 ): void {
   const room = colony.room,
     walls = southRamparts(room);
@@ -348,9 +413,20 @@ export function defendSouthGate(
     if (post) unit.memory.southRangerPost = post.id;
   }
   post ??= current || walls.find((w) => w.pos.x === 24 && w.pos.y === 47) || walls[0];
-  if (!post) return;
-  if (!unit.pos.isEqualTo(post)) {
-    unit.creep.moveTo(post.pos, {
+  let destination = post?.pos;
+  if (supportMelee && target && needsGateBreaker(colony)) {
+    destination =
+      supportingMeleePost(unit, colony, target, walls) ||
+      (
+        current ||
+        walls
+          .filter((w) => !w.pos.lookFor(LOOK_CREEPS).length)
+          .sort((a, b) => unit.pos.getRangeTo(a) - unit.pos.getRangeTo(b))[0]
+      )?.pos;
+  }
+  if (!destination) return;
+  if (!unit.pos.isEqualTo(destination)) {
+    unit.creep.moveTo(destination, {
       range: 0,
       maxRooms: 1,
       reusePath: 0,
@@ -545,12 +621,17 @@ function collectGateEnergy(colony: Colony, creep: Creep): boolean {
       drop.amount > (claims.get(drop.id) || 0) &&
       drop.amount > Math.max(0, creep.pos.getRangeTo(drop) - 1),
   );
-  if (!drops.length) return false;
+  if (!drops.length) {
+    delete creep.memory.southPickup;
+    return false;
+  }
   const score = (d: Resource) => Math.min(space, d.amount) / Math.max(1, creep.pos.getRangeTo(d));
-  drops.sort((a, b) => score(b) - score(a));
+  const assigned = creep.memory.southPickup;
+  drops.sort((a, b) => +(b.id === assigned) - +(a.id === assigned) || score(b) - score(a));
   for (const drop of drops) {
     if (creep.pos.isNearTo(drop)) {
       if (creep.pickup(drop) !== OK) continue;
+      delete creep.memory.southPickup;
       creep.memory.southGateDelivery = true;
     } else {
       const costs = recoveryCosts(colony);
@@ -565,6 +646,7 @@ function collectGateEnergy(colony: Colony, creep: Creep): boolean {
         },
       );
       if (search.incomplete || !search.path.length) continue;
+      creep.memory.southPickup = drop.id;
       creep.move(creep.pos.getDirectionTo(search.path[0]));
     }
     claims.set(drop.id, (claims.get(drop.id) || 0) + space);

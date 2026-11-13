@@ -563,19 +563,25 @@ export class EvolutionChamber extends HiveCluster {
       guardBoost,
       Math.min(readyStock, stored + product.store[guardBoost]),
     );
-    const ranger = rangerBoosts.find((m) => this.neededBoosts[m] > 0);
-    if (remaining > 0 && !(inCombat && deployed) && !ranger) {
+    const combatOrder = this.neededBoosts[RESOURCE_CATALYZED_UTRIUM_ACID]
+      ? RESOURCE_CATALYZED_UTRIUM_ACID
+      : rangerBoosts.find((m) => this.neededBoosts[m] > 0);
+    if (remaining > 0 && !(inCombat && deployed) && !combatOrder) {
       this.stockSouthLab(first, RESOURCE_UTRIUM_HYDRIDE, remaining);
       this.stockSouthLab(second, RESOURCE_HYDROXIDE, remaining);
       this.southReactor = product;
     } else {
       this.stockSouthLab(first, repairBoost, Math.min(1920, this.colony.assets[repairBoost]));
       const waiting = Object.keys(this.neededBoosts) as MineralBoostConstant[];
-      const next = ranger || waiting.find((r) => r === second.mineralType) || waiting[0];
+      const next = combatOrder || waiting.find((r) => r === second.mineralType) || waiting[0];
       if (next) {
         this.auxiliaryBoostLab = second;
-        if (ranger)
-          this.terminalNetwork.lockResource(this.colony, ranger, this.neededBoosts[ranger]);
+        if (combatOrder)
+          this.terminalNetwork.lockResource(
+            this.colony,
+            combatOrder,
+            this.neededBoosts[combatOrder],
+          );
         this.stockSouthLab(
           second,
           next,

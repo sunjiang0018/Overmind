@@ -952,10 +952,17 @@ function southDefense() {
     memory: {},
     controller: {},
     towers: [{ pos: pos(25, 29), my: true, isActive: () => true, store: { energy: 1000 } }],
-    room: { energyCapacityAvailable: 2300, find: () => [pos(15, 49), pos(39, 49)] },
+    room: {
+      walls: [],
+      enemies: [],
+      energyCapacityAvailable: 2300,
+      find: () => [pos(15, 49), pos(39, 49)],
+    },
   };
   o.rangers = [];
   o.trucks = [];
+  o.breakers = [];
+  o.colony.assets = {};
   o.colony.tombstones = [];
   o.colony.room.drops = [];
   o.colony.overlords = { logistics: { transporters: [] } };
@@ -1275,6 +1282,91 @@ test("a ranged drainer in the middle gap is intercepted from the west rampart; t
   );
 });
 
+test("two melee guards can focus a boosted dismantler with a 29-part medic at the middle gap", () => {
+  const { game, o, room, strategy, pos, enemy, requests } = gateBattle();
+  const parts = (n: number, type: string, boost: string) =>
+    Array.from({ length: n }, () => ({ type, boost, hits: 100 }));
+  const mk = (name: string, x: number, body: TestScope[]) => ({
+    ...enemy,
+    id: name,
+    name,
+    pos: pos(x, 48),
+    body,
+    hits: 5000,
+    getActiveBodyparts: (type: string) => body.filter((p) => p.type === type).length,
+  });
+  const breaker = mk("breaker", 23, [
+    ...parts(11, "tough", "XGHO2"),
+    ...parts(29, "work", "XZH2O"),
+    ...parts(10, "move", "XZHO2"),
+  ]);
+  const medic = mk("medic", 22, [
+    ...parts(10, "tough", "XGHO2"),
+    ...parts(1, "ranged_attack", "XKHO2"),
+    ...parts(29, "heal", "XLHO2"),
+    ...parts(10, "move", "XZHO2"),
+  ]);
+  room.enemies = [breaker, medic];
+  room.events = [{ event: constants.EVENT_ATTACK, data: { targetId: "wall-24" } }];
+  o.colony.towers = [pos(25, 41), pos(32, 37)].map((pos) => ({
+    pos,
+    my: true,
+    isActive: () => true,
+    store: { energy: 900 },
+  }));
+  const moves: number[][] = [];
+  const guards = [24, 27].map((x) => {
+    const body = x === 24 ? parts(20, "attack", "UH2O") : parts(24, "attack", "XUH2O");
+    const p = pos(x, 47);
+    return {
+      pos: p,
+      room,
+      memory: {},
+      creep: {
+        pos: p,
+        hits: 3000,
+        hitsMax: 3000,
+        body,
+        getActiveBodyparts: (t: string) => (t === "attack" ? 20 : 0),
+        attack() {},
+        moveTo(dest: TestScope, opts: TestScope) {
+          assert.equal(opts.maxRooms, 1);
+          moves.push([dest.x, dest.y]);
+        },
+      },
+    };
+  });
+  o.guards = [guards[0]];
+  o.breakers = [guards[1]];
+  o.colony.assets.XUH2O = 720;
+  room.getPositionAt = pos;
+  const wall = room.walls[0];
+  wall.pos.lookFor = () => [guards[0].creep];
+  game.map = { getRoomTerrain: () => ({ get: () => 0 }) };
+  room.mine = [guards[0].creep, { pos: pos(26, 47), body: parts(10, "ranged_attack", "KO") }];
+  o.init();
+  assert.ok(requests.some((r) => r.role === "southBreaker" && r.n === 1));
+  assert.equal(strategy.gateTowerTarget(o.colony), undefined);
+  o.run();
+  assert.ok(
+    moves.some(([x, y]) => [22, 23].includes(x) && y === 47),
+    "the second guard needs its own reachable attack position",
+  );
+  const [x, y] = moves.at(-1)!;
+  guards[1].pos = guards[1].creep.pos = pos(x, y);
+  room.mine.push(guards[1].creep);
+  game.time++;
+  assert.equal(strategy.gateTowerTarget(o.colony)?.id, breaker.id);
+  medic.body.splice(10, 0, ...parts(12, "attack", "XUH2O"));
+  game.time++;
+  moves.length = 0;
+  o.run();
+  assert.ok(
+    !moves.some(([mx, my]) => [22, 23].includes(mx) && my === 47),
+    "do not hold an exposed tile against a lethal counterattack",
+  );
+});
+
 test("a gate hauler picks up loose energy during the siege and unloads it after the alert clears", () => {
   const { game, o, strategy, room, pos, enemy } = gateBattle();
   const storage = { pos: pos(24, 40), store: createStore({ energy: 5000 }, 10000) };
@@ -1431,6 +1523,28 @@ test("spare menders recover separate drops even with no transporters or active c
   }
   o.run();
   assert.deepEqual(banked.sort(), ["collector1", "collector2"]);
+});
+
+test("a collector keeps its pile around a detour instead of oscillating between closer piles", () => {
+  const { o, room, pos, game, strategy } = gateBattle();
+  const first = { id: "spawn", pos: pos(28, 40), amount: 1500 },
+    second = { id: "north", pos: pos(34, 25), amount: 850 };
+  room.drops = [first, second];
+  const c = { pos: pos(25, 39), memory: {}, store: createStore({ energy: 0 }, 200), move() {} };
+  const chosen: number[] = [];
+  game.search = (_start: TestScope, goal: TestScope) => {
+    chosen.push(goal.pos.x);
+    return { incomplete: false, path: [pos(23, 38)] };
+  };
+  assert.ok(strategy.recoverGateCargo(o.colony, { creep: c }));
+  game.time++;
+  c.pos = pos(25, 30);
+  assert.ok(strategy.recoverGateCargo(o.colony, { creep: c }));
+  assert.deepEqual(chosen, [28, 28]);
+  room.drops = [second];
+  game.time++;
+  assert.ok(strategy.recoverGateCargo(o.colony, { creep: c }));
+  assert.equal(chosen[2], 34);
 });
 
 test("a collector crossing a safe rampart can finish the approach to a nonadjacent spill", () => {
