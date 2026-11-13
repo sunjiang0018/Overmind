@@ -5,7 +5,6 @@ import type { Zerg } from "../../zerg/Zerg";
 import {
   defendSouthGate,
   gateEnemy,
-  guardBoost,
   guardRole,
   menderRole,
   mobilized,
@@ -13,7 +12,6 @@ import {
   needsGateBreaker,
   prepWall,
   repairBoost,
-  rangerBoosts,
   recoverWithMenders,
   recoverGateCargo,
   needsRecoveryTruck,
@@ -25,7 +23,7 @@ import {
 } from "../../strategy/southGate";
 
 const scout = new CreepSetup("southLookout", { pattern: [MOVE], sizeLimit: 1 });
-const guard = new CreepSetup(guardRole, { pattern: [ATTACK, ATTACK, MOVE], sizeLimit: 10 });
+const guard = new CreepSetup(guardRole, { pattern: [ATTACK, ATTACK, MOVE], sizeLimit: 8 });
 const breaker = new CreepSetup("southBreaker", {
   pattern: [...Array<BodyPartConstant>(24).fill(ATTACK), ...Array<BodyPartConstant>(7).fill(MOVE)],
   sizeLimit: 1,
@@ -35,6 +33,8 @@ const ranger = new CreepSetup("southRanger", {
   pattern: [RANGED_ATTACK, RANGED_ATTACK, MOVE],
   sizeLimit: 5,
 });
+const t3Ranger = new CreepSetup("southSniper", ranger.bodySetup);
+const rangedBoost = RESOURCE_CATALYZED_KEANIUM_ALKALIDE;
 const recoveryTruck = new CreepSetup("southRecovery", {
   pattern: [CARRY, CARRY, MOVE],
   sizeLimit: 12,
@@ -53,6 +53,7 @@ export class SouthGateOverlord extends Overlord {
   private guards = this.zerg(guard.role);
   private breakers = this.zerg(breaker.role);
   private rangers = this.zerg(ranger.role);
+  private snipers = this.zerg(t3Ranger.role);
   private trucks = this.zerg(recoveryTruck.role);
   private menders = this.zerg(mender.role);
 
@@ -60,43 +61,52 @@ export class SouthGateOverlord extends Overlord {
     super(colony, "southGate", 90);
   }
 
-  private rangerDose(unit: Zerg) {
-    const amount =
-      unit.creep.body.filter((p) => p.type === RANGED_ATTACK && p.hits && !p.boost).length *
-      LAB_BOOST_MINERAL;
-    if (!amount) return;
-    const mineral = rangerBoosts.find((m) => this.colony.assets[m] >= amount);
-    if (mineral) return { mineral, amount };
+  private unboosted(units: Zerg[], type: BodyPartConstant): number {
+    return units.reduce(
+      (amount, u) =>
+        amount +
+        u.creep.body.filter((p) => p.type === type && p.hits && !p.boost).length *
+          LAB_BOOST_MINERAL,
+      0,
+    );
   }
 
   init(): void {
     updateSouthWatch(this.colony);
     this.wishlist(1, scout, { prespawn: 175, priority: 199 });
-    for (const unit of this.rangers) {
-      const dose = this.rangerDose(unit);
-      if (dose) this.colony.evolutionChamber?.requestBoosts({ [dose.mineral]: dose.amount });
-    }
     if (this.colony.room.energyCapacityAvailable >= 1200 && needsRecoveryTruck(this.colony))
       this.wishlist(1, recoveryTruck, { priority: 3, noLifetimeFilter: true });
     const attackPair =
       !this.colony.controller.safeMode &&
       this.colony.room.energyCapacityAvailable >= 2270 &&
       needsGateBreaker(this.colony);
-    const pending = this.breakers.some((u) =>
-      u.creep.body.some((p) => p.type === ATTACK && p.hits && !p.boost),
-    );
-    if (
-      (pending || (attackPair && !this.breakers.length)) &&
-      this.colony.assets[breakerBoost] >= 720
-    )
-      this.colony.evolutionChamber?.requestBoosts({ [breakerBoost]: 720 });
-    if (attackPair && this.colony.assets[breakerBoost] >= 720)
+    const fighting = mobilized(this.colony);
+    const pendingGuard = this.unboosted(this.guards, ATTACK);
+    const pendingBreaker = this.unboosted(this.breakers, ATTACK);
+    const fundBreaker = attackPair && !this.breakers.length;
+    const reserved = pendingGuard + pendingBreaker + (fundBreaker ? 720 : 0);
+    const fundGuard =
+      fighting && !this.guards.length && this.colony.room.energyCapacityAvailable >= 1680;
+    const available = this.colony.assets[breakerBoost] || 0;
+    const meleeOrder = Math.min(available, reserved + (fundGuard ? 480 : 0));
+    if (meleeOrder) this.colony.evolutionChamber?.requestBoosts({ [breakerBoost]: meleeOrder });
+    if (fundBreaker && available >= reserved)
       this.wishlist(1, breaker, { priority: 0, noLifetimeFilter: true });
-    if (!mobilized(this.colony)) return;
-    if (this.colony.room.energyCapacityAvailable >= 2100)
-      this.wishlist(1, guard, { priority: 1, prespawn: 50 });
-    if (this.colony.room.energyCapacityAvailable >= 1750 && needsGateRanger(this.colony))
-      this.wishlist(1, ranger, { priority: 2 });
+    if (fundGuard && available >= reserved + 480)
+      this.wishlist(1, guard, { priority: 1, noLifetimeFilter: true });
+    const rangedPending = this.unboosted([...this.rangers, ...this.snipers], RANGED_ATTACK);
+    const fundSniper =
+      !this.snipers.length &&
+      this.colony.room.energyCapacityAvailable >= 1750 &&
+      (this.colony.memory.orderSouthSniper || (fighting && needsGateRanger(this.colony)));
+    const rangedOrder = rangedPending + (fundSniper ? 300 : 0);
+    if (rangedOrder && this.colony.assets[rangedBoost] >= rangedOrder) {
+      this.colony.evolutionChamber?.requestBoosts({ [rangedBoost]: rangedOrder });
+      if (fundSniper) this.wishlist(1, t3Ranger, { priority: 2, noLifetimeFilter: true });
+    }
+    if (this.snipers.some((u) => !u.spawning && !this.unboosted([u], RANGED_ATTACK)))
+      delete this.colony.memory.orderSouthSniper;
+    if (!fighting) return;
     if (this.colony.room.energyCapacityAvailable >= 2150)
       this.wishlist(4, mender, { priority: 198, spawnOneAtATime: true });
   }
@@ -139,8 +149,8 @@ export class SouthGateOverlord extends Overlord {
     }
     const front = southFront(this.colony);
     for (const unit of this.guards) {
-      if (unit.spawning || this.visitBoost(unit, ATTACK, guardBoost, !!front && unit.pos.y >= 44))
-        continue;
+      if (unit.spawning || this.visitBoost(unit, ATTACK, breakerBoost, false)) continue;
+      if (this.unboosted([unit], ATTACK)) continue;
       defendSouthGate(
         unit,
         this.colony,
@@ -151,16 +161,17 @@ export class SouthGateOverlord extends Overlord {
     }
     for (const unit of this.breakers) {
       if (unit.spawning || this.visitBoost(unit, ATTACK, breakerBoost, false)) continue;
+      if (this.unboosted([unit], ATTACK)) continue;
       defendSouthGate(unit, this.colony, front, 1, true);
     }
-    for (const unit of this.rangers) {
+    for (const unit of [...this.rangers, ...this.snipers]) {
       if (unit.spawning) continue;
-      const dose = this.rangerDose(unit);
-      if (dose && this.visitBoost(unit, RANGED_ATTACK, dose.mineral, false)) {
+      if (this.visitBoost(unit, RANGED_ATTACK, rangedBoost, false)) {
         const target = gateEnemy(this.colony.room);
         if (target && unit.pos.inRangeTo(target, 3)) unit.creep.rangedAttack(target);
         continue;
       }
+      if (this.unboosted([unit], RANGED_ATTACK) && this.snipers.includes(unit)) continue;
       defendSouthGate(unit, this.colony, front, 3);
     }
     for (const unit of this.trucks) {
@@ -169,11 +180,21 @@ export class SouthGateOverlord extends Overlord {
       const waitingGuard =
         this.breakers.length > 0 &&
         !this.guards.some((u) => u.spawning || (u.ticksToLive ?? 0) > 145);
+      const waitingSniper =
+        !this.snipers.length &&
+        this.colony.memory.orderSouthSniper &&
+        this.colony.assets[rangedBoost] >= 300;
+      if (
+        waitingSniper &&
+        this.colony.room.energyAvailable < 1750 &&
+        supplyGateSpawn(this.colony, unit)
+      )
+        continue;
       if (
         (waitingBreaker || waitingGuard) &&
         !this.colony.controller.safeMode &&
         needsGateBreaker(this.colony) &&
-        this.colony.room.energyAvailable < (waitingBreaker ? 2270 : 2100) &&
+        this.colony.room.energyAvailable < (waitingBreaker ? 2270 : 1680) &&
         supplyGateSpawn(this.colony, unit)
       )
         continue;

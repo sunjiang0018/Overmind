@@ -546,6 +546,26 @@ export class EvolutionChamber extends HiveCluster {
     const [first, second] = this.reagentLabs;
     const product = this.boostingLabs[0] || this.productLabs[0];
     if (!first || !second || !product || first === product || second === product) return false;
+    const melee = RESOURCE_CATALYZED_UTRIUM_ACID,
+      ranged = RESOURCE_CATALYZED_KEANIUM_ALKALIDE;
+    // Keep the old guard bay out of T2 production. The two combat doses must be ready at the same time.
+    const meleeAmount = this.neededBoosts[melee] || 0,
+      rangedAmount = this.neededBoosts[ranged] || 0;
+    if (meleeAmount || rangedAmount) {
+      const meleeLab =
+        product.mineralType === melee || second.mineralType === ranged ? product : second;
+      const rangedLab = meleeLab === second ? product : second;
+      if (meleeAmount) {
+        this.stockSouthLab(meleeLab, melee, meleeAmount);
+        this.terminalNetwork.lockResource(this.colony, melee, meleeAmount);
+      }
+      if (rangedAmount) {
+        this.stockSouthLab(rangedLab, ranged, rangedAmount);
+        this.terminalNetwork.lockResource(this.colony, ranged, rangedAmount);
+      }
+      this.stockSouthLab(first, repairBoost, Math.min(1920, this.colony.assets[repairBoost]));
+      return true;
+    }
     // With an expanded lab cluster both boosts can share the normal reservation system.
     if (this.productLabs.length >= 3 && this.colony.assets[guardBoost] >= 600) {
       this.requestBoosts({ [guardBoost]: 600, [repairBoost]: 1920 });

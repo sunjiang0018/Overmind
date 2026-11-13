@@ -960,9 +960,11 @@ function southDefense() {
     },
   };
   o.rangers = [];
+  o.guards = [];
+  o.snipers = [];
   o.trucks = [];
   o.breakers = [];
-  o.colony.assets = {};
+  o.colony.assets = { XUH2O: 1200, XKHO2: 300 };
   o.colony.tombstones = [];
   o.colony.room.drops = [];
   o.colony.overlords = { logistics: { transporters: [] } };
@@ -1032,17 +1034,17 @@ test("a gate guard holds the attacked eastern rampart across exit feints and str
   assert.equal(attacks.length, 3);
 });
 
-test("an existing south ranger orders local KO, holds until it is ready, boosts and returns to its post", () => {
+test("an existing south ranger orders only T3, holds until it is ready, boosts and returns to its post", () => {
   const { game, o, room, pos, enemy } = gateBattle();
   const body = Array.from({ length: 10 }, () => ({ type: "ranged_attack", hits: 100, boost: "" }));
   const moves: string[] = [],
     orders: unknown[] = [];
   const lab = {
     pos: pos(28, 32),
-    mineralType: "KO",
-    store: { KO: 299, energy: 200 },
+    mineralType: "XKHO2",
+    store: { XKHO2: 299, energy: 200 },
     boostCreep() {
-      for (const p of body) p.boost = "KO";
+      for (const p of body) p.boost = "XKHO2";
       return constants.OK;
     },
   };
@@ -1062,7 +1064,7 @@ test("an existing south ranger orders local KO, holds until it is ready, boosts 
     },
   };
   o.colony.evolutionChamber = { requestBoosts: (order: unknown) => orders.push(order) };
-  o.colony.assets = { KO: 3200, KHO2: 240, XKHO2: 0 };
+  o.colony.assets = { KO: 3200, KHO2: 240, XKHO2: 300 };
   o.rangers = [unit];
   o.colony.labs = [lab];
   enemy.pos = pos(34, 49);
@@ -1070,20 +1072,20 @@ test("an existing south ranger orders local KO, holds until it is ready, boosts 
   room.events = [{ event: constants.EVENT_ATTACK, data: { targetId: "wall-32" } }];
   o.init();
   o.run();
-  assert.deepEqual(orders, [{ KO: 300 }]);
+  assert.deepEqual(orders, [{ XKHO2: 300 }]);
   assert.deepEqual(moves, []);
   game.time++;
   room.enemies = [];
   room.events = [];
-  lab.store.KO = 300;
+  lab.store.XKHO2 = 300;
   o.init();
   o.run();
-  assert.deepEqual(orders, [{ KO: 300 }, { KO: 300 }]);
+  assert.deepEqual(orders, [{ XKHO2: 300 }, { XKHO2: 300 }]);
   assert.deepEqual(moves, ["lab"]);
   game.time++;
   unit.pos = pos(28, 33);
   o.run();
-  assert.equal(body.filter((p) => p.boost === "KO").length, 10);
+  assert.equal(body.filter((p) => p.boost === "XKHO2").length, 10);
   game.time++;
   o.init();
   o.run();
@@ -1154,6 +1156,25 @@ test("the home recall sends all hydralisks to the spawn and recycles only adjace
   assert.deepEqual(actions, ["return 0", "recycle hydralisk_1"]);
 });
 
+test("one explicit T3 sniper order survives quiet ticks, ignores a KO veteran and never buys twice", () => {
+  const { o, requests, game } = gateBattle();
+  o.colony.memory.orderSouthSniper = true;
+  o.rangers = [{ creep: { body: [{ type: "ranged_attack", hits: 100, boost: "KO" }] } }];
+  o.colony.assets = { KO: 3200, KHO2: 1000, XKHO2: 0, UH2O: 600 };
+  o.init();
+  assert.ok(!requests.some((r) => r.role === "southSniper"));
+  game.time++;
+  o.colony.assets.XKHO2 = 300;
+  o.init();
+  assert.equal(requests.filter((r) => r.role === "southSniper").length, 1);
+  o.snipers = [
+    { creep: { body: Array(10).fill({ type: "ranged_attack", hits: 100, boost: "XKHO2" }) } },
+  ];
+  game.time++;
+  o.init();
+  assert.equal(o.colony.memory.orderSouthSniper, undefined);
+  assert.equal(requests.filter((r) => r.role === "southSniper").length, 1);
+});
 test("a full south mender keeps repairing the damaged wall while the dismantler exits", () => {
   const { game, o, room, enemy, pos } = gateBattle();
   const repairs: number[] = [],
@@ -1249,7 +1270,7 @@ test("a ranged drainer in the middle gap is intercepted from the west rampart; t
   assert.deepEqual(shots, [], "1360 damage after armor still falls short of 1392 healing");
   assert.equal(strategy.needsGateRanger(o.colony), true);
   o.init();
-  assert.ok(requests.some((r) => r.role === "southRanger" && r.n === 1));
+  assert.ok(requests.some((r) => r.role === "southSniper" && r.n === 1));
   const ranger = {
     spawning: false,
     pos: pos(25, 47),
@@ -1337,7 +1358,6 @@ test("two melee guards can focus a boosted dismantler with a 29-part medic at th
     };
   });
   o.guards = [guards[0]];
-  o.breakers = [guards[1]];
   o.colony.assets.XUH2O = 720;
   room.getPositionAt = pos;
   const wall = room.walls[0];
@@ -1346,6 +1366,7 @@ test("two melee guards can focus a boosted dismantler with a 29-part medic at th
   room.mine = [guards[0].creep, { pos: pos(26, 47), body: parts(10, "ranged_attack", "KO") }];
   o.init();
   assert.ok(requests.some((r) => r.role === "southBreaker" && r.n === 1));
+  o.breakers = [guards[1]];
   assert.equal(strategy.gateTowerTarget(o.colony), undefined);
   o.run();
   assert.ok(
