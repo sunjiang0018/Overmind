@@ -117,6 +117,8 @@ declare global {
 
   interface CreepMemory {
     queenRecharging?: boolean;
+    southGateDelivery?: boolean;
+    southSupplySince?: number;
     colonyRetreatRoom?: string;
     colonyRetreatThreatKey?: string;
     [MEM.OVERLORD]: string | null;

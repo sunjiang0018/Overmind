@@ -7,6 +7,7 @@ import { Colony } from "../Colony";
 import { log } from "../console/log";
 import { CombatIntel } from "../intel/CombatIntel";
 import { WorkerOverlord } from "../overlords/core/worker";
+import { gateEnemy, gateTowerTarget, mobilized } from "../strategy/southGate";
 import { colonyDefenseTarget } from "../strategy/colonyDefense";
 import { profile } from "../profiler/decorator";
 import { CombatTargeting } from "../targeting/CombatTargeting";
@@ -146,6 +147,18 @@ export class SporeCrawler extends HiveCluster {
   // }
 
   run() {
+    if (mobilized(this.colony)) {
+      if (gateEnemy(this.room)) {
+        const target = gateTowerTarget(this.colony);
+        if (target) return this.attack(target);
+        // Do not fall through to scatter fire at a target that can heal the entire volley.
+        const wounded = this.pos.findClosestByRange(
+          getRoomCreeps(this.room).filter((c) => c.hits < c.hitsMax),
+        );
+        if (wounded) for (const tower of this.towers) tower.heal(wounded);
+        return;
+      }
+    }
     if (this.colony.memory.colonyDefense?.enabled) {
       const target = colonyDefenseTarget(this.colony);
       if (target) {

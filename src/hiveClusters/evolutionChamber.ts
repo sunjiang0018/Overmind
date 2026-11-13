@@ -1,4 +1,11 @@
 import {
+  guardBoost,
+  repairBoost,
+  protectsSouthGate,
+  mobilized,
+  guardRole,
+} from "../strategy/southGate";
+import {
   getRoomPositionNeighbors,
   getRoomPositionPrint,
   roomPositionLookForStructure,
@@ -506,7 +513,90 @@ export class EvolutionChamber extends HiveCluster {
 
   // Initialization and operation ====================================================================================
 
+  private southReactor?: StructureLab;
+  private managingSouthLabs = false;
+  private auxiliaryBoostLab?: StructureLab;
+
+  boostLabFor(resource: ResourceConstant): StructureLab | undefined {
+    if (this.managingSouthLabs) {
+      return this.auxiliaryBoostLab?.mineralType === resource ? this.auxiliaryBoostLab : undefined;
+    }
+    return this.boostingLabs.find((lab) => lab.mineralType === resource);
+  }
+
+  private stockSouthLab(
+    lab: StructureLab,
+    resource: MineralConstant | MineralCompoundConstant,
+    amount: number,
+  ): void {
+    if (lab.mineralType && lab.mineralType !== resource) {
+      this.transportRequests.requestOutput(lab, Priority.High, { resourceType: lab.mineralType });
+    } else if (amount > lab.store[resource]) {
+      this.transportRequests.requestInput(lab, Priority.High, {
+        resourceType: resource,
+        amount: amount - lab.store[resource],
+      });
+    }
+    if (lab.store.energy < 1200) this.transportRequests.requestInput(lab, Priority.High);
+  }
+
+  private prepareSouthLabs(): boolean {
+    if (!protectsSouthGate(this.colony)) return false;
+    const [first, second] = this.reagentLabs;
+    const product = this.boostingLabs[0] || this.productLabs[0];
+    if (!first || !second || !product || first === product || second === product) return false;
+    // With an expanded lab cluster both boosts can share the normal reservation system.
+    if (this.productLabs.length >= 3 && this.colony.assets[guardBoost] >= 600) {
+      this.requestBoosts({ [guardBoost]: 600, [repairBoost]: 1920 });
+      return false;
+    }
+    const stored = (this.colony.storage?.store[guardBoost] || 0) + this.terminal.store[guardBoost];
+    const inCombat = mobilized(this.colony);
+    const deployed = this.colony
+      .getCreepsByRole(guardRole)
+      .some((c) => c.body.some((p) => p.boost === guardBoost));
+    const readyStock = inCombat ? 600 : 1200;
+    const remaining = Math.max(0, readyStock - product.store[guardBoost] - stored);
+    this.stockSouthLab(
+      product,
+      guardBoost,
+      Math.min(readyStock, stored + product.store[guardBoost]),
+    );
+    if (remaining > 0 && !(inCombat && deployed)) {
+      this.stockSouthLab(first, RESOURCE_UTRIUM_HYDRIDE, remaining);
+      this.stockSouthLab(second, RESOURCE_HYDROXIDE, remaining);
+      this.southReactor = product;
+    } else {
+      this.stockSouthLab(first, repairBoost, Math.min(1920, this.colony.assets[repairBoost]));
+      const waiting = Object.keys(this.neededBoosts) as MineralBoostConstant[];
+      const next = waiting.find((r) => r === second.mineralType) || waiting[0];
+      if (next) {
+        this.auxiliaryBoostLab = second;
+        this.stockSouthLab(
+          second,
+          next,
+          Math.min(this.neededBoosts[next], this.colony.assets[next]),
+        );
+      }
+    }
+    this.terminalNetwork.lockResource(
+      this.colony,
+      guardBoost,
+      Math.min(readyStock, this.colony.assets[guardBoost]),
+    );
+    this.terminalNetwork.lockResource(
+      this.colony,
+      repairBoost,
+      Math.min(1920, this.colony.assets[repairBoost]),
+    );
+    return true;
+  }
+
   init(): void {
+    this.southReactor = undefined;
+    this.auxiliaryBoostLab = undefined;
+    this.managingSouthLabs = this.prepareSouthLabs();
+    if (this.managingSouthLabs) return;
     // This gets called after every Overlord.init() so you should have all your boost requests in already
 
     // Set boosting lab reservations and compute needed resources; needs to be done BEFORE initLabStatus()!
@@ -636,6 +726,21 @@ export class EvolutionChamber extends HiveCluster {
   }
 
   run(): void {
+    if (this.managingSouthLabs) {
+      const reactor = this.southReactor;
+      if (
+        reactor &&
+        !reactor.cooldown &&
+        (!reactor.mineralType || reactor.mineralType === guardBoost) &&
+        this.reagentLabs[0].mineralType === RESOURCE_UTRIUM_HYDRIDE &&
+        this.reagentLabs[1].mineralType === RESOURCE_HYDROXIDE &&
+        reactor.runReaction(this.reagentLabs[0], this.reagentLabs[1]) === OK
+      ) {
+        this.memory.stats.totalProduction[guardBoost] =
+          (this.memory.stats.totalProduction[guardBoost] || 0) + LAB_REACTION_AMOUNT;
+      }
+      return;
+    }
     if (this.memory.suspendReactionsUntil && Game.time > this.memory.suspendReactionsUntil) {
       delete this.memory.suspendReactionsUntil;
     }

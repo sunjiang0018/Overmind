@@ -15,6 +15,7 @@ import {
   getRoomPrint,
 } from "./game/Room";
 import { Colony, ColonyStage, getAllColonies, OutpostDisableReason } from "./Colony";
+import { isDirective } from "./declarations/typeGuards";
 import { log } from "./console/log";
 import { bodyCost } from "./creepSetups/CreepSetup";
 import { Roles } from "./creepSetups/setups";
@@ -204,15 +205,23 @@ export class Overseer implements IOverseer {
       // Pick up all nontrivial dropped resources
       for (const resourceType in getRoomDrops(room)) {
         for (const drop of getRoomDrops(room)[resourceType]) {
-          const inputRequest = colony.logisticsNetwork.requests.find(
-            (request) => request.amount > 0,
-          );
-          if (inputRequest) continue; // early levels may request transporters to drop off at a resource
+          // A designated early-game stockpile is an intentional drop. Other input requests
+          // (e.g. a tower refilling) must not suppress collection throughout the colony.
+          if (
+            colony.logisticsNetwork.requests.some(
+              (request) =>
+                request.amount > 0 &&
+                request.resourceType === drop.resourceType &&
+                isDirective(request.target) &&
+                drop.pos.isEqualTo(request.target.pos),
+            )
+          )
+            continue;
           if (
             drop.amount > LogisticsNetwork.settings.droppedEnergyThreshold ||
             drop.resourceType != RESOURCE_ENERGY
           ) {
-            colony.logisticsNetwork.requestOutput(drop);
+            colony.logisticsNetwork.requestOutput(drop, { resourceType: drop.resourceType });
           }
         }
       }

@@ -21,6 +21,13 @@ import { Cartographer, ROOMTYPE_CONTROLLER } from "../../utilities/Cartographer"
 import { minBy } from "../../utilities/utils";
 import { Zerg } from "../../zerg/Zerg";
 import { Overlord } from "../Overlord";
+import {
+  southFront,
+  mobilized,
+  prepWall,
+  southWallHits,
+  supplyWallWorker,
+} from "../../strategy/southGate";
 import { isSouthDefenseActive } from "../../strategy/colonyDefense";
 import { runColonyRetreat } from "../../utilities/colonyRetreat";
 import { groupBy, sortBy, sum, remove, max, min } from "../../utilities/native";
@@ -291,6 +298,9 @@ export class WorkerOverlord extends Overlord {
     if (this.useBoostedRepair) {
       setup = CreepSetup.boosted(setup, ["construct"]);
     }
+    const wall = prepWall(this.colony);
+    if (wall && this.colony.assets.energy > 50000 && wall.hits < southWallHits - 25000)
+      numWorkers = Math.max(4, numWorkers);
     this.wishlist(numWorkers, setup);
   }
 
@@ -477,6 +487,11 @@ export class WorkerOverlord extends Overlord {
       ) {
         if (this.upgradeActions(worker)) return;
       }
+      const wall = prepWall(this.colony);
+      if (wall && this.colony.assets.energy > 50000 && worker.room.name === this.colony.name) {
+        worker.task = Tasks.fortify(wall, southWallHits);
+        return;
+      }
       // Repair damaged non-road non-barrier structures
       if (this.repairStructures.length > 0 && this.colony.defcon == DEFCON.safe) {
         if (this.repairActions(worker)) return;
@@ -523,7 +538,19 @@ export class WorkerOverlord extends Overlord {
   }
 
   run() {
-    const workers = this.workers.filter((worker) => !runColonyRetreat(worker));
+    const alert = mobilized(this.colony);
+    const wall =
+      alert &&
+      (southFront(this.colony) ||
+        prepWall(this.colony) ||
+        getRoomRamparts(this.colony.room).find((r) => r.pos.x === 24 && r.pos.y === 47));
+    const workers = this.workers.filter((worker) => {
+      if (wall && !worker.spawning && worker.room.name === this.colony.name) {
+        supplyWallWorker(this.colony, worker, wall);
+        return false;
+      }
+      return !runColonyRetreat(worker);
+    });
     const defensiveSites = this.priorityDefenseSites();
     if (defensiveSites.length) {
       for (const worker of workers) {

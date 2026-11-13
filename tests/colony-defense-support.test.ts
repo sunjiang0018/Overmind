@@ -5,6 +5,7 @@ import ts from "typescript";
 import type { TestScope } from "./helpers/types";
 import { constants } from "./helpers/constants";
 import * as native from "../src/utilities/native";
+import { createStore } from "./helpers/store";
 
 function load(file: string, deps: TestScope, scope: TestScope = {}) {
   const code = ts.transpileModule(fs.readFileSync(file, "utf8"), {
@@ -592,6 +593,7 @@ test("native colony workers switch ordinary construction to the southern defense
   const out = load("src/overlords/core/worker.ts", {
     "../../utilities/colonyRetreat": { runColonyRetreat: () => false },
     "../../strategy/colonyDefense": policyFunctions,
+    "../../strategy/southGate": { mobilized: () => false },
     "../Overlord": { Overlord: class {} },
     "../../tasks/Tasks": { Tasks: { build: (target: TestScope) => ({ name: "build", target }) } },
     "../../tasks/instances/build": { buildTaskName: "build" },
@@ -869,4 +871,631 @@ test("observation-only rooms are excluded from colony expansion even with a cach
     }),
     undefined,
   );
+});
+
+function southDefense() {
+  const game: TestScope = {
+    time: 100,
+    shard: { name: "shard3" },
+    rooms: { E58S44: { enemies: [] }, E58S43: { enemies: [] }, E58S42: { enemies: [] } },
+  };
+  const resources = load("src/resources/map_resources.ts", {});
+  const combat = load("src/intel/CombatIntel.ts", { "../resources/map_resources": resources });
+  const pos = (x: number, y: number) => ({
+    x,
+    y,
+    roomName: "E58S42",
+    getRangeTo(other: TestScope) {
+      const p = other.pos || other;
+      return Math.max(Math.abs(x - p.x), Math.abs(y - p.y));
+    },
+    isNearTo(other: TestScope) {
+      return this.getRangeTo(other) <= 1;
+    },
+    isEqualTo(other: TestScope) {
+      return this.getRangeTo(other) === 0;
+    },
+    inRangeTo(other: TestScope, range: number) {
+      return this.getRangeTo(other) <= range;
+    },
+    lookFor: () => [],
+    getDirectionTo: (_p: TestScope) => constants.BOTTOM,
+  });
+  const strategy = load(
+    "src/strategy/southGate.ts",
+    {
+      "../resources/map_resources": resources,
+      "../intel/CombatIntel": combat,
+      "../game/cache": load("src/game/cache.ts", {}, { Game: game }),
+      "../game/Room": {
+        getRoomPlayerHostiles: (room: TestScope) => room.enemies,
+        getRoomDroppedEnergy: (room: TestScope) => room.drops || [],
+        getRoomCreeps: (room: TestScope) => room.mine || [],
+      },
+      "../game/RoomStructures": { getRoomRamparts: (room: TestScope) => room.walls },
+      "../matrix/MatrixLib": {
+        MatrixLib: {
+          getMatrix: () => ({
+            clone: () => {
+              const costs = new Uint8Array(2500);
+              return {
+                get: (x: number, y: number) => costs[50 * y + x],
+                set: (x: number, y: number, v: number) => (costs[50 * y + x] = v),
+              };
+            },
+          }),
+        },
+      },
+    },
+    { Game: game, PathFinder: { search: (...args: unknown[]) => game.search(...args) } },
+  );
+  const requests: TestScope[] = [];
+  const { SouthGateOverlord } = load(
+    "src/overlords/defense/southGate.ts",
+    {
+      "../Overlord": { Overlord: class {} },
+      "../../creepSetups/CreepSetup": {
+        CreepSetup: class {
+          constructor(
+            public role: string,
+            public bodySetup: TestScope,
+          ) {}
+        },
+      },
+      "../../strategy/southGate": strategy,
+    },
+    { Game: game },
+  );
+  const o = Object.create(SouthGateOverlord.prototype);
+  o.colony = {
+    name: "E58S42",
+    memory: {},
+    controller: {},
+    towers: [{ pos: pos(25, 29), my: true, isActive: () => true, store: { energy: 1000 } }],
+    room: { energyCapacityAvailable: 2300, find: () => [pos(15, 49), pos(39, 49)] },
+  };
+  o.wishlist = (n: number, setup: TestScope, opts: TestScope) =>
+    requests.push({ n, role: setup.role, priority: opts.priority });
+  const enemy = {
+    id: "siege-unit-1",
+    name: "breaker",
+    owner: { username: "attacker" },
+    pos: pos(24, 24),
+    body: [
+      { type: "work", hits: 100, boost: "XZH2O" },
+      ...Array(4).fill({ type: "heal", hits: 100, boost: "XLHO2" }),
+    ],
+    getActiveBodyparts: (_part: string) => 0,
+  };
+  const orders = () => {
+    requests.length = 0;
+    o.init();
+    return requests.map((r) => r.role);
+  };
+  return { game, o, requests, enemy, strategy, orders, pos };
+}
+
+function gateBattle() {
+  const r = southDefense(),
+    { o, game, pos, enemy } = r;
+  const room = game.rooms.E58S42;
+  Object.assign(room, o.colony.room, { name: "E58S42", getEventLog: () => room.events || [] });
+  o.colony.room = room;
+  room.walls = [24, 25, 30, 31, 32, 33, 34].map((x) => ({
+    id: "wall-" + x,
+    pos: pos(x, 47),
+    my: true,
+    hits: x === 25 ? 1558721 : x === 32 ? 1859301 : 1998121,
+    hitsMax: 10000000,
+  }));
+  Object.assign(o, { guards: [], rangers: [], menders: [], scouts: [], memory: {} });
+  o.colony.labs = [];
+  enemy.getActiveBodyparts = (p: string) => (p === constants.WORK ? 35 : 0);
+  return { ...r, room };
+}
+
+test("a gate guard holds the attacked eastern rampart across exit feints and strikes on reentry", () => {
+  const { game, o, room, enemy, pos } = gateBattle();
+  const moves: number[] = [],
+    attacks: string[] = [];
+  const guardPos = pos(32, 47);
+  const move = (target: TestScope) => moves.push((target.pos || target).x);
+  const creep = {
+    pos: guardPos,
+    body: [],
+    moveTo: move,
+    attack: (c: TestScope) => attacks.push(c.id),
+  };
+  o.guards = [{ pos: guardPos, room, creep, goTo: move, memory: {} }];
+  // E58S42, ticks 84243589–592: a dismantler touches the cut, bounces through y=49, then reenters.
+  for (const y of [48, 49, undefined, 48, 49, undefined, 48]) {
+    game.time++;
+    enemy.pos = pos(y === 49 ? 34 : 33, y ?? 0);
+    room.enemies = y === undefined ? [] : [enemy];
+    room.events =
+      y === 48 ? [{ event: constants.EVENT_ATTACK, data: { targetId: "wall-32" } }] : [];
+    o.run();
+  }
+  assert.deepEqual(moves, [], "an exit feint must not pull a guard off an effective post");
+  assert.equal(attacks.length, 3);
+});
+
+test("a full south mender keeps repairing the damaged wall while the dismantler exits", () => {
+  const { game, o, room, enemy, pos } = gateBattle();
+  const repairs: number[] = [],
+    moves: number[] = [];
+  const spot = pos(31, 44);
+  const creep = {
+    pos: spot,
+    room,
+    body: [],
+    memory: {},
+    store: createStore({ energy: 200 }, 200),
+    repair(wall: TestScope) {
+      if (!spot.inRangeTo(wall, 3)) return constants.ERR_NOT_IN_RANGE;
+      repairs.push(wall.pos.x);
+      return constants.OK;
+    },
+    moveTo: (p: TestScope) => moves.push((p.pos || p).x),
+  };
+  o.menders = [{ pos: spot, room, memory: {}, creep }];
+  for (const present of [true, false, true, false]) {
+    game.time++;
+    enemy.pos = pos(32, 48);
+    room.enemies = present ? [enemy] : [];
+    room.events = present ? [{ event: constants.EVENT_ATTACK, data: { targetId: "wall-32" } }] : [];
+    o.run();
+  }
+  assert.deepEqual(repairs, [32, 32, 32, 32]);
+  assert.deepEqual(moves, []);
+});
+
+test("a ranged drainer in the middle gap is intercepted from the west rampart; towers wait for the guard", () => {
+  const { game, o, strategy, room, pos, enemy, requests } = gateBattle();
+  // E58S42 at 84244013: 5 XKHO2 RANGED, 6 XGHO2 TOUGH, 29 XLHO2 HEAL, 10 MOVE.
+  const parts = (n: number, type: string, boost: string) =>
+    Array.from({ length: n }, () => ({ type, boost, hits: 100 }));
+  const drainer = {
+    ...enemy,
+    pos: pos(22, 48),
+    hits: 5000,
+    body: [
+      ...parts(5, "ranged_attack", "XKHO2"),
+      ...parts(6, "tough", "XGHO2"),
+      ...parts(29, "heal", "XLHO2"),
+      ...parts(10, "move", "XZHO2"),
+    ],
+    getActiveBodyparts: (p: string) => (p === "ranged_attack" ? 5 : p === "heal" ? 29 : 0),
+  };
+  room.enemies = [drainer];
+  room.events = [{ event: constants.EVENT_ATTACK, data: { targetId: "wall-25" } }];
+  room.walls.push({ id: "wall-21", pos: pos(21, 47), my: true, hits: 1999000 });
+  o.colony.towers = [pos(25, 41), pos(32, 37)].map((p) => ({
+    pos: p,
+    my: true,
+    isActive: () => true,
+    store: { energy: 600 },
+  }));
+  const moves: number[] = [],
+    shots: string[] = [];
+  const guard = {
+    spawning: false,
+    pos: pos(25, 47),
+    body: parts(20, "attack", "UH2O"),
+    getActiveBodyparts: (p: string) => (p === "attack" ? 20 : 0),
+    moveTo: (p: TestScope) => moves.push((p.pos || p).x),
+    attack() {},
+  };
+  room.mine = [guard];
+  o.guards = [{ pos: guard.pos, room, creep: guard, memory: {}, goTo: guard.moveTo }];
+  const { SporeCrawler } = load(
+    "src/hiveClusters/sporeCrawler.ts",
+    {
+      "./_HiveCluster": { HiveCluster: class {} },
+      "../strategy/southGate": strategy,
+      "../game/Room": { getRoomCreeps: () => room.mine, getRoomHostiles: () => room.enemies },
+    },
+    { Game: game },
+  );
+  const tower = Object.assign(Object.create(SporeCrawler.prototype), {
+    colony: o.colony,
+    room,
+    pos: { findClosestByRange: () => null },
+    attack: (target: TestScope) => shots.push(target.id),
+    preventStructureDecay() {},
+  });
+  o.colony.overlords = { work: { nukeDefenseRamparts: [] } };
+  tower.run();
+  assert.deepEqual(shots, [], "tower damage alone is fully healed on this tile");
+  o.run();
+  assert.deepEqual(moves, [21], "the wall being shot is three tiles from the attacker");
+  game.time++;
+  guard.pos = o.guards[0].pos = pos(21, 47);
+  tower.run();
+  assert.deepEqual(shots, [], "1360 damage after armor still falls short of 1392 healing");
+  assert.equal(strategy.needsGateRanger(o.colony), true);
+  o.init();
+  assert.ok(requests.some((r) => r.role === "southRanger" && r.n === 1));
+  const ranger = {
+    spawning: false,
+    pos: pos(25, 47),
+    body: parts(10, "ranged_attack", ""),
+    rangedAttack: () => constants.OK,
+  };
+  room.mine.push(ranger);
+  game.time++;
+  assert.equal(strategy.gateTowerTarget(o.colony)?.id, drainer.id);
+  tower.run();
+  assert.deepEqual(
+    shots,
+    [drainer.id],
+    "resume fire immediately when ranged support tips the balance",
+  );
+});
+
+test("a gate hauler picks up loose energy during the siege and unloads it after the alert clears", () => {
+  const { game, o, strategy, room, pos, enemy } = gateBattle();
+  const storage = { pos: pos(24, 40), store: createStore({ energy: 5000 }, 10000) };
+  room.storage = o.colony.storage = storage;
+  o.colony.towers[0].store.energy = 1000;
+  game.rooms.E58S44.enemies = [enemy];
+  const pile = {
+    id: "inside",
+    pos: pos(28, 45),
+    amount: 917,
+    resourceType: constants.RESOURCE_ENERGY,
+  };
+  room.drops = [pile, { ...pile, id: "outside", pos: pos(26, 48), amount: 1922 }];
+  const actions: string[] = [];
+  const spot = pos(27, 44);
+  const creep = {
+    room,
+    name: "transport_1",
+    pos: spot,
+    memory: {},
+    store: createStore({ energy: 0 }, 1500),
+    withdraw: () => {
+      actions.push("withdraw");
+      return constants.ERR_NOT_IN_RANGE;
+    },
+    pickup: (drop: TestScope) => {
+      actions.push(drop.id);
+      return constants.OK;
+    },
+    transfer: (site: TestScope) => {
+      actions.push(site === storage ? "bank" : "supply");
+      return constants.OK;
+    },
+    moveTo() {},
+  };
+  const unit = {
+    creep,
+    room,
+    pos: spot,
+    store: creep.store,
+    memory: creep.memory,
+    name: creep.name,
+  };
+  o.colony.overlords = { logistics: { transporters: [unit] } };
+  room.find = (kind: number) => (kind === constants.FIND_EXIT_BOTTOM ? [pos(34, 49)] : []);
+  assert.equal(strategy.supplySouthGate(o.colony, unit), true);
+  assert.deepEqual(actions, ["inside"]);
+  game.time++;
+  game.rooms.E58S44.enemies = [];
+  room.drops = [];
+  creep.store.energy = 917;
+  creep.pos = pos(25, 40);
+  assert.equal(strategy.supplySouthGate(o.colony, unit), true);
+  assert.deepEqual(actions, ["inside", "bank"]);
+});
+
+test("collect a southern spill from a free shield without entering the firing lane or displacing the guard", () => {
+  const { game, o, strategy, room, pos, enemy } = gateBattle();
+  const bank = { pos: pos(24, 40), store: createStore({ energy: 5000 }, 10000) };
+  o.colony.storage = room.storage = bank;
+  const east = room.walls.find((w: TestScope) => w.pos.x === 32);
+  o.colony.memory.southWatch = { tick: game.time, front: { wall: east.id, seen: game.time } };
+  const medic = {
+    ...enemy,
+    pos: pos(34, 49),
+    getActiveBodyparts: (p: string) => (p === constants.RANGED_ATTACK ? 5 : 0),
+  };
+  room.enemies = [medic];
+  room.drops = [
+    { id: "spill", pos: pos(33, 48), amount: 2017, resourceType: constants.RESOURCE_ENERGY },
+  ];
+  room.find = () => [];
+  const wall = room.walls.find((w: TestScope) => w.pos.x === 33);
+  const collector = {
+    name: "truck",
+    room,
+    pos: pos(32, 46),
+    store: createStore({ energy: 0 }, 1500),
+    memory: {},
+  };
+  let picked = 0,
+    moved = 0;
+  const creep = {
+    ...collector,
+    move: () => moved++,
+    pickup: () => {
+      picked++;
+      return constants.OK;
+    },
+  };
+  const unit = { ...collector, creep };
+  o.colony.overlords = { logistics: { transporters: [unit] } };
+  game.search = (_from: TestScope, goal: TestScope, opts: TestScope) => {
+    const m = opts.roomCallback(room.name);
+    assert.equal(opts.maxRooms, 1);
+    assert.equal(goal.range, 1);
+    assert.equal(m.get(33, 48), 255, "never put the collector on the spill outside");
+    assert.equal(m.get(33, 46), 255, "avoid the exposed ranged attack zone");
+    assert.equal(m.get(32, 47), 255, "leave the active guard post free");
+    assert.notEqual(m.get(33, 47), 255, "a free friendly shield provides pickup range");
+    return { incomplete: false, path: [wall.pos] };
+  };
+  assert.equal(strategy.supplySouthGate(o.colony, unit), true);
+  assert.equal(moved, 1);
+  game.time++;
+  unit.pos = creep.pos = wall.pos;
+  assert.equal(strategy.supplySouthGate(o.colony, unit), true);
+  assert.equal(picked, 1);
+});
+
+test("a south mender waits at the repair line for incoming energy but can refuel without a supplier", () => {
+  const { game, o, room, strategy, pos, enemy } = gateBattle();
+  game.rooms.E58S44.enemies = [enemy];
+  const bank = { pos: pos(24, 40), store: createStore({ energy: 5000 }, 10000) };
+  const wall = room.walls.find((w: TestScope) => w.pos.x === 32);
+  o.colony.storage = room.storage = bank;
+  const truck = {
+    room,
+    name: "transport_3",
+    pos: pos(28, 40),
+    memory: {},
+    store: createStore({ energy: 1500 }, 1500),
+  };
+  o.colony.overlords = { logistics: { transporters: [truck] } };
+  const moves: number[] = [];
+  const atWall = pos(31, 44);
+  const c = {
+    room,
+    name: "southMender_0",
+    pos: atWall,
+    memory: { role: "southMender" },
+    store: createStore({ energy: 0 }, 200),
+    withdraw: () => constants.ERR_NOT_IN_RANGE,
+    moveTo: (p: TestScope) => moves.push((p.pos || p).x),
+  };
+  const unit = { creep: c, room, pos: atWall, memory: c.memory, store: c.store, goTo: c.moveTo };
+  strategy.supplyWallWorker(o.colony, unit, wall);
+  assert.deepEqual(moves, [], "do not walk away from the inbound carrier");
+  game.time += 30;
+  o.colony.overlords.logistics.transporters = [];
+  strategy.supplyWallWorker(o.colony, unit, wall);
+  assert.deepEqual(moves, [24], "loss of supply must not strand the mender");
+});
+
+test("E58S44 or E58S43 combat contact reserves the first spawn slot for the home guard", () => {
+  const { game, o, requests, enemy, strategy } = southDefense();
+  for (const room of ["E58S44", "E58S43"]) {
+    requests.length = 0;
+    o.init();
+    assert.deepEqual(
+      requests.map((r) => r.role),
+      ["southLookout"],
+    );
+    game.time++;
+    requests.length = 0;
+    game.rooms[room].enemies = [enemy];
+    o.init();
+    assert.deepEqual(
+      requests.sort((a, b) => a.priority - b.priority).map((r) => [r.role, r.n]),
+      [
+        ["southGuard", 1],
+        ["southMender", 4],
+        ["southLookout", 1],
+      ],
+    );
+    assert.equal(o.colony.memory.southWatch.contactRoom, room);
+    game.rooms[room].enemies = [];
+    game.time++;
+    assert.equal(strategy.mobilized(o.colony), false);
+    assert.equal(o.colony.memory.southWatch.contactName, enemy.name);
+  }
+  assert.equal(strategy.isSiegeUnit({ body: [{ type: "move", hits: 100 }] }), false);
+});
+
+test("guard and mender recruitment both require a live T3 threat that can withstand the home towers", () => {
+  const { game, o, enemy, orders, pos, strategy } = southDefense();
+  const part = (type: string, boost?: string, hits = 100) => ({ type, boost, hits });
+  const recruitsFor = (body: TestScope[], room = "E58S44", allies: TestScope[] = []) => {
+    game.time++;
+    for (const r of Object.values(game.rooms) as TestScope[]) r.enemies = [];
+    game.rooms[room].enemies = [{ ...enemy, body }, ...allies];
+    // Labs may ask before the south gate overlord records this tick.
+    const combat = strategy.mobilized(o.colony);
+    const roles = orders();
+    assert.equal(combat, roles.includes("southGuard"));
+    assert.equal(roles.includes("southMender"), roles.includes("southGuard"));
+    return roles.includes("southGuard");
+  };
+  const work = part("work"),
+    t3 = part("work", "XZH2O");
+  // Recorded passer at tick 84235207, even if the last tower has no shot.
+  o.colony.towers[0].store.energy = 9;
+  assert.equal(recruitsFor([work, part("move")]), false);
+  assert.equal(recruitsFor([work, part("heal", "LHO2")]), false);
+  assert.equal(recruitsFor([work, part("heal", "XLHO2", 0)]), false);
+  assert.equal(recruitsFor([t3]), true);
+  o.colony.towers[0].store.energy = 10;
+  assert.equal(recruitsFor([t3]), false);
+  const healer = (x: number, count: number, boost = "XLHO2") => ({
+    ...enemy,
+    id: "medic",
+    name: "medic",
+    pos: pos(x, 24),
+    body: Array(count).fill(part("heal", boost)),
+  });
+  // At the gate: 150 damage. Three close HEALs restore 144; four restore 192.
+  assert.equal(recruitsFor([t3], "E58S44", [healer(25, 3)]), false);
+  assert.equal(recruitsFor([t3], "E58S44", [healer(25, 4)]), true);
+  assert.equal(recruitsFor([t3], "E58S44", [healer(27, 4)]), true); // the T3 medic itself can tank
+  assert.equal(recruitsFor([t3], "E58S44", [healer(25, 5, "LHO2")]), true);
+  assert.equal(recruitsFor([t3], "E58S44", [healer(27, 5, "LHO2")]), false);
+  assert.equal(recruitsFor([t3, ...healer(24, 2).body]), false); // self-heal counted only once
+  assert.equal(recruitsFor([part("tough", "XGHO2"), t3, part("heal", "XLHO2")]), true);
+  assert.equal(recruitsFor([t3, part("tough", "XGHO2"), part("heal", "XLHO2")]), false);
+  assert.equal(recruitsFor([t3], "E58S42", [healer(25, 4)]), false); // 600 at actual position
+  assert.equal(recruitsFor([t3], "E58S43", [healer(25, 4)]), true);
+  o.colony.towers.push({ ...o.colony.towers[0] });
+  assert.equal(recruitsFor([t3], "E58S43", [healer(25, 4)]), false); // recent alarm still active
+});
+
+test("ordinary players are recorded without mobilizing or diverting a hauler", () => {
+  const { game, o, enemy, strategy, orders } = southDefense();
+  o.colony.memory.southWatch = {
+    tick: 99,
+    lastContact: 99,
+    contactName: "legacy",
+    contactRoom: "E58S44",
+  };
+  assert.equal(strategy.mobilized(o.colony), false);
+  for (const type of ["move", "carry", "work", "attack"]) {
+    game.time++;
+    const name = "passing-" + type;
+    game.rooms.E58S44.enemies = [{ ...enemy, name, body: [{ type, hits: 100 }] }];
+    assert.deepEqual(orders(), ["southLookout"]);
+    const watch = o.colony.memory.southWatch;
+    assert.equal(watch.contactName, name);
+    assert.equal(watch.lastContact, game.time);
+    assert.equal(strategy.mobilized(o.colony), false);
+    assert.equal(strategy.supplySouthGate(o.colony, { room: { name: o.colony.name } }), false);
+  }
+});
+
+test("safe mode clears southern combat orders and only fresh sightings can restart them", () => {
+  const { game, o, enemy, strategy, orders } = southDefense();
+  game.rooms.E58S44.enemies = [enemy];
+  assert.ok(orders().includes("southGuard"));
+  game.time++;
+  o.colony.controller.safeMode = 2;
+  assert.equal(strategy.mobilized(o.colony), false);
+  assert.deepEqual(orders(), ["southLookout"]);
+  assert.equal(o.colony.memory.southWatch.lastContact, game.time);
+  assert.equal(o.colony.memory.southWatch.outerSeen, game.time);
+  game.time++;
+  game.rooms.E58S44.enemies = [];
+  delete o.colony.controller.safeMode;
+  assert.deepEqual(orders(), ["southLookout"]);
+  game.rooms.E58S43.enemies = [enemy];
+  o.colony.controller.safeMode = 1;
+  assert.deepEqual(orders(), ["southLookout"]);
+  game.time++;
+  delete o.colony.controller.safeMode;
+  assert.deepEqual(orders(), ["southLookout", "southGuard", "southMender"]);
+});
+
+test("losing a westbound unit stops recruitment, but clearing its contact requires northern visibility", () => {
+  const { game, o, enemy, orders, pos } = southDefense();
+  enemy.pos = pos(0, 25);
+  game.rooms.E58S44.enemies = [enemy];
+  assert.ok(orders().includes("southGuard"));
+  game.time++;
+  delete game.rooms.E58S43;
+  game.rooms.E58S44.enemies = [];
+  assert.deepEqual(orders(), ["southLookout"]);
+  assert.equal(o.colony.memory.southWatch.contactName, enemy.name);
+  game.time++;
+  game.rooms.E58S43 = { enemies: [] };
+  assert.deepEqual(orders(), ["southLookout"]);
+
+  assert.equal(o.colony.memory.southWatch.contactName, undefined);
+
+  // A lost tick of outer vision alone cannot establish which exit was taken.
+  game.time++;
+  game.rooms.E58S44.enemies = [enemy];
+  assert.ok(orders().includes("southGuard"));
+  game.time++;
+  delete game.rooms.E58S44;
+  assert.deepEqual(orders(), ["southLookout"]);
+  game.time++;
+  game.rooms.E58S44 = { enemies: [] };
+  assert.deepEqual(orders(), ["southLookout"]);
+  assert.equal(o.colony.memory.southWatch.contactName, enemy.name);
+  game.rooms.E57S44 = {};
+  game.getObjectById = (id: string) => id === enemy.id && { pos: { roomName: "E57S44" } };
+  assert.deepEqual(orders(), ["southLookout"]);
+  assert.equal(o.colony.memory.southWatch.contactName, undefined);
+});
+
+test("one western departure keeps other contacts, including an unresolved northbound unit", () => {
+  const { game, o, enemy, orders, pos } = southDefense();
+  const westbound = { ...enemy, id: "second", name: "escort", pos: pos(0, 25) };
+  enemy.pos = pos(21, 0);
+  game.rooms.E58S44.enemies = [westbound, enemy];
+  assert.ok(orders().includes("southGuard"));
+  game.time++;
+  game.rooms.E58S44.enemies = [];
+  assert.deepEqual(orders(), ["southLookout"]);
+  assert.equal(o.colony.memory.southWatch.contactName, enemy.name);
+  game.time++;
+  game.rooms.E58S43.enemies = [enemy];
+  assert.ok(orders().includes("southMender"));
+  assert.equal(o.colony.memory.southWatch.contactRoom, "E58S43");
+});
+
+test("a hauler caught south of the wall can cross back inside when the alarm starts", () => {
+  const { game, o, enemy, strategy } = southDefense();
+  game.rooms.E58S44.enemies = [enemy];
+  const moves: TestScope[] = [];
+  const room = { name: "E58S42", storage: { store: { energy: 5000 }, pos: { x: 24, y: 40 } } };
+  const creep = {
+    pos: { x: 23, y: 48 },
+    room,
+    store: { energy: 0 },
+    withdraw: () => constants.ERR_NOT_IN_RANGE,
+    moveTo: (target: TestScope, opts: TestScope) => moves.push({ target, opts }),
+  };
+  o.colony.storage = room.storage;
+  assert.equal(strategy.supplySouthGate(o.colony, { creep, room }), true);
+  assert.equal(moves[0].target, room.storage);
+  assert.equal(moves[0].opts.costCallback, undefined);
+});
+
+test("the gate reactor preserves repair stock after the guard consumes its boost during combat", () => {
+  const runtime = load("src/hiveClusters/evolutionChamber.ts", {
+    "./_HiveCluster": { HiveCluster: class {} },
+    "../strategy/southGate": {
+      protectsSouthGate: () => true,
+      mobilized: () => true,
+      guardRole: "southGuard",
+      guardBoost: "UH2O",
+      repairBoost: "LH",
+    },
+  });
+  const chamber = Object.create(runtime.EvolutionChamber.prototype);
+  const first = { id: "first" },
+    second = { id: "second" },
+    output = { store: { UH2O: 0 } };
+  const supply: unknown[][] = [];
+  Object.assign(chamber, {
+    colony: {
+      assets: { UH2O: 0, LH: 1920 },
+      getCreepsByRole: () => [{ body: [{ boost: "UH2O" }] }],
+    },
+    reagentLabs: [first, second],
+    productLabs: [output],
+    boostingLabs: [output],
+    terminal: { store: { UH2O: 0 } },
+    neededBoosts: {},
+    terminalNetwork: { lockResource() {} },
+    stockSouthLab: (...args: unknown[]) => supply.push(args),
+  });
+  assert.equal(chamber.prepareSouthLabs(), true);
+  assert.ok(
+    supply.some(([lab, resource, amount]) => lab === first && resource === "LH" && amount === 1920),
+  );
+  assert.equal(chamber.southReactor, undefined);
 });

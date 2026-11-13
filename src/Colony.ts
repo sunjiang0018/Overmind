@@ -37,6 +37,8 @@ import { DirectiveExtract } from "./directives/resource/extract";
 import { DirectiveHarvest, HARVEST_MEM } from "./directives/resource/harvest";
 import { HiveCluster } from "./hiveClusters/_HiveCluster";
 import { CommandCenter } from "./hiveClusters/commandCenter";
+import { protectsSouthGate, type SouthWatch } from "./strategy/southGate";
+import { SouthGateOverlord } from "./overlords/defense/southGate";
 import { EvolutionChamber } from "./hiveClusters/evolutionChamber";
 import { Hatchery } from "./hiveClusters/hatchery";
 import { SporeCrawler } from "./hiveClusters/sporeCrawler";
@@ -102,6 +104,7 @@ export interface BunkerData {
 }
 
 export interface ColonyMemory {
+  southWatch?: SouthWatch;
   colonyDefense?: ColonyDefenseSettings;
   defcon: {
     level: number;
@@ -237,6 +240,7 @@ export class Colony {
     work: WorkerOverlord;
     logistics: TransportOverlord;
     scout?: RandomWalkerScoutOverlord;
+    southGate?: SouthGateOverlord;
   };
   // Road network
   roadLogistics: RoadLogistics;
@@ -781,6 +785,7 @@ export class Colony {
       work: new WorkerOverlord(this),
       logistics: new TransportOverlord(this),
     };
+    if (protectsSouthGate(this)) this.overlords.southGate = new SouthGateOverlord(this);
     if (!this.observer) {
       this.overlords.scout = new RandomWalkerScoutOverlord(this);
     }

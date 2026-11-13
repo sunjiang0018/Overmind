@@ -1,3 +1,4 @@
+import { supplySouthGate } from "../../strategy/southGate";
 import { getRoomObjectRef } from "../../game/RoomObject";
 import { roomPositionFindClosestByMultiRoomRange } from "../../game/RoomPosition";
 import { Colony } from "../../Colony";
@@ -292,6 +293,9 @@ export class TransportOverlord extends Overlord {
   }
 
   run() {
-    this.autoRun(this.transporters, (transporter) => this.handleSmolTransporter(transporter));
+    this.autoRun(
+      this.transporters.filter((unit) => !supplySouthGate(this.colony, unit)),
+      (transporter) => this.handleSmolTransporter(transporter),
+    );
   }
 }

@@ -581,7 +581,7 @@ export abstract class Overlord {
 
       for (const boost of [...moveBoosts, nonMoveBoosts]) {
         // try to get move boosts first if they're available
-        const boostLab = evolutionChamber.boostingLabs.find((lab) => lab.mineralType == boost);
+        const boostLab = evolutionChamber.boostLabFor(boost as ResourceConstant);
         if (boostLab) {
           zerg.task = Tasks.getBoosted(boostLab, <ResourceConstant>boost);
           return;
