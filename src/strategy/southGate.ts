@@ -480,7 +480,7 @@ function blockOutside(matrix: CostMatrix): CostMatrix {
 function insideMove(unit: Zerg, target: RoomPosition, range: number): void {
   const creep = unit.creep;
   // A hauler caught outside when the alarm starts must still be able to cross the gate inward.
-  const retreat = creep.pos.y >= 47 && creep.room.storage;
+  const retreat = creep.pos.y > 47 && creep.room.storage;
   if (retreat) {
     creep.moveTo(retreat, { range: 1, maxRooms: 1, reusePath: 0 });
     return;
@@ -585,7 +585,17 @@ const recoveryCosts = createTickCache((colony: Colony) => {
   const room = colony.room;
   const costs = MatrixLib.getMatrix(room.name, { blockExits: true }, { blockCreeps: true }).clone();
   const covered = southRamparts(room).map((w) => ({ wall: w, cost: costs.get(w.pos.x, w.pos.y) }));
+  const gaps = [22, 23].map((x) => ({ x, cost: costs.get(x, 47) }));
   blockOutside(costs);
+  // These two gaps also reach the spill at (23,48). Never cross the line, and do not use
+  // an exposed gap near an enemy on either side of the exit.
+  const approach = Game.rooms.E58S43;
+  if (approach) {
+    for (const { x, cost } of gaps) {
+      if (!getRoomPlayerHostiles(approach).some((e) => e.pos.y <= 3 && Math.abs(e.pos.x - x) <= 5))
+        costs.set(x, 47, cost);
+    }
+  }
   for (const hostile of getRoomPlayerHostiles(room)) {
     const range = hostile.getActiveBodyparts(RANGED_ATTACK)
       ? 4
@@ -684,15 +694,20 @@ export function supplyGateSpawn(colony: Colony, unit: Zerg): boolean {
 export function recoverGateCargo(colony: Colony, unit: Zerg): boolean {
   const c = unit.creep;
   if (c.store.energy > 0) {
-    const bank = [colony.storage, colony.terminal].find(
-      (s) => s && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0,
-    );
+    const destinations = colony.memory.terminalEvacuation
+      ? [colony.terminal, colony.storage]
+      : [colony.storage, colony.terminal];
+    const bank = destinations.find((s) => s && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
     if (!bank) return true;
     if (c.transfer(bank, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) insideMove(unit, bank.pos, 1);
+    unit.blockMovement = true;
     return true;
   }
   delete c.memory.southGateDelivery;
-  if (collectGateEnergy(colony, c)) return true;
+  if (collectGateEnergy(colony, c)) {
+    unit.blockMovement = true;
+    return true;
+  }
   for (const t of homeTombs(colony).sort(
     (a, b) => a.ticksToDecay - b.ticksToDecay || c.pos.getRangeTo(a) - c.pos.getRangeTo(b),
   )) {

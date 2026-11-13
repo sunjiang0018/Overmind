@@ -79,6 +79,7 @@ export function shuttleToTerminal(colony: Colony, unit: Zerg): boolean {
     });
   } else if (carried) unit.creep.transfer(terminal, carried);
   else if (load) unit.creep.withdraw(bank, load.resource, load.amount);
+  unit.blockMovement = true;
   return true;
 }
 

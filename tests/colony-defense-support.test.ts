@@ -943,6 +943,7 @@ function southDefense() {
         },
       },
       "../../strategy/southGate": strategy,
+      "../../strategy/terminalEvacuation": load("src/strategy/terminalEvacuation.ts", {}),
     },
     { Game: game },
   );
@@ -1259,7 +1260,7 @@ test("a ranged drainer in the middle gap is intercepted from the west rampart; t
     attack: (target: TestScope) => shots.push(target.id),
     preventStructureDecay() {},
   });
-  o.colony.overlords = { work: { nukeDefenseRamparts: [] } };
+  o.colony.overlords.work = { nukeDefenseRamparts: [] };
   tower.run();
   assert.deepEqual(shots, [], "tower damage alone is fully healed on this tile");
   o.run();
@@ -1656,6 +1657,56 @@ test("a home without carriers dispatches a recovery truck and banks energy from 
   assert.equal(c.store.energy, 1200);
   o.run();
   assert.equal(c.store.energy, 0);
+});
+test("recover the named loaned truck, finish the ground delivery in the terminal, and retain it between trips", () => {
+  const { o, room, pos, game } = gateBattle();
+  const c = {
+    name: "southRecovery_0",
+    room,
+    pos: pos(24, 47),
+    memory: {},
+    body: [],
+    store: createStore({ energy: 0 }, 1200),
+    pickup(d: TestScope) {
+      this.store.energy = Math.min(1200, d.amount);
+      return constants.OK;
+    },
+    transfer(dest: TestScope) {
+      assert.equal(dest, o.colony.terminal);
+      this.store.energy = 0;
+      return constants.OK;
+    },
+  };
+  const assignments: string[] = [];
+  const unit = {
+    creep: c,
+    name: c.name,
+    room,
+    pos: c.pos,
+    store: c.store,
+    memory: c.memory,
+    reassign(_next: unknown, role: string) {
+      assignments.push(role);
+    },
+  };
+  o.colony.overlords.logistics.transporters = [unit];
+  o.colony.memory.terminalEvacuation = { armedAt: game.time };
+  o.colony.storage = { store: createStore({ energy: 100000 }, 1000000) };
+  o.colony.terminal = { store: createStore({ energy: 0 }, 300000) };
+  room.drops = [{ id: "spill", pos: pos(23, 48), amount: 8400, resourceType: "energy" }];
+  o.init();
+  assert.deepEqual(assignments, ["southRecovery"]);
+  o.trucks = [unit];
+  o.run();
+  assert.equal(c.store.energy, 1200);
+  game.time++;
+  o.run();
+  assert.equal(c.store.energy, 0);
+  room.drops = [];
+  delete o.colony.memory.terminalEvacuation;
+  game.time++;
+  o.run();
+  assert.deepEqual(assignments, ["southRecovery"]);
 });
 test("a south mender waits at the repair line for incoming energy but can refuel without a supplier", () => {
   const { game, o, room, strategy, pos, enemy } = gateBattle();

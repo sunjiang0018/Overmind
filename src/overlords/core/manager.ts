@@ -1,4 +1,4 @@
-import { stagingLoad } from "../../strategy/terminalEvacuation";
+import { shuttleToTerminal, stagingLoad } from "../../strategy/terminalEvacuation";
 import { getStoredEnergy } from "../../game/Structures";
 import { getRoomPositionRoom } from "../../game/RoomPosition";
 import { getRoomBarriers, getRoomSpawns } from "../../game/RoomStructures";
@@ -628,6 +628,13 @@ export class CommandCenterOverlord extends Overlord {
     for (const manager of this.managers) {
       // Get a task if needed
       if (manager.isIdle) {
+        if (
+          this.colony.memory.terminalEvacuation &&
+          !this.colony.evolutionChamber?.southCombatBoostPending &&
+          (manager.ticksToLive ?? 0) > 5 &&
+          shuttleToTerminal(this.colony, manager)
+        )
+          continue;
         this.handleManager(manager);
       }
       // manager.debug(print(manager.task))

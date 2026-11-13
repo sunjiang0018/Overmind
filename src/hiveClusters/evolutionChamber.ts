@@ -541,6 +541,13 @@ export class EvolutionChamber extends HiveCluster {
     if (lab.store.energy < 1200) this.transportRequests.requestInput(lab, Priority.High);
   }
 
+  get southCombatBoostPending(): boolean {
+    return !!(
+      this.neededBoosts[RESOURCE_CATALYZED_UTRIUM_ACID] ||
+      this.neededBoosts[RESOURCE_CATALYZED_KEANIUM_ALKALIDE]
+    );
+  }
+
   private prepareSouthLabs(): boolean {
     if (!protectsSouthGate(this.colony)) return false;
     const [first, second] = this.reagentLabs;
@@ -564,6 +571,18 @@ export class EvolutionChamber extends HiveCluster {
         this.terminalNetwork.lockResource(this.colony, ranged, rangedAmount);
       }
       this.stockSouthLab(first, repairBoost, Math.min(1920, this.colony.assets[repairBoost]));
+      return true;
+    }
+    if (this.colony.memory?.terminalEvacuation) {
+      // All new guards require T3. Don't keep shuttling the evacuated UH/OH back into
+      // the labs to make an unused T2 compound once both combat doses have been used.
+      this.stockSouthLab(first, repairBoost, Math.min(1920, this.colony.assets[repairBoost] || 0));
+      for (const lab of [product, second]) {
+        if (lab.mineralType)
+          this.transportRequests.requestOutput(lab, Priority.High, {
+            resourceType: lab.mineralType,
+          });
+      }
       return true;
     }
     // With an expanded lab cluster both boosts can share the normal reservation system.

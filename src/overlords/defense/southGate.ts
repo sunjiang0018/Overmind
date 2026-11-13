@@ -74,6 +74,12 @@ export class SouthGateOverlord extends Overlord {
 
   init(): void {
     updateSouthWatch(this.colony);
+    // Older releases loaned this named truck to logistics between two drops. Reclaim an idle
+    // loan without interrupting an assigned freight job or spawning a duplicate truck.
+    const loan = this.colony.overlords.logistics.transporters.find(
+      (u) => u.name.startsWith(recoveryTruck.role + "_") && !u.spawning && !u.task,
+    );
+    if (loan) loan.reassign(this, recoveryTruck.role);
     this.wishlist(1, scout, { prespawn: 175, priority: 199 });
     if (
       this.colony.room.energyCapacityAvailable >= 1200 &&
@@ -205,10 +211,10 @@ export class SouthGateOverlord extends Overlord {
         supplyGateSpawn(this.colony, unit)
       )
         continue;
-      // During the siege, menders still collect at the wall while the large truck stages warehouse stock.
-      if (this.colony.memory.terminalEvacuation && shuttleToTerminal(this.colony, unit)) continue;
-      if (!recoverGateCargo(this.colony, unit))
-        unit.reassign(this.colony.overlords.logistics, "transport");
+      // Finish a pickup and its delivery before starting another job. The manager stages storage
+      // concurrently. An empty recovery run must never hand this creep to another overlord.
+      if (recoverGateCargo(this.colony, unit)) continue;
+      if (this.colony.memory.terminalEvacuation) shuttleToTerminal(this.colony, unit);
     }
     const salvagers = recoverWithMenders(this.colony, this.menders);
     for (const unit of this.menders) {
