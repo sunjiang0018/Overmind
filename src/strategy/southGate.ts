@@ -910,6 +910,16 @@ export function supplySouthGate(colony: Colony, hauler: Zerg): boolean {
   }
   const restore = colony.memory.southWatch?.restore;
   if (
+    restore &&
+    !restore.finished &&
+    !mobilized(colony) &&
+    !recentSouthFront(colony) &&
+    (colony.overlords.logistics.transporters[0]?.name !== hauler.name ||
+      ((colony.memory.restartMiningUntil ?? 0) > Game.time &&
+        colony.overlords.logistics.transporters.length < 2))
+  )
+    return false;
+  if (
     !mobilized(colony) &&
     !recentSouthFront(colony) &&
     !(restore && !restore.finished && prepWall(colony))

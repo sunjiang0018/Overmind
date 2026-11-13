@@ -108,6 +108,7 @@ export interface ColonyMemory {
   southWatch?: SouthWatch;
   pauseHydralisks?: boolean;
   orderSouthSniper?: boolean;
+  restartMiningUntil?: number;
   terminalEvacuation?: TerminalEvacuation;
   colonyDefense?: ColonyDefenseSettings;
   defcon: {

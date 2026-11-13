@@ -407,7 +407,35 @@ export class Hatchery extends HiveCluster {
   enqueue(request: SpawnRequest): void {
     // const protoCreep = this.generateProtoCreep(request.setup, request.overlord);
     // TODO: ^shouldn't need to do this at enqueue, just at spawn. Implement approximateSize() method?
-    const priority = request.priority;
+    let priority = request.priority;
+    if (
+      (this.colony.memory.restartMiningUntil ?? 0) > Game.time &&
+      request.overlord.colony === this.colony
+    ) {
+      // Refill empty mines before routine replacements. Keep queens, the first wall repairer
+      // and emergency combat first; interleave an ore truck with the first remote miners.
+      const role = request.setup.role;
+      if (role === "transport" && this.colony.overlords.logistics.transporters.length < 2)
+        priority = Math.min(
+          priority,
+          this.colony.overlords.logistics.transporters.length ? 197 : 185,
+        );
+      if (
+        role === "drone" &&
+        request.overlord.pos.roomName !== this.colony.name &&
+        this.colony.memory.outposts[request.overlord.pos.roomName]?.active
+      ) {
+        const mine = Object.values(this.colony.miningSites).find(
+          (site) => site.overlords.mine === request.overlord,
+        );
+        if (mine && !mine.overlords.mine.miners.length)
+          priority = Math.min(
+            priority,
+            (this.colony.getCreepsByRole("southMender").some((c) => !c.spawning) ? 190 : 199) +
+              Math.min(4, request.overlord.outpostIndex),
+          );
+      }
+    }
     // Spawn the creep yourself if you can
     this._waitTimes = undefined; // invalidate cache
     // this._queuedSpawnTime = undefined;
