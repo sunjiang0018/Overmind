@@ -356,6 +356,12 @@ export class Overseer implements IOverseer {
   // }
 
   private handleColonyInvasions(colony: Colony, checkPersistent = false) {
+    if (
+      colony.memory.pauseHydralisks &&
+      colony.overlords.southGate &&
+      getRoomDangerousPlayerHostiles(colony.room).every((c) => c.pos.y >= 47)
+    )
+      return;
     // See if invasion is big enough to warrant creep defenses
     if (
       (!colony.room.isSafe && colony.room.threatLevel > 0.25) ||

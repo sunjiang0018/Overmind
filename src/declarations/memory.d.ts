@@ -119,6 +119,7 @@ declare global {
     queenRecharging?: boolean;
     southGateDelivery?: boolean;
     southSupplySince?: number;
+    southRangerPost?: Id<StructureRampart>;
     colonyRetreatRoom?: string;
     colonyRetreatThreatKey?: string;
     [MEM.OVERLORD]: string | null;

@@ -14,6 +14,12 @@ export const menderRole = "southMender";
 export const guardBoost = RESOURCE_UTRIUM_ACID;
 export const repairBoost = RESOURCE_LEMERGIUM_HYDRIDE;
 
+export const rangerBoosts = [
+  RESOURCE_CATALYZED_KEANIUM_ALKALIDE,
+  RESOURCE_KEANIUM_ALKALIDE,
+  RESOURCE_KEANIUM_OXIDE,
+] as const;
+
 const tierThreeBoosts: ReadonlySet<string> = new Set(BOOSTS_T3);
 const contactTimeout = 250;
 const holdFrontTicks = 25;
@@ -244,7 +250,10 @@ export function gateTowerTarget(colony: Colony): Creep | undefined {
       if (range <= 3)
         volley += RANGED_ATTACK_POWER * CombatIntel.getRangedAttackPotential(defender);
     }
-    if (damageAfterArmor(target, volley) > healingAt(target, enemies)) return target;
+    const damage = damageAfterArmor(target, volley);
+    // A drainer on the exit can leave immediately and heal before the next volley.
+    if (target.pos.y === 49 && damage < target.hits) continue;
+    if (damage > healingAt(target, enemies) || damage >= target.hits) return target;
   }
 }
 
@@ -314,6 +323,29 @@ export function defendSouthGate(
             unit.pos.getRangeTo(a) - unit.pos.getRangeTo(b) ||
             b.hits - a.hits,
         )[0] || front;
+  }
+  if (range > 1) {
+    const saved = walls.find(
+      (w) =>
+        w.id === unit.memory.southRangerPost &&
+        (w === current || !w.pos.lookFor(LOOK_CREEPS).length),
+    );
+    if (
+      saved &&
+      (!target || (!current?.pos.inRangeTo(target, range) && saved.pos.inRangeTo(target, range)))
+    )
+      post = saved;
+    else if (!target && current) post = current;
+    if (post && post !== current && post.pos.lookFor(LOOK_CREEPS).length) {
+      post = walls
+        .filter((w) => w === current || !w.pos.lookFor(LOOK_CREEPS).length)
+        .sort(
+          (a, b) =>
+            a.pos.getRangeTo(post!) - b.pos.getRangeTo(post!) ||
+            unit.pos.getRangeTo(a) - unit.pos.getRangeTo(b),
+        )[0];
+    }
+    if (post) unit.memory.southRangerPost = post.id;
   }
   post ??= current || walls.find((w) => w.pos.x === 24 && w.pos.y === 47) || walls[0];
   if (!post) return;
@@ -421,6 +453,22 @@ const salvagePiles = createTickCache((room: Room) =>
   ),
 );
 
+// Include energy returned by spawn recycling before the tombstones expire.
+function homeTombs(colony: Colony) {
+  return colony.tombstones.filter(
+    (t) => t.pos.roomName === colony.name && t.pos.y < 47 && t.store.energy > 0,
+  );
+}
+
+export function needsRecoveryTruck(colony: Colony): boolean {
+  return (
+    salvagePiles(colony.room).reduce((n, d) => n + d.amount, 0) +
+      homeTombs(colony).reduce((n, t) => n + t.store.energy, 0) >=
+      800 &&
+    !colony.overlords.logistics.transporters.some((t) => !t.spawning && t.room.name === colony.name)
+  );
+}
+
 const recoveringCarrier = createTickCache((colony: Colony) => {
   const drops = salvagePiles(colony.room);
   if (!drops.length) return undefined;
@@ -486,11 +534,15 @@ const recoveryCosts = createTickCache((colony: Colony) => {
   return costs;
 });
 
+const claimedDrops = createTickCache((_room: Room) => new Map<Id<Resource>, number>());
+
 function collectGateEnergy(colony: Colony, creep: Creep): boolean {
   const space = creep.store.getFreeCapacity();
   if (!space || creep.pos.y > 47) return false;
+  const claims = claimedDrops(colony.room);
   const drops = salvagePiles(colony.room).filter(
     (drop) =>
+      drop.amount > (claims.get(drop.id) || 0) &&
       (creep.pos.y < 47 || creep.pos.isNearTo(drop)) &&
       drop.amount > Math.max(0, creep.pos.getRangeTo(drop) - 1),
   );
@@ -516,9 +568,75 @@ function collectGateEnergy(colony: Colony, creep: Creep): boolean {
       if (search.incomplete || !search.path.length) continue;
       creep.move(creep.pos.getDirectionTo(search.path[0]));
     }
+    claims.set(drop.id, (claims.get(drop.id) || 0) + space);
     return true;
   }
   return false;
+}
+
+export function recoverGateCargo(colony: Colony, unit: Zerg): boolean {
+  const c = unit.creep;
+  if (c.store.energy > 0) {
+    const bank = [colony.storage, colony.terminal].find(
+      (s) => s && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0,
+    );
+    if (!bank) return true;
+    if (c.transfer(bank, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) insideMove(unit, bank.pos, 1);
+    return true;
+  }
+  delete c.memory.southGateDelivery;
+  if (collectGateEnergy(colony, c)) return true;
+  for (const t of homeTombs(colony).sort(
+    (a, b) => a.ticksToDecay - b.ticksToDecay || c.pos.getRangeTo(a) - c.pos.getRangeTo(b),
+  )) {
+    if (c.pos.isNearTo(t)) {
+      if (c.withdraw(t, RESOURCE_ENERGY) === OK) return true;
+    } else {
+      const path = PathFinder.search(
+        c.pos,
+        { pos: t.pos, range: 1 },
+        { maxRooms: 1, roomCallback: () => recoveryCosts(colony), plainCost: 2, swampCost: 10 },
+      );
+      if (!path.incomplete && path.path.length) {
+        c.move(c.pos.getDirectionTo(path.path[0]));
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Leave one repairer on duty. Other menders can reach a spill before a replacement truck is born.
+export function recoverWithMenders(colony: Colony, units: Zerg[]): Set<Zerg> {
+  const busy = new Set<Zerg>();
+  const active = units.filter((u) => !u.spawning && u.room.name === colony.name);
+  if (!active.length) return busy;
+  const bank = [colony.storage, colony.terminal].find(
+    (s) => s && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0,
+  );
+  if (!bank) return busy;
+  const repairer = active.find((u) => !u.memory.southGateDelivery);
+  const drops = salvagePiles(colony.room);
+  const candidates = active
+    .filter(
+      (u) => u.memory.southGateDelivery || (u !== repairer && drops.length && !u.store.energy),
+    )
+    .sort(
+      (a, b) =>
+        Math.min(...drops.map((d) => a.pos.getRangeTo(d))) -
+        Math.min(...drops.map((d) => b.pos.getRangeTo(d))),
+    );
+  for (const u of candidates) {
+    if (u.memory.southGateDelivery && u.store.energy > 0) {
+      if (u.creep.transfer(bank, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) insideMove(u, bank.pos, 1);
+    } else {
+      delete u.memory.southGateDelivery;
+      if (!collectGateEnergy(colony, u.creep)) continue;
+    }
+    u.blockMovement = true;
+    busy.add(u);
+  }
+  return busy;
 }
 
 export function supplySouthGate(colony: Colony, hauler: Zerg): boolean {

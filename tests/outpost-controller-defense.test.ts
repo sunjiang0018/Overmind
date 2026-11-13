@@ -100,6 +100,7 @@ function defender(
   );
   const o = Object.create(out.OutpostDefenseOverlord.prototype);
   Object.assign(o, {
+    colony: { memory: {}, spawns: [] },
     directive: {
       memory: {
         persistent: !!opts.persistent,
@@ -356,7 +357,7 @@ function runHydralisks(o: TestScope, atSpawn = false, crossRoom = false) {
     guarding: string[] = [];
   const recycled: string[] = [];
   const spawn = { recycleCreep: (creep: TestScope) => recycled.push(creep.name) };
-  o.colony = { spawns: [spawn] };
+  o.colony.spawns = [spawn];
   o.hydralisks = [341, 537, 984].map((ticksToLive, i) => ({
     name: `hydralisk_${i}`,
     creep: { name: `hydralisk_${i}` },

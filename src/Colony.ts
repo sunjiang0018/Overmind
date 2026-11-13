@@ -105,6 +105,7 @@ export interface BunkerData {
 
 export interface ColonyMemory {
   southWatch?: SouthWatch;
+  pauseHydralisks?: boolean;
   colonyDefense?: ColonyDefenseSettings;
   defcon: {
     level: number;

@@ -954,6 +954,11 @@ function southDefense() {
     towers: [{ pos: pos(25, 29), my: true, isActive: () => true, store: { energy: 1000 } }],
     room: { energyCapacityAvailable: 2300, find: () => [pos(15, 49), pos(39, 49)] },
   };
+  o.rangers = [];
+  o.trucks = [];
+  o.colony.tombstones = [];
+  o.colony.room.drops = [];
+  o.colony.overlords = { logistics: { transporters: [] } };
   o.wishlist = (n: number, setup: TestScope, opts: TestScope) =>
     requests.push({ n, role: setup.role, priority: opts.priority });
   const enemy = {
@@ -1018,6 +1023,128 @@ test("a gate guard holds the attacked eastern rampart across exit feints and str
   }
   assert.deepEqual(moves, [], "an exit feint must not pull a guard off an effective post");
   assert.equal(attacks.length, 3);
+});
+
+test("an existing south ranger orders local KO, holds until it is ready, boosts and returns to its post", () => {
+  const { game, o, room, pos, enemy } = gateBattle();
+  const body = Array.from({ length: 10 }, () => ({ type: "ranged_attack", hits: 100, boost: "" }));
+  const moves: string[] = [],
+    orders: unknown[] = [];
+  const lab = {
+    pos: pos(28, 32),
+    mineralType: "KO",
+    store: { KO: 299, energy: 200 },
+    boostCreep() {
+      for (const p of body) p.boost = "KO";
+      return constants.OK;
+    },
+  };
+  const unit = {
+    pos: pos(31, 47),
+    memory: {},
+    creep: {
+      body,
+      rangedAttack() {},
+      moveTo(p: TestScope) {
+        moves.push("post:" + p.x);
+      },
+    },
+    goTo(dest: TestScope) {
+      assert.equal(dest, lab);
+      moves.push("lab");
+    },
+  };
+  o.colony.evolutionChamber = { requestBoosts: (order: unknown) => orders.push(order) };
+  o.colony.assets = { KO: 3200, KHO2: 240, XKHO2: 0 };
+  o.rangers = [unit];
+  o.colony.labs = [lab];
+  enemy.pos = pos(34, 49);
+  room.enemies = [enemy];
+  room.events = [{ event: constants.EVENT_ATTACK, data: { targetId: "wall-32" } }];
+  o.init();
+  o.run();
+  assert.deepEqual(orders, [{ KO: 300 }]);
+  assert.deepEqual(moves, []);
+  game.time++;
+  room.enemies = [];
+  room.events = [];
+  lab.store.KO = 300;
+  o.init();
+  o.run();
+  assert.deepEqual(orders, [{ KO: 300 }, { KO: 300 }]);
+  assert.deepEqual(moves, ["lab"]);
+  game.time++;
+  unit.pos = pos(28, 33);
+  o.run();
+  assert.equal(body.filter((p) => p.boost === "KO").length, 10);
+  game.time++;
+  o.init();
+  o.run();
+  assert.equal(orders.length, 2);
+  assert.deepEqual(moves, ["lab", "post:31"]);
+});
+
+test("a south ranger holds a covering rampart through exit feints and shifts for a new breach", () => {
+  const { game, o, room, pos, enemy, strategy } = gateBattle();
+  const moves: number[] = [],
+    shots: string[] = [];
+  const unit = {
+    pos: pos(31, 47),
+    memory: {},
+    creep: {
+      rangedAttack(c: TestScope) {
+        shots.push(c.id);
+      },
+      moveTo(p: TestScope) {
+        moves.push(p.x);
+      },
+    },
+  };
+  const front = room.walls.find((w: TestScope) => w.pos.x === 32);
+  for (const present of [true, false, true, false]) {
+    game.time++;
+    enemy.pos = pos(34, 49);
+    room.enemies = present ? [enemy] : [];
+    strategy.defendSouthGate(unit, o.colony, front, 3);
+  }
+  assert.deepEqual(moves, []);
+  assert.equal(shots.length, 2);
+  game.time++;
+  enemy.pos = pos(24, 48);
+  room.enemies = [enemy];
+  strategy.defendSouthGate(unit, o.colony, room.walls[0], 3);
+  assert.ok(moves.length === 1 && moves[0] <= 27);
+  game.time++;
+  room.enemies = [];
+  strategy.defendSouthGate(unit, o.colony, room.walls[0], 3);
+  assert.equal(moves[1], moves[0], "keep the intercept destination while en route");
+});
+
+test("the home recall sends all hydralisks to the spawn and recycles only adjacent ones", () => {
+  const { o, pos } = gateBattle();
+  const actions: string[] = [];
+  const spawn = {
+    pos: pos(26, 31),
+    recycleCreep(c: TestScope) {
+      actions.push("recycle " + c.name);
+    },
+  };
+  const units = [false, true].map((near, i) => ({
+    name: "hydralisk_" + i,
+    pos: { findClosestByRange: () => spawn, isNearTo: () => near },
+    moveTo(target: TestScope) {
+      assert.equal(target, spawn);
+      actions.push("return " + i);
+    },
+  }));
+  o.colony.memory.pauseHydralisks = true;
+  o.colony.spawns = [spawn];
+  o.colony.getCreepsByRole = (role: string) => {
+    assert.equal(role, "hydralisk");
+    return units;
+  };
+  o.run();
+  assert.deepEqual(actions, ["return 0", "recycle hydralisk_1"]);
 });
 
 test("a full south mender keeps repairing the damaged wall while the dismantler exits", () => {
@@ -1131,6 +1258,21 @@ test("a ranged drainer in the middle gap is intercepted from the west rampart; t
     [drainer.id],
     "resume fire immediately when ranged support tips the balance",
   );
+  game.time++;
+  drainer.pos = pos(22, 49);
+  guard.pos = pos(22, 48);
+  assert.equal(
+    strategy.gateTowerTarget(o.colony),
+    undefined,
+    "save the volley when a healthy target can escape this tick",
+  );
+  game.time++;
+  drainer.hits = 250;
+  assert.equal(
+    strategy.gateTowerTarget(o.colony)?.id,
+    drainer.id,
+    "finish an exposed target at the exit",
+  );
 });
 
 test("a gate hauler picks up loose energy during the siege and unloads it after the alert clears", () => {
@@ -1243,6 +1385,83 @@ test("collect a southern spill from a free shield without entering the firing la
   assert.equal(picked, 1);
 });
 
+test("spare menders recover separate drops even with no transporters or active contact, then bank them", () => {
+  const { game, o, room, pos } = gateBattle();
+  const bank = { pos: pos(24, 40), store: createStore({ energy: 1000 }, 10000) };
+  room.storage = o.colony.storage = bank;
+  room.drops = [
+    { id: "small", pos: pos(26, 48), amount: 51 },
+    { id: "large", pos: pos(33, 48), amount: 300 },
+  ];
+  o.colony.overlords = { logistics: { transporters: [] } };
+  const picked: string[] = [],
+    banked: string[] = [];
+  const make = (name: string, x: number) => {
+    const c = {
+      name,
+      room,
+      pos: pos(x, 47),
+      memory: {},
+      body: [],
+      store: createStore({}, 200),
+      pickup(d: TestScope) {
+        picked.push(d.id);
+        return constants.OK;
+      },
+      transfer(target: TestScope) {
+        assert.equal(target, bank);
+        banked.push(name);
+        return constants.OK;
+      },
+      repair: () => constants.OK,
+      withdraw: () => constants.OK,
+      moveTo() {},
+    };
+    return { name, pos: c.pos, room, creep: c, store: c.store, memory: c.memory };
+  };
+  const workers = [make("repair", 24), make("collector1", 25), make("collector2", 33)];
+  o.menders = workers;
+  o.run();
+  assert.deepEqual(picked.sort(), ["large", "small"]);
+  game.time++;
+  room.drops = [];
+  for (const w of workers.slice(1)) {
+    w.store.energy = 50;
+    w.pos = w.creep.pos = pos(25, 40);
+  }
+  o.run();
+  assert.deepEqual(banked.sort(), ["collector1", "collector2"]);
+});
+
+test("a home without carriers dispatches a recovery truck and banks energy from recycled defenders", () => {
+  const { o, room, pos, requests } = gateBattle();
+  const tomb = { pos: pos(28, 40), store: { energy: 1450 }, ticksToDecay: 75 };
+  const bank = { pos: pos(24, 40), store: createStore({ energy: 1 }, 10000) };
+  o.colony.storage = room.storage = bank;
+  o.colony.tombstones = [tomb];
+  o.init();
+  assert.ok(requests.some((r) => r.role === "southRecovery"));
+  const c = {
+    pos: pos(28, 39),
+    memory: {},
+    store: createStore({ energy: 0 }, 1200),
+    withdraw(t: TestScope) {
+      assert.equal(t, tomb);
+      this.store.energy = 1200;
+      return constants.OK;
+    },
+    transfer(t: TestScope) {
+      assert.equal(t, bank);
+      this.store.energy = 0;
+      return constants.OK;
+    },
+  };
+  o.trucks = [{ creep: c, pos: c.pos }];
+  o.run();
+  assert.equal(c.store.energy, 1200);
+  o.run();
+  assert.equal(c.store.energy, 0);
+});
 test("a south mender waits at the repair line for incoming energy but can refuel without a supplier", () => {
   const { game, o, room, strategy, pos, enemy } = gateBattle();
   game.rooms.E58S44.enemies = [enemy];
@@ -1471,6 +1690,7 @@ test("the gate reactor preserves repair stock after the guard consumes its boost
       protectsSouthGate: () => true,
       mobilized: () => true,
       guardRole: "southGuard",
+      rangerBoosts: ["XKHO2", "KHO2", "KO"],
       guardBoost: "UH2O",
       repairBoost: "LH",
     },

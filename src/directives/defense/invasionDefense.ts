@@ -46,7 +46,8 @@ export class DirectiveInvasionDefense extends Directive {
       (hostile) => hostile.getActiveBodyparts(RANGED_ATTACK) > 0,
     );
 
-    this.overlords.rangedDefense = new RangedDefenseOverlord(this);
+    if (!this.colony.memory.pauseHydralisks)
+      this.overlords.rangedDefense = new RangedDefenseOverlord(this);
 
     // If serious bunker busting attempt, spawn lurkers
     // TODO understand dismantlers damage output

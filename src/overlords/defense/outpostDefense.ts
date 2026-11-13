@@ -195,7 +195,7 @@ export class OutpostDefenseOverlord extends CombatOverlord {
       : CombatSetups.zerglings.healing;
     const healerSetup = CombatSetups.transfusers.default;
 
-    if (myPotentials.ranged < needRanged) {
+    if (!this.colony.memory.pauseHydralisks && myPotentials.ranged < needRanged) {
       if (!this.reassignIdleCreeps(Roles.ranged, 1)) this.requestCreep(hydraliskSetup);
     } else if (myPotentials.heal < needHeal) {
       if (!this.reassignIdleCreeps(Roles.healer, 1)) this.requestCreep(healerSetup);
@@ -207,13 +207,14 @@ export class OutpostDefenseOverlord extends CombatOverlord {
   run() {
     const surplusHydralisks = this.getSurplusHydralisks();
     this.autoRun(this.zerglings, (zergling) => this.handleCombat(zergling));
-    this.autoRun(this.hydralisks, (hydralisk) => {
-      if (surplusHydralisks.has(hydralisk)) {
-        this.recycleDefender(hydralisk);
-      } else {
-        this.handleCombat(hydralisk);
-      }
-    });
+    if (!this.colony.memory.pauseHydralisks)
+      this.autoRun(this.hydralisks, (hydralisk) => {
+        if (surplusHydralisks.has(hydralisk)) {
+          this.recycleDefender(hydralisk);
+        } else {
+          this.handleCombat(hydralisk);
+        }
+      });
     this.autoRun(this.healers, (healer) => this.handleHealer(healer));
   }
 }
