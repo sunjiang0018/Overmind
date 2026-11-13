@@ -371,11 +371,46 @@ export class MiningOverlord extends Overlord {
   }
 
   private registerEnergyRequests(): void {
-    if (this.container) {
+    const container = this.container;
+    if (container) {
       const transportCapacity = 200 * this.colony.level;
       const threshold = this.colony.stage > ColonyStage.Larva ? 0.8 : 0.5;
-      if (sum(this.container.store) > threshold * transportCapacity) {
-        this.colony.logisticsNetwork.requestOutput(this.container, {
+      if (
+        this.source &&
+        this.colony.storage &&
+        this.pos.roomName != this.colony.name &&
+        !this.link &&
+        Number.isFinite(this.distance) &&
+        container.store.getUsedCapacity() == container.store.energy
+      ) {
+        const source = this.source;
+        const harvestRate = sum(this.miners, (miner) =>
+          !miner.spawning && miner.pos.isNearTo(source.pos)
+            ? miner.getActiveBodyparts(WORK) * HARVEST_POWER
+            : 0,
+        );
+        const drop = getRoomDroppedEnergy(source.room).find((resource) =>
+          resource.pos.isEqualTo(container.pos),
+        );
+        this.colony.logisticsNetwork.requestOutput(container, {
+          resourceType: RESOURCE_ENERGY,
+          mine: {
+            container,
+            homeDistance: this.distance,
+            drop,
+            stock: {
+              stored: container.store.energy,
+              capacity: container.store.getCapacity(),
+              dropped: drop?.amount ?? 0,
+              harvestRate,
+              sourceEnergy: source.energy,
+              sourceCapacity: source.energyCapacity,
+              regeneration: source.ticksToRegeneration ?? ENERGY_REGEN_TIME,
+            },
+          },
+        });
+      } else if (sum(container.store) > threshold * transportCapacity) {
+        this.colony.logisticsNetwork.requestOutput(container, {
           resourceType: "all",
           dAmountdt: this.energyPerTick,
         });

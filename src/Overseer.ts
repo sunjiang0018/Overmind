@@ -205,6 +205,8 @@ export class Overseer implements IOverseer {
       // Pick up all nontrivial dropped resources
       for (const resourceType in getRoomDrops(room)) {
         for (const drop of getRoomDrops(room)[resourceType]) {
+          if (colony.logisticsNetwork.requests.some((request) => request.mine?.drop == drop))
+            continue;
           // A designated early-game stockpile is an intentional drop. Other input requests
           // (e.g. a tower refilling) must not suppress collection throughout the colony.
           if (

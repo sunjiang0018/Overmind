@@ -19,6 +19,7 @@ import {
 import { Pathing } from "../../movement/Pathing";
 import { OverlordPriority } from "../../priorities/priorities_overlords";
 import { profile } from "../../profiler/decorator";
+import { TaskCollectMine } from "../../tasks/instances/collectMine";
 import { Tasks } from "../../tasks/Tasks";
 import { Zerg } from "../../zerg/Zerg";
 import { Overlord, OverlordMemory } from "../Overlord";
@@ -137,6 +138,20 @@ export class TransportOverlord extends Overlord {
   }
 
   private handleTransporter(transporter: Zerg, request: LogisticsRequest | undefined) {
+    if (request?.mine) {
+      const storage = this.colony.storage;
+      const [route] = this.colony.logisticsNetwork.bufferChoices(transporter, request);
+      if (route && storage) {
+        const pickup = Tasks.transfer(storage).fork(
+          new TaskCollectMine(request.mine.container, route.dQ),
+        );
+        transporter.task =
+          route.targetRef == storage.id ? pickup.fork(Tasks.transferAll(storage)) : pickup;
+      } else {
+        this.handleTransporter(transporter, undefined);
+      }
+      return;
+    }
     if (request) {
       const choices = this.colony.logisticsNetwork.bufferChoices(transporter, request);
       const bestChoice = last(

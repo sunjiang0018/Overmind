@@ -1,3 +1,10 @@
+import {
+  chooseMineTrip,
+  minePickupPriority,
+  mineWaitBudget,
+  type MineStock,
+  type MineArrival,
+} from "./minePickup";
 import { getStoreContents } from "../game/Structures";
 import { getRoomObjectRef, getTargetedBy } from "../game/RoomObject";
 import {
@@ -48,7 +55,15 @@ export const ALL_RESOURCE_TYPE_ERROR = `Improper logistics request: 'all' can on
 
 export type BufferTarget = StructureStorage | StructureTerminal;
 
+interface MineRequest {
+  container: StructureContainer;
+  homeDistance: number;
+  stock: MineStock;
+  drop?: Resource;
+}
+
 export interface LogisticsRequest {
+  mine?: MineRequest;
   id: string; // ID of the request; used for matching purposes
   target: LogisticsTarget; // Target making the request
   amount: number; // Amount to request
@@ -58,6 +73,7 @@ export interface LogisticsRequest {
 }
 
 interface RequestOptions {
+  mine?: MineRequest;
   amount?: number;
   dAmountdt?: number; // Always pass a positive value for this; sign is determined by function call
   resourceType?: ResourceConstant | "all";
@@ -199,6 +215,7 @@ export class LogisticsNetwork {
     const req: LogisticsRequest = {
       id: requestID.toString(),
       target: target,
+      mine: opts.mine,
       amount: opts.amount,
       dAmountdt: opts.dAmountdt!,
       resourceType: opts.resourceType!,
@@ -446,6 +463,7 @@ export class LogisticsNetwork {
     request: LogisticsRequest,
     nextAvailability?: [number, RoomPosition],
   ): number {
+    if (request.mine) return -(this.mineChoice(transporter, request.mine)?.dQ ?? 0);
     // Figure out when/where the transporter will be free
     let busyUntil: number;
     let newPos: RoomPosition;
@@ -516,6 +534,113 @@ export class LogisticsNetwork {
     }
   }
 
+  private mineTravelTime(transporter: Zerg, mine: MineRequest): number {
+    const task = transporter.task;
+    if (transporter.pos.isNearTo(mine.container.pos)) return 0;
+    if (task && (task.target == mine.container || (mine.drop && task.target == mine.drop))) {
+      if (task.tick < Game.time && task.eta !== undefined) return task.eta;
+    }
+    // Idle vehicles usually depart from the same storage or service tiles. Pathing caches these pairs.
+    return Pathing.distance(transporter.pos, mine.container.pos) ?? Infinity;
+  }
+
+  mineWaitTime(truck: Zerg, container: StructureContainer, wanted: number): number {
+    const mine = this.requests[this.targetToRequest[container.id]]?.mine;
+    if (!mine) return 0;
+    const waiting = mineWaitBudget(
+      mine.stock,
+      wanted,
+      truck.store.getCapacity(),
+      mine.homeDistance,
+      truck.ticksToLive ?? CREEP_LIFE_TIME,
+    );
+    if (!waiting) return 0;
+    if (
+      this.colony.overlords.logistics.transporters.some((other) => {
+        const task = other.task;
+        if (other == truck || !task) return false;
+        return (
+          (task.name == "collectMine" && task.target == container) ||
+          (task._parent?.name == "collectMine" && task._parent._target.ref == container.id) ||
+          (["withdraw", "withdrawAll", "pickup"].includes(task.name) &&
+            (task.target == container || (!!mine.drop && task.target == mine.drop)))
+        );
+      })
+    )
+      return 0;
+    return waiting;
+  }
+
+  private mineChoice(transporter: Zerg, mine: MineRequest) {
+    const storage = this.colony.storage;
+    const warehouseSpace = storage?.store.getFreeCapacity(RESOURCE_ENERGY) ?? 0;
+    if (!storage || !warehouseSpace) return;
+    const space = transporter.store.getFreeCapacity();
+    const cargo = transporter.store.energy;
+    const canUnload =
+      cargo > 0 &&
+      !transporter.hasMineralsInCarry &&
+      transporter.pos.roomName == storage.pos.roomName &&
+      warehouseSpace >= cargo + transporter.store.getCapacity();
+    if (!space && !canUnload) return;
+    const etaViaStorage = (truck: Zerg) => {
+      const toStorage = truck.pos.isNearTo(storage.pos)
+        ? 0
+        : (Pathing.distance(truck.pos, storage.pos) ?? Infinity);
+      return toStorage + 1 + mine.homeDistance;
+    };
+    const bookings: MineArrival[] = [];
+    for (const other of this.colony.overlords.logistics.transporters) {
+      const task = other.task;
+      if (
+        other == transporter ||
+        !task ||
+        (task.data.collectedAt !== undefined && task.data.collectedAt < Game.time)
+      )
+        continue;
+      // The mine remains booked while this truck is still unloading its previous cargo.
+      if (
+        task.name == "transferAll" &&
+        task.target == storage &&
+        task._parent?.name == "collectMine" &&
+        task._parent._target.ref == mine.container.id
+      ) {
+        const arrival = etaViaStorage(other);
+        if (arrival < (other.ticksToLive ?? CREEP_LIFE_TIME)) {
+          bookings.push({
+            eta: arrival,
+            capacity: other.store.getFreeCapacity() + Math.min(other.store.energy, warehouseSpace),
+          });
+        }
+        continue;
+      }
+      if (task.target != mine.container && (!mine.drop || task.target != mine.drop)) continue;
+      if (!["collectMine", "withdraw", "withdrawAll", "pickup"].includes(task.name)) continue;
+      const arrival = this.mineTravelTime(other, mine);
+      if (arrival >= (other.ticksToLive ?? CREEP_LIFE_TIME)) continue;
+      bookings.push({
+        eta: arrival,
+        capacity: Math.min(other.store.getFreeCapacity(), task.data.amount ?? Infinity),
+      });
+    }
+    const plan = chooseMineTrip(
+      mine.stock,
+      bookings,
+      this.mineTravelTime(transporter, mine),
+      space,
+      mine.homeDistance,
+      transporter.ticksToLive ?? CREEP_LIFE_TIME,
+      canUnload ? { eta: etaViaStorage(transporter), capacity: space + cargo } : undefined,
+    );
+    if (!plan) return;
+    return {
+      dQ: plan.load,
+      dt: plan.eta + 1,
+      targetRef: plan.unloadFirst ? storage.id : mine.container.id,
+      fullAt: plan.fullAt,
+    };
+  }
+
   // Functions for computing resource change rate ====================================================================
 
   /**
@@ -529,6 +654,10 @@ export class LogisticsNetwork {
     dt: number; // Amount of time to execute the choice
     targetRef: string; // Reference of the immediate target
   }[] {
+    if (request.mine) {
+      const choice = this.mineChoice(transporter, request.mine);
+      return choice ? [choice] : [];
+    }
     const [ticksUntilFree, newPos] = this.nextAvailability(transporter);
     const choices: { dQ: number; dt: number; targetRef: string }[] = [];
     const amount = this.predictedRequestAmount(transporter, request, [ticksUntilFree, newPos]);
@@ -649,6 +778,13 @@ export class LogisticsNetwork {
    * Compute the best possible value of |dResource / dt|
    */
   private resourceChangeRate(transporter: Zerg, request: LogisticsRequest): number {
+    if (request.mine) {
+      // Re-evaluate against current tasks after each assignment in this tick.
+      const choice = this.mineChoice(transporter, request.mine);
+      if (!choice) return 0;
+      // Compare time to overflow with time to arrival. Urgent mines should compete with nearby work.
+      return request.multiplier * minePickupPriority(choice.dQ, choice.fullAt, choice.dt);
+    }
     if (!this.cache.resourceChangeRate[request.id]) {
       this.cache.resourceChangeRate[request.id] = {};
     }

@@ -1,7 +1,8 @@
+import { chooseMineTrip, minePickupPriority, mineWaitBudget } from "../src/logistics/minePickup";
 import { createStore } from "./helpers/store";
 import { classMembers } from "./helpers/source";
 import type { TestScope } from "./helpers/types";
-import { test } from "vite-plus/test";
+import { test, vi } from "vite-plus/test";
 import assert from "node:assert/strict";
 import ts from "typescript";
 import { constants } from "./helpers/constants";
@@ -116,6 +117,17 @@ function transporterHarness(
     ...native,
     ...constants,
     Tasks,
+    TaskCollectMine: class {
+      name = "collectMine";
+      constructor(
+        public target: TestScope,
+        public plannedLoad: number,
+      ) {}
+      fork(child: TestScope) {
+        child.parent = this;
+        return child;
+      }
+    },
     Roles: { worker: "worker", pioneer: "pioneer", upgrader: "upgrader" },
     getRoomObjectRef: (target: TestScope) => target.id,
     roomPositionFindClosestByMultiRoomRange: (_pos: unknown, targets: TestScope[]) => targets[0],
@@ -160,7 +172,7 @@ function transporterHarness(
       calls.park++;
     },
   };
-  return { overlord, transporter, calls, storage, target, colony };
+  return { overlord, transporter, calls, storage, target, request, colony };
 }
 
 function energyTarget(id: string, energy: number, capacity: number) {
@@ -310,4 +322,146 @@ test("transports continue useful pickups and deliveries instead of always return
   delivery.overlord.handleSmolTransporter(delivery.transporter);
   assert.equal(delivery.transporter.task.name, "transfer");
   assert.equal(delivery.transporter.task.target, delivery.target);
+});
+
+test("a mine booking binds a collection task and its warehouse delivery to the same truck", () => {
+  const h = transporterHarness(536, -964, [{ dQ: 964, dt: 90, targetRef: "requestTarget" }]);
+  Object.assign(h.request, { mine: { container: h.target } });
+  h.overlord.handleSmolTransporter(h.transporter);
+  assert.equal(h.transporter.task.name, "collectMine");
+  assert.equal(h.transporter.task.target, h.target);
+  assert.equal(h.transporter.task.parent.name, "transfer");
+  assert.equal(h.transporter.task.parent.target, h.colony.storage);
+  const via = transporterHarness(536, -1395, [{ dQ: 1395, dt: 116, targetRef: "storage" }]);
+  Object.assign(via.request, { mine: { container: via.target } });
+  via.overlord.handleSmolTransporter(via.transporter);
+  const unload = via.transporter.task;
+  assert.equal(unload.name, "transferAll");
+  assert.equal(unload.target, via.storage);
+  assert.equal(unload.parent.target, via.target);
+  assert.equal(unload.parent.plannedLoad, 1395);
+  assert.equal(unload.parent.parent.target, via.storage);
+});
+
+test("a mine pickup counts a ground pickup towards its target and never extends its wait deadline", () => {
+  const game = { time: 100 };
+  const Collect = load(
+    `export class Collect {${classMembers("src/tasks/instances/collectMine.ts", "TaskCollectMine", ["work", "drop", "isValidTask"])}}`,
+    { ...constants, Game: game },
+  ).Collect;
+  let drops = [{ resourceType: "energy", amount: 100 }];
+  const container = { store: createStore({ energy: 1200 }, 2000), pos: { lookFor: () => drops } };
+  const loads: number[] = [];
+  const wanted: number[] = [];
+  const creep = {
+    store: createStore({ energy: 0 }, 1500),
+    colony: {
+      logisticsNetwork: {
+        mineWaitTime: (_truck: unknown, _container: unknown, n: number) => {
+          wanted.push(n);
+          return 3;
+        },
+      },
+    },
+    pickup: () => constants.OK,
+    withdraw: () => {
+      loads.push(game.time);
+      return constants.OK;
+    },
+  };
+  const pickup = Object.assign(new Collect(), {
+    data: { plannedLoad: 1400 },
+    target: container,
+    creep,
+  });
+  pickup.work();
+  assert.equal(pickup.data.plannedLoad, 1300);
+  drops = [];
+  creep.store.energy = 100;
+  for (game.time = 101; game.time <= 104; game.time++) pickup.work();
+  assert.deepEqual(wanted, [1300, 1300, 1300]);
+  assert.deepEqual(loads, [104]);
+  assert.equal(pickup.isValidTask(), false);
+});
+
+test("remote dispatch sees a same-tick booking, partially loaded trucks and the time needed to get home", () => {
+  for (const key of ["ENERGY_REGEN_TIME", "ENERGY_DECAY", "CREEP_LIFE_TIME"])
+    vi.stubGlobal(key, constants[key]);
+  const Network = load(
+    `export class Network {${classMembers("src/logistics/LogisticsNetwork.ts", "LogisticsNetwork", [
+      "mineChoice",
+      "mineWaitTime",
+      "mineTravelTime",
+      "resourceChangeRate",
+      "transporterPreferences",
+    ])}}`,
+    {
+      ...native,
+      ...constants,
+      chooseMineTrip,
+      mineWaitBudget,
+      minePickupPriority,
+      Game: { time: 10 },
+      Pathing: { distance: () => 89 },
+    },
+  ).Network;
+  const box = (id: string) => ({ id, pos: {}, store: createStore({ energy: 800 }, 2000) });
+  const request = (id: string, stored: number) => ({
+    id,
+    multiplier: 1,
+    mine: {
+      container: box(id),
+      homeDistance: 89,
+      stock: {
+        stored,
+        capacity: 2000,
+        dropped: 0,
+        harvestRate: 10,
+        sourceCapacity: 3000,
+        sourceEnergy: 3000,
+        regeneration: 300,
+      },
+    },
+  });
+  const a = request("a", 1000),
+    b = request("b", 800);
+  const truck = () => ({
+    pos: { roomName: "E59S43", isNearTo: () => false },
+    store: createStore({ energy: 0 }, 1500),
+    ticksToLive: 1000,
+    task: null as TestScope | null,
+  });
+  const first = truck(),
+    second = truck();
+  const net = Object.assign(new Network(), {
+    requests: [a, b],
+    targetToRequest: { a: 0, b: 1 },
+    colony: {
+      storage: {
+        id: "warehouse",
+        pos: { roomName: "E58S42" },
+        store: createStore({ energy: 0 }, 100000),
+      },
+      overlords: { logistics: { transporters: [first, second] } },
+    },
+  });
+  assert.equal(net.transporterPreferences(second)[0], a);
+  first.task = { name: "collectMine", target: a.mine.container, tick: 10, data: {} };
+  assert.equal(net.transporterPreferences(second)[0], b);
+  second.store.energy = 536;
+  assert.equal(net.mineChoice(second, b.mine).dQ, 964);
+  second.pos.roomName = "E58S42";
+  assert.equal(net.mineChoice(second, b.mine).targetRef, "warehouse");
+  second.task = {
+    name: "transferAll",
+    target: net.colony.storage,
+    data: {},
+    _parent: { name: "collectMine", _target: { ref: b.mine.container.id } },
+  };
+  assert.equal(net.mineChoice(first, b.mine), undefined);
+  assert.equal(net.mineWaitTime(first, b.mine.container, 1000), 0);
+  second.task = null;
+  assert.ok(net.mineWaitTime(first, b.mine.container, 1000) > 0);
+  second.ticksToLive = 120;
+  assert.equal(net.mineChoice(second, b.mine), undefined);
 });

@@ -3,6 +3,7 @@ import { log } from "../console/log";
 import profiler from "../profiler/screeps-profiler";
 import { attackTargetType, attackTaskName, TaskAttack } from "./instances/attack";
 import { buildTargetType, buildTaskName, TaskBuild } from "./instances/build";
+import { TaskCollectMine } from "./instances/collectMine";
 import { claimTargetType, claimTaskName, TaskClaim } from "./instances/claim";
 import { dismantleTargetType, dismantleTaskName, TaskDismantle } from "./instances/dismantle";
 import { dropTaskName, TaskDrop } from "./instances/drop";
@@ -68,6 +69,9 @@ export function initializeTask(protoTask: ProtoTask): Task<any> {
       break;
     case buildTaskName:
       task = new TaskBuild(target as buildTargetType);
+      break;
+    case "collectMine":
+      task = new TaskCollectMine(target as StructureContainer);
       break;
     case claimTaskName:
       task = new TaskClaim(target as claimTargetType);

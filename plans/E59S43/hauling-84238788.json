@@ -1,0 +1,200 @@
+{
+  "shard": "shard3",
+  "branch": "main",
+  "firstRunningTick": 84238788,
+  "bundleSha256": "4bc1ddf2030e740eb1a0329e5f2aa1e0a82e7d67c61417f6f8f8fe649288a1d6",
+  "mineRoom": "E59S43",
+  "containers": {
+    "north": [
+      41,
+      5
+    ],
+    "south": [
+      40,
+      43
+    ]
+  },
+  "storage": {
+    "room": "E58S42",
+    "pos": [
+      24,
+      40
+    ]
+  },
+  "before": {
+    "firstTick": 84238200,
+    "lastTick": 84238499,
+    "ticks": 300,
+    "fullTicks": {
+      "north": 9,
+      "south": 55
+    },
+    "energyReceivedAtStorage": {
+      "north": 3640,
+      "south": 1500,
+      "total": 5140
+    },
+    "inTransitAtStart": [
+      1124,
+      0
+    ],
+    "inTransitAtEnd": [
+      0,
+      1500
+    ],
+    "deliveries": [
+      {
+        "tick": 84238230,
+        "truck": "transport_5",
+        "north": 1124,
+        "south": 0,
+        "other": 376,
+        "warehouseDelta": 1500
+      },
+      {
+        "tick": 84238365,
+        "truck": "transport_0",
+        "north": 1020,
+        "south": 0,
+        "other": 0,
+        "warehouseDelta": 1020
+      },
+      {
+        "tick": 84238430,
+        "truck": "transport_2",
+        "north": 1496,
+        "south": 0,
+        "other": 0,
+        "warehouseDelta": 1496
+      },
+      {
+        "tick": 84238433,
+        "truck": "transport_6",
+        "north": 0,
+        "south": 1500,
+        "other": 0,
+        "warehouseDelta": 1500
+      }
+    ]
+  },
+  "after": {
+    "firstTick": 84238854,
+    "lastTick": 84239153,
+    "ticks": 300,
+    "fullTicks": {
+      "north": 30,
+      "south": 48
+    },
+    "energyReceivedAtStorage": {
+      "north": 2189,
+      "south": 3000,
+      "total": 5189
+    },
+    "inTransitAtStart": [
+      2189,
+      1500
+    ],
+    "inTransitAtEnd": [
+      1500,
+      1308
+    ],
+    "deliveries": [
+      {
+        "tick": 84238892,
+        "truck": "transport_0",
+        "north": 1212,
+        "south": 0,
+        "other": 0,
+        "truckDelta": 1212,
+        "warehouseDelta": 2012,
+        "previousTick": 84238891
+      },
+      {
+        "tick": 84238926,
+        "truck": "transport_6",
+        "north": 977,
+        "south": 0,
+        "other": 0,
+        "truckDelta": 977,
+        "warehouseDelta": 977,
+        "previousTick": 84238925
+      },
+      {
+        "tick": 84238930,
+        "truck": "transport_2",
+        "north": 0,
+        "south": 1500,
+        "other": 0,
+        "truckDelta": 1500,
+        "warehouseDelta": 1500,
+        "previousTick": 84238929
+      },
+      {
+        "tick": 84239130,
+        "truck": "transport_1",
+        "north": 0,
+        "south": 1500,
+        "other": 0,
+        "truckDelta": 1500,
+        "warehouseDelta": 1500,
+        "previousTick": 84239129
+      }
+    ]
+  },
+  "afterMinePickups": [
+    [
+      84239041,
+      "transport_1",
+      "south",
+      1500
+    ],
+    [
+      84239061,
+      "transport_3",
+      "north",
+      1500
+    ],
+    [
+      84239128,
+      "transport_2",
+      "south",
+      377
+    ],
+    [
+      84239129,
+      "transport_2",
+      "south",
+      931
+    ]
+  ],
+  "afterInTransitCreeps": {
+    "transport_2": [
+      0,
+      1308
+    ],
+    "transport_3": [
+      1500,
+      0
+    ]
+  },
+  "afterFullIntervalsInclusive": {
+    "north": [
+      [
+        84239031,
+        84239060
+      ]
+    ],
+    "south": [
+      [
+        84238993,
+        84239040
+      ]
+    ]
+  },
+  "method": [
+    "Both windows are 300 inclusive world-state ticks. The incomplete official replay around deployment required using earlier and later windows.",
+    "Before uses official room history. After uses official room history and live room updates, aligning gameTime with the recorded world state. Full means a 2000-energy container. Short live sampling gaps are checked against adjacent inventory, harvesting and truck positions.",
+    "Deliveries are tagged using the source container, active truck task, cargo and storage changes. Period boundaries are defined by actual storage receipt. One same-tick 800 energy deposit from manager_0 is excluded.",
+    "Before/after in-transit values list north then south. Pickups include tick, truck, source and energy. The first three after receipts came from tasks already dispatched before deployment."
+  ]
+}
