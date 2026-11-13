@@ -52,6 +52,9 @@ export function interceptSouthRaid(colony: Colony, squad: Zerg[]): Set<Zerg> {
   if (!order) return taken;
   const home = colony.room,
     outer = Game.rooms.E58S43;
+  // A scout on the far side of the outpost cannot see raiders camping at its entrance.
+  // Let it restore vision before deciding the targets have left.
+  if (!outer && !order.engaged && Game.time <= order.until) return taken;
   const targets = order.targets.map((id) => Game.getObjectById(id)).filter((e): e is Creep => !!e);
   const otherDanger = (r: Room) =>
     getRoomPlayerHostiles(r).some((e) => isSiegeUnit(e) && !order.targets.includes(e.id));
@@ -79,7 +82,9 @@ export function interceptSouthRaid(colony: Colony, squad: Zerg[]): Set<Zerg> {
     combatReady.filter((u) => u.creep.getActiveBodyparts(ATTACK)).length >= 2 &&
     combatReady.some((u) => u.creep.getActiveBodyparts(RANGED_ATTACK));
   const nearGate = targets.filter((e) =>
-    e.pos.roomName === home.name ? e.pos.y >= 46 : e.pos.roomName === outer?.name && e.pos.y <= 10,
+    e.pos.roomName === home.name
+      ? e.pos.y >= 46
+      : e.pos.roomName === outer?.name && (order.engaged || e.pos.y <= 10),
   );
   if (
     !order.engaged &&

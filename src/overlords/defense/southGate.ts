@@ -159,7 +159,8 @@ export class SouthGateOverlord extends Overlord {
       }
     }
     for (const unit of this.scouts) {
-      if (!unit.spawning && !unit.safelyInRoom(warningRoom)) unit.goToRoom(warningRoom);
+      const destination = this.colony.memory.southWatch?.intercept ? "E58S43" : warningRoom;
+      if (!unit.spawning && !unit.safelyInRoom(destination)) unit.goToRoom(destination);
     }
     const front = southFront(this.colony);
     const intercepting = interceptSouthRaid(this.colony, [

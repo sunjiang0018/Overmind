@@ -1006,6 +1006,10 @@ test("only the assembled T3 squad intercepts the named raiders and focuses their
   game.getObjectById = (id: string) => raiders.find((r) => r.id === id);
   const order = { targets: ["dismantler", "medic"], until: game.time + 500, engaged: false };
   o.colony.memory.southWatch = { intercept: order };
+  delete game.rooms.E58S43;
+  assert.equal(strategy.interceptSouthRaid(o.colony, []).size, 0);
+  assert.equal(o.colony.memory.southWatch.intercept, order);
+  game.rooms.E58S43 = outer;
   const shots: string[] = [],
     moves: string[] = [];
   const squad = [0, 1, 2].map((i) => ({
