@@ -1956,6 +1956,25 @@ test("stage resources but only liquidate after a confirmed breach; respect fuel,
     { Game: game },
   );
   assert.deepEqual(policy.stagingLoad(o.colony, 800), { resource: "H", amount: 550 });
+  const cargo = createStore({ H: 0 }, 800);
+  const truck = {
+    pos: { isNearTo: () => true },
+    store: cargo,
+    creep: {
+      withdraw(t: TestScope, r: string, n: number) {
+        assert.equal(t, storage);
+        cargo[r] = n;
+      },
+      transfer(t: TestScope, r: string) {
+        assert.equal(t, term);
+        assert.equal(cargo[r], 550);
+        cargo[r] = 0;
+      },
+    },
+  };
+  assert.ok(policy.shuttleToTerminal(o.colony, truck));
+  assert.ok(policy.shuttleToTerminal(o.colony, truck));
+  assert.equal(cargo.H, 0);
   storage.store.H = 0;
   assert.deepEqual(policy.stagingLoad(o.colony, 800), { resource: "energy", amount: 100 });
   room.enemies = [enemy];

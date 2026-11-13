@@ -1,3 +1,4 @@
+import { shuttleToTerminal, stagingLoad } from "../../strategy/terminalEvacuation";
 import type { Colony } from "../../Colony";
 import { CreepSetup } from "../../creepSetups/CreepSetup";
 import { Overlord } from "../Overlord";
@@ -74,7 +75,13 @@ export class SouthGateOverlord extends Overlord {
   init(): void {
     updateSouthWatch(this.colony);
     this.wishlist(1, scout, { prespawn: 175, priority: 199 });
-    if (this.colony.room.energyCapacityAvailable >= 1200 && needsRecoveryTruck(this.colony))
+    if (
+      this.colony.room.energyCapacityAvailable >= 1200 &&
+      (needsRecoveryTruck(this.colony) ||
+        (this.colony.memory.terminalEvacuation &&
+          stagingLoad(this.colony, 1200) &&
+          !this.colony.overlords.logistics.transporters.length))
+    )
       this.wishlist(1, recoveryTruck, { priority: 3, noLifetimeFilter: true });
     const attackPair =
       !this.colony.controller.safeMode &&
@@ -198,6 +205,8 @@ export class SouthGateOverlord extends Overlord {
         supplyGateSpawn(this.colony, unit)
       )
         continue;
+      // During the siege, menders still collect at the wall while the large truck stages warehouse stock.
+      if (this.colony.memory.terminalEvacuation && shuttleToTerminal(this.colony, unit)) continue;
       if (!recoverGateCargo(this.colony, unit))
         unit.reassign(this.colony.overlords.logistics, "transport");
     }

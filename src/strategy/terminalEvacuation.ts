@@ -1,3 +1,4 @@
+import type { Zerg } from "../zerg/Zerg";
 import type { Colony } from "../Colony";
 import { marketDeal } from "../game/Game";
 import { isTerminalReady } from "../game/Structures";
@@ -42,6 +43,43 @@ export function stagingLoad(
     );
     if (amount > 0) return { resource, amount };
   }
+}
+
+// In E58S42, two walkable service tiles touch both stores. Avoid crossing the bunker between loads.
+export function shuttleToTerminal(colony: Colony, unit: Zerg): boolean {
+  const terminal = colony.terminal,
+    bank = colony.storage;
+  if (!colony.memory.terminalEvacuation || !terminal || !bank) return false;
+  const load = stagingLoad(colony, unit.store.getFreeCapacity());
+  const carried = (Object.keys(unit.store) as ResourceConstant[]).find(
+    (r) => unit.store[r] > 0 && terminal.store.getFreeCapacity(r) > 0,
+  );
+  if (!carried && !load) return false;
+  const stop = carried ? terminal : bank;
+  if (!unit.pos.isNearTo(stop)) {
+    const target = [39, 40]
+      .map((y) => colony.room.getPositionAt(23, y)!)
+      .find(
+        (p) =>
+          p.isNearTo(terminal) &&
+          p.isNearTo(bank) &&
+          !p.lookFor(LOOK_CREEPS).length &&
+          !p
+            .lookFor(LOOK_STRUCTURES)
+            .some(
+              (s) =>
+                s.structureType !== STRUCTURE_ROAD &&
+                s.structureType !== STRUCTURE_CONTAINER &&
+                !(s.structureType === STRUCTURE_RAMPART && s.my),
+            ),
+      );
+    unit.goTo(target || stop, {
+      range: target ? 0 : 1,
+      pathOpts: { maxRooms: 1, blockExits: true },
+    });
+  } else if (carried) unit.creep.transfer(terminal, carried);
+  else if (load) unit.creep.withdraw(bank, load.resource, load.amount);
+  return true;
 }
 
 export function checkTerminalBreach(colony: Colony): void {
