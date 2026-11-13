@@ -864,9 +864,11 @@ export function recoverGateCargo(colony: Colony, unit: Zerg): boolean {
     }
   }
   if (c.store.energy > 0) {
-    const destinations = colony.memory.terminalEvacuation
-      ? [colony.terminal, colony.storage]
-      : [colony.storage, colony.terminal];
+    const evacuation = colony.memory.terminalEvacuation;
+    const destinations =
+      evacuation && (!evacuation.returnEnergy || evacuation.breachedAt !== undefined)
+        ? [colony.terminal, colony.storage]
+        : [colony.storage, colony.terminal];
     const bank = destinations.find((s) => s && s.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
     if (!bank) return true;
     if (c.transfer(bank, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) insideMove(unit, bank.pos, 1);

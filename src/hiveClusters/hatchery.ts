@@ -415,6 +415,12 @@ export class Hatchery extends HiveCluster {
       // Refill empty mines before routine replacements. Keep queens, the first wall repairer
       // and emergency combat first; interleave an ore truck with the first remote miners.
       const role = request.setup.role;
+      if (
+        role === "upgrader" &&
+        this.colony.memory.terminalEvacuation?.returnEnergy &&
+        !this.colony.getCreepsByRole("upgrader").length
+      )
+        priority = Math.min(priority, 192);
       if (role === "transport" && this.colony.overlords.logistics.transporters.length < 2)
         priority = Math.min(
           priority,

@@ -7,6 +7,7 @@ import { protectsSouthGate, southRamparts, isSiegeUnit } from "./southGate";
 
 export interface TerminalEvacuation {
   armedAt: number;
+  returnEnergy?: boolean;
   breachedAt?: number;
   gate?: Id<StructureRampart>[];
   lastSale?: {
@@ -16,6 +17,11 @@ export interface TerminalEvacuation {
     credits: number;
     fee: number;
   };
+}
+
+export function returningTerminalEnergy(colony: Colony): boolean {
+  const policy = colony.memory.terminalEvacuation;
+  return !!policy?.returnEnergy && policy.breachedAt === undefined;
 }
 
 export function stagingLoad(
@@ -36,6 +42,7 @@ export function stagingLoad(
       +(a === RESOURCE_ENERGY) - +(b === RESOURCE_ENERGY) || storage.store[b] - storage.store[a],
   );
   for (const resource of keys) {
+    if (resource === RESOURCE_ENERGY && returningTerminalEnergy(colony)) continue;
     const amount = Math.min(
       capacity,
       free,
@@ -51,11 +58,21 @@ export function shuttleToTerminal(colony: Colony, unit: Zerg): boolean {
     bank = colony.storage;
   if (!colony.memory.terminalEvacuation || !terminal || !bank) return false;
   const load = stagingLoad(colony, unit.store.getFreeCapacity());
+  const reverse = returningTerminalEnergy(colony);
+  const receiver = (r: ResourceConstant) => (reverse && r === RESOURCE_ENERGY ? bank : terminal);
   const carried = (Object.keys(unit.store) as ResourceConstant[]).find(
-    (r) => unit.store[r] > 0 && terminal.store.getFreeCapacity(r) > 0,
+    (r) => unit.store[r] > 0 && receiver(r).store.getFreeCapacity(r) > 0,
   );
-  if (!carried && !load) return false;
-  const stop = carried ? terminal : bank;
+  // Keep a single first-sale fuel reserve for the still-armed breach order.
+  const back = reverse
+    ? Math.min(
+        unit.store.getFreeCapacity(),
+        bank.store.getFreeCapacity(),
+        Math.max(0, terminal.store.energy - 1000),
+      )
+    : 0;
+  if (!carried && !load && !back) return false;
+  const stop = carried ? receiver(carried) : back ? terminal : bank;
   if (!unit.pos.isNearTo(stop)) {
     const target = [39, 40]
       .map((y) => colony.room.getPositionAt(23, y)!)
@@ -77,7 +94,8 @@ export function shuttleToTerminal(colony: Colony, unit: Zerg): boolean {
       range: target ? 0 : 1,
       pathOpts: { maxRooms: 1, blockExits: true },
     });
-  } else if (carried) unit.creep.transfer(terminal, carried);
+  } else if (carried) unit.creep.transfer(receiver(carried), carried);
+  else if (back) unit.creep.withdraw(terminal, RESOURCE_ENERGY, back);
   else if (load) unit.creep.withdraw(bank, load.resource, load.amount);
   unit.blockMovement = true;
   return true;

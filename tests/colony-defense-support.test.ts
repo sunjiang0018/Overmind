@@ -2122,6 +2122,39 @@ test("stage resources but only liquidate after a confirmed breach; respect fuel,
   assert.ok(policy.shuttleToTerminal(o.colony, truck));
   assert.equal(cargo.H, 0);
   storage.store.H = 0;
+  o.colony.memory.terminalEvacuation.returnEnergy = true;
+  assert.equal(
+    policy.stagingLoad(o.colony, 800),
+    undefined,
+    "do not send the returned energy back out",
+  );
+  const fuelBefore = term.store.energy;
+  term.store.energy = 1600;
+  const carriedEnergy = createStore({ energy: 0 }, 800);
+  const courier = {
+    ...truck,
+    store: carriedEnergy,
+    creep: {
+      withdraw(src: unknown, r: string, n: number) {
+        assert.equal(src, term);
+        assert.equal(r, "energy");
+        assert.equal(n, 600);
+        carriedEnergy.energy = n;
+        term.store.energy -= n;
+      },
+      transfer(dst: unknown, r: string) {
+        assert.equal(dst, storage);
+        assert.equal(r, "energy");
+        carriedEnergy.energy = 0;
+      },
+    },
+  };
+  assert.ok(policy.shuttleToTerminal(o.colony, courier));
+  assert.ok(policy.shuttleToTerminal(o.colony, courier));
+  assert.equal(policy.shuttleToTerminal(o.colony, courier), false);
+  assert.equal(term.store.energy, 1000);
+  term.store.energy = fuelBefore;
+  delete o.colony.memory.terminalEvacuation.returnEnergy;
   assert.deepEqual(policy.stagingLoad(o.colony, 800), { resource: "energy", amount: 100 });
   room.enemies = [enemy];
   enemy.pos = pos(23, 48);

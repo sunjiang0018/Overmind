@@ -540,12 +540,33 @@ export class WorkerOverlord extends Overlord {
   run() {
     const alert = mobilized(this.colony);
     const restore = this.colony.memory.southWatch?.restore;
+    const interim =
+      this.colony.memory.terminalEvacuation?.returnEnergy &&
+      this.colony.memory.terminalEvacuation.breachedAt === undefined &&
+      !alert &&
+      !this.colony.getCreepsByRole("upgrader").some((c) => !c.spawning)
+        ? this.workers.find((w) => !w.spawning && w.room.name === this.colony.name)
+        : undefined;
     const wall =
       (alert || (restore && !restore.finished)) &&
       (southFront(this.colony) ||
         prepWall(this.colony) ||
         (alert && getRoomRamparts(this.colony.room).find((r) => r.pos.x === 24 && r.pos.y === 47)));
     const workers = this.workers.filter((worker) => {
+      if (worker === interim) {
+        const c = worker.creep;
+        if (c.store.energy) {
+          if (c.upgradeController(this.colony.controller) === ERR_NOT_IN_RANGE)
+            worker.goTo(this.colony.controller, { range: 3 });
+        } else {
+          const bank = this.colony.storage?.store.energy
+            ? this.colony.storage
+            : this.colony.terminal;
+          if (bank && c.withdraw(bank, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE)
+            worker.goTo(bank, { range: 1 });
+        }
+        return false;
+      }
       if (wall && !worker.spawning && worker.room.name === this.colony.name) {
         supplyWallWorker(this.colony, worker, wall);
         return false;

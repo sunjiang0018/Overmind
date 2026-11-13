@@ -1,4 +1,8 @@
-import { shuttleToTerminal, stagingLoad } from "../../strategy/terminalEvacuation";
+import {
+  returningTerminalEnergy,
+  shuttleToTerminal,
+  stagingLoad,
+} from "../../strategy/terminalEvacuation";
 import { getStoredEnergy } from "../../game/Structures";
 import { getRoomPositionRoom } from "../../game/RoomPosition";
 import { getRoomBarriers, getRoomSpawns } from "../../game/RoomStructures";
@@ -255,7 +259,10 @@ export class CommandCenterOverlord extends Overlord {
       const load = stagingLoad(this.colony, manager.store.getCapacity());
       if (!load) return false;
       if (manager.store.getUsedCapacity() > 0) {
-        manager.task = Tasks.transferAll(terminal);
+        manager.task =
+          returningTerminalEnergy(this.colony) && manager.store.energy
+            ? Tasks.transfer(storage, RESOURCE_ENERGY)
+            : Tasks.transferAll(terminal);
         return true;
       }
       manager.task = Tasks.chain([
