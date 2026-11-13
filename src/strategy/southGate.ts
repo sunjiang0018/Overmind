@@ -42,7 +42,13 @@ export interface SouthWatch {
   contacts?: SouthContact[];
   front?: { wall: Id<StructureRampart>; seen: number };
   intercept?: { targets: Id<Creep>[]; until: number; engaged?: boolean };
-  restore?: { x: number; y: number; started: number; finished?: number };
+  restore?: {
+    x: number;
+    y: number;
+    started: number;
+    finished?: number;
+    target?: Id<StructureRampart>;
+  };
 }
 
 // A one-shot pursuit of the observed siege pair. The home ranger stays on the ramparts.
@@ -587,15 +593,20 @@ export function prepWall(colony: Colony): StructureRampart | undefined {
   if (order && !order.finished) {
     const walls = southRamparts(colony.room);
     // Leave a small decay allowance so the first segment stays above 2M until the last is done.
-    const target = walls
-      .filter((w) => w.hits < southWallHits + 15000)
-      .sort(
-        (a, b) =>
-          +(Math.max(Math.abs(a.pos.x - order.x), Math.abs(a.pos.y - order.y)) > 1) -
-            +(Math.max(Math.abs(b.pos.x - order.x), Math.abs(b.pos.y - order.y)) > 1) ||
-          a.hits - b.hits,
-      )[0];
-    if (target) return target;
+    const weak = walls.filter((w) => w.hits < southWallHits);
+    const previous = walls.find((w) => w.id === order.target && w.hits < southWallHits + 15000);
+    if (weak.length && previous) return previous;
+    const target = weak.sort(
+      (a, b) =>
+        +(Math.max(Math.abs(a.pos.x - order.x), Math.abs(a.pos.y - order.y)) > 1) -
+          +(Math.max(Math.abs(b.pos.x - order.x), Math.abs(b.pos.y - order.y)) > 1) ||
+        a.hits - b.hits,
+    )[0];
+    if (target) {
+      order.target = target.id;
+      return target;
+    }
+    delete order.target;
     if (walls.length) order.finished = Game.time;
   }
   return plannedRepair(colony.room);
@@ -849,20 +860,28 @@ export function recoverGateCargo(colony: Colony, unit: Zerg): boolean {
     !mobilized(colony) &&
     !recentSouthFront(colony)
   ) {
-    const tower = colony.towers
-      .filter((t) => t.store.energy < 850)
-      .sort((a, b) => a.store.energy - b.store.energy)[0];
+    // Both towers stop repairing at the same reserve. A tie halfway around the
+    // bunker must not send a loaded truck all the way back to its previous tower.
+    const towers = colony.towers.filter((t) => t.store.energy < 850);
+    const tower =
+      towers.find((t) => t.id === c.memory.southSupplyTower) ||
+      towers.sort(
+        (a, b) => a.store.energy - b.store.energy || c.pos.getRangeTo(a) - c.pos.getRangeTo(b),
+      )[0];
     const source = colony.storage?.store.energy ? colony.storage : colony.terminal;
     if (tower && source && (c.store.energy || source.store.energy)) {
+      c.memory.southSupplyTower = tower.id;
       const target = c.store.energy ? tower : source;
       const result = c.store.energy
         ? c.transfer(tower, RESOURCE_ENERGY)
         : c.withdraw(source, RESOURCE_ENERGY);
       if (result === ERR_NOT_IN_RANGE) insideMove(unit, target.pos, 1);
+      else if (target === tower && result === OK) delete c.memory.southSupplyTower;
       unit.blockMovement = true;
       return true;
     }
   }
+  delete c.memory.southSupplyTower;
   if (c.store.energy > 0) {
     const evacuation = colony.memory.terminalEvacuation;
     const destinations =

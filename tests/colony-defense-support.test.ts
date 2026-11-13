@@ -1076,10 +1076,27 @@ test("restore the flagged south rampart first and keep repairing until the whole
   });
   tower.run();
   assert.deepEqual(repairs, [flagged.id]);
+  flagged.hits = 2001000;
+  game.time++;
+  assert.equal(
+    strategy.prepWall(o.colony),
+    flagged,
+    "finish the decay margin on the current section",
+  );
   flagged.hits = 2015300;
   game.time++;
   assert.equal(strategy.prepWall(o.colony), distant);
+  flagged.hits -= 900;
+  room.walls[4].hits = 1960000;
+  distant.hits = 1961000;
+  game.time++;
+  assert.equal(
+    strategy.prepWall(o.colony),
+    distant,
+    "decay and adjacent repairs do not redirect the crew",
+  );
   distant.hits = 2015300;
+  room.walls[4].hits = 2000100;
   game.time++;
   assert.equal(strategy.prepWall(o.colony), undefined);
   assert.equal(restore.restore.finished, game.time);
@@ -1722,6 +1739,39 @@ test("a collector crossing a safe rampart can finish the approach to a nonadjace
   game.search = () => ({ incomplete: false, path: [pos(31, 47), pos(32, 47)] });
   assert.equal(strategy.recoverGateCargo(o.colony, unit), true);
   assert.equal(directions.length, 1);
+});
+
+test("a loaded repair supplier finishes the far tower trip when the near tower reaches the same reserve", () => {
+  const { o, game, pos, room, strategy } = gateBattle();
+  const tower = (id: string, x: number, energy: number) => ({
+    id,
+    pos: pos(x, 39),
+    store: { energy },
+  });
+  const near = tower("near", 25, 810),
+    far = tower("far", 32, 640);
+  o.colony.towers = [near, far];
+  o.colony.storage = room.storage = { pos: pos(24, 40), store: { energy: 10000 } };
+  o.colony.memory.southWatch = { restore: { started: game.time, x: 23, y: 48 } };
+  const attempts: string[] = [];
+  const c = {
+    pos: pos(23, 39),
+    memory: {},
+    store: createStore({ energy: 900 }, 1200),
+    transfer(t: TestScope) {
+      attempts.push(t.id);
+      return constants.ERR_NOT_IN_RANGE;
+    },
+  };
+  const unit = { creep: c, goTo() {} };
+  strategy.recoverGateCargo(o.colony, unit);
+  game.time++;
+  near.store.energy = 640;
+  strategy.recoverGateCargo(o.colony, unit);
+  game.time++;
+  far.store.energy = 1000;
+  strategy.recoverGateCargo(o.colony, unit);
+  assert.deepEqual(attempts, ["far", "far", "near"]);
 });
 
 test("a home without carriers dispatches a recovery truck and banks energy from recycled defenders", () => {
