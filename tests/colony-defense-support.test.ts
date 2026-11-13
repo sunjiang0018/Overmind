@@ -990,6 +990,54 @@ function southDefense() {
   return { game, o, requests, enemy, strategy, orders, pos };
 }
 
+test("only the assembled T3 squad intercepts the named raiders and focuses their medic", () => {
+  const { game, o, room, pos, strategy, enemy } = gateBattle();
+  const outer = game.rooms.E58S43;
+  Object.assign(outer, { name: "E58S43", find: () => [], getPositionAt: pos });
+  room.getPositionAt = pos;
+  const raiders = ["medic", "dismantler"].map((id, i) => ({
+    ...enemy,
+    id,
+    pos: { ...pos(15 + i, 2), roomName: outer.name },
+    hits: 5000,
+    getActiveBodyparts: (t: string) => (t === (i ? "work" : "heal") ? 20 : 0),
+  }));
+  outer.enemies = raiders;
+  game.getObjectById = (id: string) => raiders.find((r) => r.id === id);
+  const order = { targets: ["dismantler", "medic"], until: game.time + 500, engaged: false };
+  o.colony.memory.southWatch = { intercept: order };
+  const shots: string[] = [],
+    moves: string[] = [];
+  const squad = [0, 1, 2].map((i) => ({
+    spawning: false,
+    room,
+    pos: pos(18 + i, 47),
+    creep: {
+      hits: 2000,
+      hitsMax: 2000,
+      body: [{ hits: 100, boost: i === 2 ? "XKHO2" : "XUH2O" }],
+      getActiveBodyparts: (t: string) => (t === (i === 2 ? "ranged_attack" : "attack") ? 10 : 0),
+      moveTo: (p: TestScope) => moves.push(p.roomName),
+      attack: (e: TestScope) => shots.push(e.id),
+      rangedAttack: (e: TestScope) => shots.push(e.id),
+    },
+  }));
+  squad[2].pos = pos(30, 30);
+  assert.equal(strategy.interceptSouthRaid(o.colony, squad).size, 0);
+  squad[2].pos = pos(17, 46);
+  assert.equal(strategy.interceptSouthRaid(o.colony, squad).size, 3);
+  assert.deepEqual(moves, ["E58S43", "E58S43", "E58S43"]);
+  for (const u of squad) {
+    u.room = outer;
+    u.pos = { ...pos(16, 3), roomName: outer.name };
+  }
+  strategy.interceptSouthRaid(o.colony, squad);
+  assert.deepEqual(shots, ["medic", "medic", "medic"]);
+  outer.enemies.push({ ...raiders[0], id: "reinforcement" });
+  strategy.interceptSouthRaid(o.colony, squad);
+  assert.deepEqual(moves.slice(-3), ["E58S42", "E58S42", "E58S42"]);
+});
+
 function gateBattle() {
   const r = southDefense(),
     { o, game, pos, enemy } = r;

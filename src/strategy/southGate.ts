@@ -41,6 +41,100 @@ export interface SouthWatch {
   contactName?: string;
   contacts?: SouthContact[];
   front?: { wall: Id<StructureRampart>; seen: number };
+  intercept?: { targets: Id<Creep>[]; until: number; engaged?: boolean };
+}
+
+// A one-shot pursuit of the observed siege pair. The home ranger stays on the ramparts.
+// Stop at the adjacent room, leave other players alone, and bring the squad back together.
+export function interceptSouthRaid(colony: Colony, squad: Zerg[]): Set<Zerg> {
+  const taken = new Set<Zerg>();
+  const order = colony.memory.southWatch?.intercept;
+  if (!order) return taken;
+  const home = colony.room,
+    outer = Game.rooms.E58S43;
+  const targets = order.targets.map((id) => Game.getObjectById(id)).filter((e): e is Creep => !!e);
+  const otherDanger = (r: Room) =>
+    getRoomPlayerHostiles(r).some((e) => isSiegeUnit(e) && !order.targets.includes(e.id));
+  const forward =
+    outer &&
+    !outer.controller?.owner &&
+    !outer.find(FIND_HOSTILE_STRUCTURES).some((s) => s.structureType === STRUCTURE_TOWER);
+  const combatReady = squad.filter(
+    (u) =>
+      !u.spawning &&
+      u.creep.hits > 0.65 * u.creep.hitsMax &&
+      u.creep.body.some(
+        (b) =>
+          b.hits &&
+          (b.boost === RESOURCE_CATALYZED_UTRIUM_ACID ||
+            b.boost === RESOURCE_CATALYZED_KEANIUM_ALKALIDE),
+      ),
+  );
+  const admitted =
+    Game.time <= order.until &&
+    !colony.controller.safeMode &&
+    forward &&
+    !otherDanger(home) &&
+    !otherDanger(outer!) &&
+    combatReady.filter((u) => u.creep.getActiveBodyparts(ATTACK)).length >= 2 &&
+    combatReady.some((u) => u.creep.getActiveBodyparts(RANGED_ATTACK));
+  const nearGate = targets.filter((e) =>
+    e.pos.roomName === home.name ? e.pos.y >= 46 : e.pos.roomName === outer?.name && e.pos.y <= 10,
+  );
+  if (
+    !order.engaged &&
+    admitted &&
+    nearGate.some((e) => e.pos.roomName === outer!.name) &&
+    combatReady.every(
+      (u) => u.pos.roomName === home.name && u.pos.y >= 45 && u.pos.getRangeTo(combatReady[0]) <= 5,
+    )
+  )
+    order.engaged = true;
+  if (admitted && order.engaged && nearGate.length) {
+    const focus = nearGate.sort(
+      (a, b) =>
+        +(b.getActiveBodyparts(HEAL) > 0) - +(a.getActiveBodyparts(HEAL) > 0) || a.hits - b.hits,
+    )[0];
+    for (const u of combatReady) {
+      const range = u.creep.getActiveBodyparts(ATTACK) ? 1 : 3;
+      const canHit = nearGate.find(
+        (e) => u.room.name === e.pos.roomName && u.pos.inRangeTo(e, range),
+      );
+      if (canHit) {
+        if (range === 1) u.creep.attack(canHit);
+        else u.creep.rangedAttack(canHit);
+      }
+      if (
+        u.room.name !== focus.pos.roomName ||
+        !u.pos.inRangeTo(focus, range) ||
+        u.pos.y === 0 ||
+        u.pos.y === 49
+      ) {
+        // moveTo within range can return OK on the exit without stepping into the room.
+        const onEdge = u.room.name === focus.pos.roomName && (u.pos.y === 0 || u.pos.y === 49);
+        const dest = onEdge
+          ? u.room.getPositionAt(focus.pos.x, u.pos.y === 0 ? 2 : 47)!
+          : focus.pos;
+        u.creep.moveTo(dest, {
+          range: onEdge || u.room.name !== focus.pos.roomName ? 0 : range,
+          maxRooms: 2,
+          reusePath: 0,
+        });
+      }
+      u.blockMovement = true;
+      taken.add(u);
+    }
+  } else {
+    for (const u of squad)
+      if (!u.spawning && u.room.name !== home.name) {
+        u.creep.moveTo(home.getPositionAt(20, 46)!, { range: 1, maxRooms: 2, reusePath: 2 });
+        u.blockMovement = true;
+        taken.add(u);
+      }
+    if (!taken.size && (!admitted || (outer && !nearGate.length)))
+      delete colony.memory.southWatch!.intercept;
+  }
+  return taken;
 }
 
 export function protectsSouthGate(colony: Colony): boolean {
@@ -413,6 +507,17 @@ export function defendSouthGate(
     if (post) unit.memory.southRangerPost = post.id;
   }
   post ??= current || walls.find((w) => w.pos.x === 24 && w.pos.y === 47) || walls[0];
+  if (!target && post && post !== current && post.pos.lookFor(LOOK_CREEPS).length) {
+    post =
+      current ||
+      walls
+        .filter((w) => !w.pos.lookFor(LOOK_CREEPS).length)
+        .sort(
+          (a, b) =>
+            a.pos.getRangeTo(post!) - b.pos.getRangeTo(post!) ||
+            unit.pos.getRangeTo(a) - unit.pos.getRangeTo(b),
+        )[0];
+  }
   let destination = post?.pos;
   if (
     supportMelee &&
