@@ -158,6 +158,15 @@ export class SouthGateOverlord extends Overlord {
     return lab.boostCreep(unit.creep) === OK;
   }
 
+  private returning(unit: Zerg): boolean {
+    if (unit.spawning || (unit.pos.roomName === this.colony.name && unit.pos.y < 48)) return false;
+    // The one-shot order may already be gone on reset. Gate duty itself must always bring a
+    // defender off the exit before asking its in-room positioning algorithm to choose a wall.
+    unit.goTo(this.colony.room.getPositionAt(20, 46)!, { range: 1, pathOpts: { maxRooms: 2 } });
+    unit.blockMovement = true;
+    return true;
+  }
+
   run(): void {
     if (this.colony.memory.pauseHydralisks) {
       for (const creep of this.colony.getCreepsByRole("hydralisk")) {
@@ -179,7 +188,7 @@ export class SouthGateOverlord extends Overlord {
       ...this.snipers,
     ]);
     for (const unit of this.guards) {
-      if (intercepting.has(unit)) continue;
+      if (intercepting.has(unit) || this.returning(unit)) continue;
       if (unit.spawning || this.visitBoost(unit, ATTACK, breakerBoost, false)) continue;
       if (this.unboosted([unit], ATTACK)) continue;
       defendSouthGate(
@@ -191,13 +200,13 @@ export class SouthGateOverlord extends Overlord {
       );
     }
     for (const unit of this.breakers) {
-      if (intercepting.has(unit)) continue;
+      if (intercepting.has(unit) || this.returning(unit)) continue;
       if (unit.spawning || this.visitBoost(unit, ATTACK, breakerBoost, false)) continue;
       if (this.unboosted([unit], ATTACK)) continue;
       defendSouthGate(unit, this.colony, front, 1, true);
     }
     for (const unit of [...this.rangers, ...this.snipers]) {
-      if (intercepting.has(unit)) continue;
+      if (intercepting.has(unit) || this.returning(unit)) continue;
       if (unit.spawning) continue;
       if (this.visitBoost(unit, RANGED_ATTACK, rangedBoost, false)) {
         const target = gateEnemy(this.colony.room);
