@@ -559,9 +559,14 @@ export class WorkerOverlord extends Overlord {
           if (c.upgradeController(this.colony.controller) === ERR_NOT_IN_RANGE)
             worker.goTo(this.colony.controller, { range: 3 });
         } else {
-          const bank = this.colony.storage?.store.energy
-            ? this.colony.storage
-            : this.colony.terminal;
+          const bank = [
+            this.colony.upgradeSite.link,
+            this.colony.upgradeSite.battery,
+            this.colony.storage,
+            this.colony.terminal,
+          ]
+            .filter((s) => s && s.store.energy > 0)
+            .sort((a, b) => worker.pos.getRangeTo(a!) - worker.pos.getRangeTo(b!))[0];
           if (bank && c.withdraw(bank, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE)
             worker.goTo(bank, { range: 1 });
         }

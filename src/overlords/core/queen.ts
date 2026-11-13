@@ -5,6 +5,7 @@ import { Hatchery } from "../../hiveClusters/hatchery";
 import { OverlordPriority } from "../../priorities/priorities_overlords";
 import { profile } from "../../profiler/decorator";
 import { refillPassingQueen } from "./queenDelivery";
+import { returningTerminalEnergy, shuttleToTerminal } from "../../strategy/terminalEvacuation";
 import { Tasks } from "../../tasks/Tasks";
 import { Zerg } from "../../zerg/Zerg";
 import { DEFAULT_PRESPAWN, Overlord } from "../Overlord";
@@ -113,6 +114,15 @@ export class QueenOverlord extends Overlord {
       // Keep a valid task until completion. Choosing the closest request every
       // tick can alternate targets as the queen moves around extensions.
       if (queen.isIdle) {
+        if (
+          this.colony?.memory?.terminalEvacuation?.returnEnergy &&
+          returningTerminalEnergy(this.colony) &&
+          (this.colony.terminal?.store.energy || 0) > 1000 &&
+          this.colony.room.energyAvailable === this.colony.room.energyCapacityAvailable &&
+          this.colony.towers.every((t) => t.store.energy >= 600) &&
+          shuttleToTerminal(this.colony, queen)
+        )
+          continue;
         this.handleQueen(queen);
       }
       // Run the task if you have one; else move back to idle pos
