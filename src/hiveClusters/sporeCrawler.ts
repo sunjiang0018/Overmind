@@ -7,7 +7,7 @@ import { Colony } from "../Colony";
 import { log } from "../console/log";
 import { CombatIntel } from "../intel/CombatIntel";
 import { WorkerOverlord } from "../overlords/core/worker";
-import { gateEnemy, gateTowerTarget, mobilized } from "../strategy/southGate";
+import { gateEnemy, gateTowerTarget, mobilized, prepWall } from "../strategy/southGate";
 import { colonyDefenseTarget } from "../strategy/colonyDefense";
 import { profile } from "../profiler/decorator";
 import { CombatTargeting } from "../targeting/CombatTargeting";
@@ -43,7 +43,11 @@ export class SporeCrawler extends HiveCluster {
   private registerEnergyRequests() {
     // Request energy from transporters if below request threshold
     for (const tower of this.towers) {
-      if (getStoredEnergy(tower) < SporeCrawler.settings.requestThreshold) {
+      const restore = this.colony.memory.southWatch?.restore;
+      if (
+        getStoredEnergy(tower) <
+        (restore && !restore.finished ? 850 : SporeCrawler.settings.requestThreshold)
+      ) {
         const multiplier =
           getStoredEnergy(tower) < SporeCrawler.settings.criticalEnergyThreshold ? 2 : 1;
         const dAmountdt = getRoomHostiles(this.room).length > 0 ? 10 : 0;
@@ -266,6 +270,14 @@ export class SporeCrawler extends HiveCluster {
       }
     }
 
+    const restore = this.colony.memory.southWatch?.restore;
+    if (restore && !restore.finished && !getRoomHostiles(this.room).length) {
+      const wall = prepWall(this.colony);
+      if (wall && !restore.finished) {
+        for (const tower of this.towers) if (tower.store.energy >= 650) tower.repair(wall);
+        return;
+      }
+    }
     // Prevent rampart decay at early RCL
     this.preventStructureDecay();
   }

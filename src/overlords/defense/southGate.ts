@@ -120,6 +120,16 @@ export class SouthGateOverlord extends Overlord {
     }
     if (this.snipers.some((u) => !u.spawning && !this.unboosted([u], RANGED_ATTACK)))
       delete this.colony.memory.orderSouthSniper;
+    const restore = this.colony.memory.southWatch?.restore;
+    if (
+      !fighting &&
+      restore &&
+      !restore.finished &&
+      prepWall(this.colony) &&
+      this.colony.room.energyCapacityAvailable >= 2150
+    ) {
+      this.wishlist(3, mender, { priority: 198, spawnOneAtATime: true });
+    }
     if (!fighting) return;
     if (this.colony.room.energyCapacityAvailable >= 2150)
       this.wishlist(4, mender, { priority: 198, spawnOneAtATime: true });

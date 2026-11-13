@@ -539,11 +539,12 @@ export class WorkerOverlord extends Overlord {
 
   run() {
     const alert = mobilized(this.colony);
+    const restore = this.colony.memory.southWatch?.restore;
     const wall =
-      alert &&
+      (alert || (restore && !restore.finished)) &&
       (southFront(this.colony) ||
         prepWall(this.colony) ||
-        getRoomRamparts(this.colony.room).find((r) => r.pos.x === 24 && r.pos.y === 47));
+        (alert && getRoomRamparts(this.colony.room).find((r) => r.pos.x === 24 && r.pos.y === 47)));
     const workers = this.workers.filter((worker) => {
       if (wall && !worker.spawning && worker.room.name === this.colony.name) {
         supplyWallWorker(this.colony, worker, wall);

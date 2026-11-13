@@ -42,6 +42,7 @@ export interface SouthWatch {
   contacts?: SouthContact[];
   front?: { wall: Id<StructureRampart>; seen: number };
   intercept?: { targets: Id<Creep>[]; until: number; engaged?: boolean };
+  restore?: { x: number; y: number; started: number; finished?: number };
 }
 
 // A one-shot pursuit of the observed siege pair. The home ranger stays on the ramparts.
@@ -131,7 +132,7 @@ export function interceptSouthRaid(colony: Colony, squad: Zerg[]): Set<Zerg> {
     }
   } else {
     for (const u of squad)
-      if (!u.spawning && u.room.name !== home.name) {
+      if (!u.spawning && (u.room.name !== home.name || u.pos.y >= 48)) {
         u.creep.moveTo(home.getPositionAt(20, 46)!, { range: 1, maxRooms: 2, reusePath: 2 });
         u.blockMovement = true;
         taken.add(u);
@@ -564,6 +565,21 @@ export function defendSouthGate(
 }
 export function prepWall(colony: Colony): StructureRampart | undefined {
   if (!protectsSouthGate(colony)) return;
+  const order = colony.memory.southWatch?.restore;
+  if (order && !order.finished) {
+    const walls = southRamparts(colony.room);
+    // Leave a small decay allowance so the first segment stays above 2M until the last is done.
+    const target = walls
+      .filter((w) => w.hits < southWallHits + 15000)
+      .sort(
+        (a, b) =>
+          +(Math.max(Math.abs(a.pos.x - order.x), Math.abs(a.pos.y - order.y)) > 1) -
+            +(Math.max(Math.abs(b.pos.x - order.x), Math.abs(b.pos.y - order.y)) > 1) ||
+          a.hits - b.hits,
+      )[0];
+    if (target) return target;
+    if (walls.length) order.finished = Game.time;
+  }
   return plannedRepair(colony.room);
 }
 
@@ -616,7 +632,9 @@ export function supplyWallWorker(colony: Colony, unit: Zerg, wall: StructureRamp
     if (
       c.pos.y < 47 &&
       c.pos.inRangeTo(wall, 3) &&
-      (mobilized(colony) || recentSouthFront(colony))
+      (mobilized(colony) ||
+        recentSouthFront(colony) ||
+        (colony.memory.southWatch?.restore && !colony.memory.southWatch.restore.finished))
     ) {
       c.memory.southSupplySince ??= Game.time;
       if (
@@ -890,7 +908,13 @@ export function supplySouthGate(colony: Colony, hauler: Zerg): boolean {
     }
     delete c.memory.southGateDelivery;
   }
-  if (!mobilized(colony) && !recentSouthFront(colony)) return false;
+  const restore = colony.memory.southWatch?.restore;
+  if (
+    !mobilized(colony) &&
+    !recentSouthFront(colony) &&
+    !(restore && !restore.finished && prepWall(colony))
+  )
+    return false;
   if (hauler.task) hauler.task = null;
   if (c.pos.y >= 47) {
     if (
@@ -920,7 +944,7 @@ export function supplySouthGate(colony: Colony, hauler: Zerg): boolean {
         w.store.getFreeCapacity(RESOURCE_ENERGY) >= 32,
     );
   const target =
-    colony.towers.find((t) => t.store.energy < 500) ||
+    colony.towers.find((t) => t.store.energy < (restore && !restore.finished ? 800 : 500)) ||
     workers.sort(
       (a, b) => a.store.energy - b.store.energy || c.pos.getRangeTo(a) - c.pos.getRangeTo(b),
     )[0];

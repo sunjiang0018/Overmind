@@ -1042,6 +1042,49 @@ test("only the assembled T3 squad intercepts the named raiders and focuses their
   assert.deepEqual(moves.slice(-3), ["E58S42", "E58S42", "E58S42"]);
 });
 
+test("restore the flagged south rampart first and keep repairing until the whole line is above two million", () => {
+  const { game, o, room, strategy, pos } = gateBattle();
+  const restore: TestScope = (o.colony.memory.southWatch = {
+    restore: { x: 23, y: 48, started: game.time },
+  });
+  for (const w of room.walls) w.hits = 2015100;
+  const flagged = room.walls[0],
+    distant = room.walls[3];
+  flagged.hits = 600000;
+  distant.hits = 430000;
+  assert.equal(strategy.prepWall(o.colony), flagged);
+  const repairs: string[] = [];
+  const { SporeCrawler } = load(
+    "src/hiveClusters/sporeCrawler.ts",
+    {
+      "./_HiveCluster": { HiveCluster: class {} },
+      "../strategy/southGate": strategy,
+      "../game/Room": { getRoomCreeps: () => [], getRoomHostiles: () => [] },
+    },
+    { Game: game },
+  );
+  o.colony.overlords.work = { nukeDefenseRamparts: [] };
+  const tower = Object.assign(Object.create(SporeCrawler.prototype), {
+    colony: o.colony,
+    room,
+    pos: { ...pos(25, 41), findClosestByRange: () => undefined },
+    towers: [640, 900].map((energy) => ({
+      store: { energy },
+      repair: (w: TestScope) => repairs.push(w.id),
+    })),
+    preventStructureDecay() {},
+  });
+  tower.run();
+  assert.deepEqual(repairs, [flagged.id]);
+  flagged.hits = 2015300;
+  game.time++;
+  assert.equal(strategy.prepWall(o.colony), distant);
+  distant.hits = 2015300;
+  game.time++;
+  assert.equal(strategy.prepWall(o.colony), undefined);
+  assert.equal(restore.restore.finished, game.time);
+});
+
 function gateBattle() {
   const r = southDefense(),
     { o, game, pos, enemy } = r;
