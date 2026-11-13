@@ -635,14 +635,22 @@ export class CommandCenterOverlord extends Overlord {
     for (const manager of this.managers) {
       // Get a task if needed
       if (manager.isIdle) {
-        if (
-          this.colony.memory.terminalEvacuation &&
-          !this.colony.evolutionChamber?.southCombatBoostPending &&
-          (manager.ticksToLive ?? 0) > 5 &&
-          shuttleToTerminal(this.colony, manager)
-        )
-          continue;
-        this.handleManager(manager);
+        // Feed the hub link between return loads so the controller and hatchery
+        // can use the stock immediately instead of waiting for the terminal to empty.
+        const criticalSupply =
+          returningTerminalEnergy(this.colony) &&
+          this.commandCenter.transportRequests.needsSupplying(Priority.Critical) &&
+          this.supplyActions(manager);
+        if (!criticalSupply) {
+          if (
+            this.colony.memory.terminalEvacuation &&
+            !this.colony.evolutionChamber?.southCombatBoostPending &&
+            (manager.ticksToLive ?? 0) > 5 &&
+            shuttleToTerminal(this.colony, manager)
+          )
+            continue;
+          this.handleManager(manager);
+        }
       }
       // manager.debug(print(manager.task))
       // If you have a valid task, run it; else go to idle pos
