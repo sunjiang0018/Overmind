@@ -1357,6 +1357,17 @@ test("two melee guards can focus a boosted dismantler with a 29-part medic at th
   room.mine.push(guards[1].creep);
   game.time++;
   assert.equal(strategy.gateTowerTarget(o.colony)?.id, breaker.id);
+  room.enemies = [medic];
+  game.time++;
+  room.walls.push({ id: "west", pos: pos(21, 47), my: true, hits: 2000000 });
+  room.walls.at(-1).pos.lookFor = () => [guards[0].creep];
+  moves.length = 0;
+  strategy.defendSouthGate(guards[1], o.colony, wall, 1, true);
+  assert.ok(
+    moves.length === 0 || moves.some(([x, y]) => [22, 23].includes(x) && y === 47),
+    "keep striking the medic after its patient dies",
+  );
+  room.enemies = [breaker, medic];
   medic.body.splice(10, 0, ...parts(12, "attack", "XUH2O"));
   game.time++;
   moves.length = 0;

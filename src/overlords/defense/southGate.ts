@@ -141,7 +141,13 @@ export class SouthGateOverlord extends Overlord {
     for (const unit of this.guards) {
       if (unit.spawning || this.visitBoost(unit, ATTACK, guardBoost, !!front && unit.pos.y >= 44))
         continue;
-      defendSouthGate(unit, this.colony, front);
+      defendSouthGate(
+        unit,
+        this.colony,
+        front,
+        1,
+        this.breakers.some((b) => !b.spawning),
+      );
     }
     for (const unit of this.breakers) {
       if (unit.spawning || this.visitBoost(unit, ATTACK, breakerBoost, false)) continue;

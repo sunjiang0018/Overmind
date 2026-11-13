@@ -414,7 +414,14 @@ export function defendSouthGate(
   }
   post ??= current || walls.find((w) => w.pos.x === 24 && w.pos.y === 47) || walls[0];
   let destination = post?.pos;
-  if (supportMelee && target && needsGateBreaker(colony)) {
+  if (
+    supportMelee &&
+    target &&
+    (needsGateBreaker(colony) ||
+      (target.pos.y === 48 &&
+        target.getActiveBodyparts(HEAL) &&
+        walls.some((w) => w.pos.isNearTo(target))))
+  ) {
     destination =
       supportingMeleePost(unit, colony, target, walls) ||
       (
