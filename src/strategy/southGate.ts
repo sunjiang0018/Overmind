@@ -972,16 +972,18 @@ export function supplySouthGate(colony: Colony, hauler: Zerg): boolean {
     delete c.memory.southGateDelivery;
   }
   const restore = colony.memory.southWatch?.restore;
-  if (
-    restore &&
-    !restore.finished &&
-    !mobilized(colony) &&
-    !recentSouthFront(colony) &&
-    (colony.overlords.logistics.transporters[0]?.name !== hauler.name ||
-      ((colony.memory.restartMiningUntil ?? 0) > Game.time &&
-        colony.overlords.logistics.transporters.length < 2))
-  )
-    return false;
+  if (restore && !restore.finished && !mobilized(colony) && !recentSouthFront(colony)) {
+    const deployed = colony.overlords.logistics.transporters.filter((t) => !t.spawning);
+    // A truck in the spawn cannot cover a mine. While restarting, leave the
+    // first truck on its route, and the second too if the dedicated gate truck is alive.
+    const mineSlots =
+      (colony.memory.restartMiningUntil ?? 0) > Game.time
+        ? colony.getCreepsByRole("southRecovery").some((t) => !t.spawning)
+          ? 2
+          : 1
+        : 0;
+    if (deployed[mineSlots]?.name !== hauler.name) return false;
+  }
   if (
     !mobilized(colony) &&
     !recentSouthFront(colony) &&

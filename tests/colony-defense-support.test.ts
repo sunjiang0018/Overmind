@@ -1774,6 +1774,32 @@ test("a loaded repair supplier finishes the far tower trip when the near tower r
   assert.deepEqual(attempts, ["far", "far", "near"]);
 });
 
+test("mine trucks stay on their routes during restart while the second truck spawns and the gate has its own supplier", () => {
+  const { o, room, pos, game, strategy } = gateBattle();
+  const unit = (name: string, spawning = false) => ({
+    name,
+    room,
+    pos: pos(25, 40),
+    spawning,
+    creep: { memory: {} },
+    task: { name: "collectMine" },
+  });
+  const a = unit("transport_0"),
+    b = unit("transport_1", true);
+  o.colony.overlords.logistics.transporters = [a, b];
+  o.colony.storage = { pos: pos(24, 40), store: { energy: 90000 } };
+  o.colony.memory.southWatch = { restore: { started: game.time, x: 23, y: 48 } };
+  o.colony.memory.restartMiningUntil = game.time + 100;
+  o.colony.getCreepsByRole = () => [];
+  assert.equal(strategy.supplySouthGate(o.colony, a), false);
+  b.spawning = false;
+  o.colony.getCreepsByRole = () => [unit("southRecovery_0")];
+  assert.equal(strategy.supplySouthGate(o.colony, a), false);
+  assert.equal(strategy.supplySouthGate(o.colony, b), false);
+  assert.equal(a.task.name, "collectMine");
+  assert.equal(b.task.name, "collectMine");
+});
+
 test("a home without carriers dispatches a recovery truck and banks energy from recycled defenders", () => {
   const { o, room, pos, requests } = gateBattle();
   const tomb = { pos: pos(28, 40), store: { energy: 1450 }, ticksToDecay: 75 };
